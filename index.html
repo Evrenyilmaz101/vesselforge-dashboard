@@ -1,0 +1,1580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VesselForge - Pressure Vessel Estimation Platform</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob { animation: blob 7s infinite; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
+        .line-clamp-2 {
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+        /* Fix dropdown option styling */
+        select option {
+            background-color: #334155 !important;
+            color: white !important;
+        }
+        select option:checked {
+            background-color: #3b82f6 !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState } = React;
+        const { Building, Calendar, Users, FileText, CheckCircle, AlertCircle, Clock, Send, MessageSquare, Plus, TrendingUp, DollarSign, BarChart3, User, ChevronRight, Bell, Search, Paperclip, Download, File, Image, Info, Eye, X, Folder, FolderOpen, Upload, Edit, Paintbrush, Calculator, List } = lucide;
+
+        const VesselForge = () => {
+            const [currentView, setCurrentView] = useState('dashboard');
+            const [enquiries, setEnquiries] = useState([
+                {
+                    id: 'VS1770',
+                    client: 'PetroTech Industries',
+                    project: 'High Pressure Storage Vessel',
+                    value: 125000,
+                    status: 'Action Required: Scott Goodfellow',
+                    actionFrom: 'Scott Goodfellow',
+                    priorityNumber: 1,
+                    assignedTo: 'Scott Goodfellow',
+                    salesManager: 'Craig Malt',
+                    planner: 'Lewis McDonald',
+                    designer: 'Dave Richards',
+                    dateReceived: '2024-01-15',
+                    dueDate: '2024-01-22',
+                    requiresDesign: true,
+                    comments: []
+                },
+                {
+                    id: 'VS1771',
+                    client: 'Global Energy Corp',
+                    project: 'Separator Vessel Package',
+                    value: 280000,
+                    status: 'Action Required: Craig Malt',
+                    actionFrom: 'Craig Malt',
+                    priorityNumber: 3,
+                    assignedTo: 'Peter Krempin',
+                    salesManager: 'Craig Malt',
+                    planner: 'Lewis McDonald',
+                    designer: 'Unassigned',
+                    dateReceived: '2024-01-14',
+                    dueDate: '2024-01-21',
+                    requiresDesign: false,
+                    comments: []
+                },
+                {
+                    id: 'VS1772',
+                    client: 'ChemFlow Solutions',
+                    project: 'Reactor Vessel',
+                    value: 0,
+                    status: 'Action Required: Brandon Gregg',
+                    actionFrom: 'Brandon Gregg',
+                    priorityNumber: 2,
+                    assignedTo: 'Unassigned',
+                    salesManager: 'Craig Malt',
+                    planner: 'Lewis McDonald',
+                    designer: 'Brandon Gregg',
+                    dateReceived: '2024-01-16',
+                    dueDate: '2024-01-23',
+                    requiresDesign: true,
+                    comments: []
+                }
+            ]);
+
+            const [selectedEnquiry, setSelectedEnquiry] = useState(null);
+            const [showNewEnquiry, setShowNewEnquiry] = useState(false);
+            const [showEnquiryDetails, setShowEnquiryDetails] = useState(false);
+            const [searchTerm, setSearchTerm] = useState('');
+            const [activeTab, setActiveTab] = useState('chat');
+            const [newMessage, setNewMessage] = useState('');
+            const [previewDocument, setPreviewDocument] = useState(null);
+            const [messages, setMessages] = useState({
+                'VS1770': [
+                    {
+                        id: 1,
+                        text: 'New high pressure storage vessel enquiry received from PetroTech Industries. Please review the specifications.',
+                        timestamp: '2024-01-15, 9:30 AM',
+                        sender: 'CM',
+                        type: 'text'
+                    },
+                    {
+                        id: 2,
+                        text: 'I\'ve reviewed the initial requirements. Working pressure is 300 PSI, need to confirm material specifications.',
+                        timestamp: '2024-01-15, 2:15 PM',
+                        sender: 'SG',
+                        type: 'text'
+                    },
+                    {
+                        id: 3,
+                        text: 'Client confirmed material: SA-516 Grade 70. Proceeding with detailed calculations.',
+                        timestamp: '2024-01-16, 10:00 AM',
+                        sender: 'SG',
+                        type: 'text'
+                    }
+                ],
+                'VS1771': [
+                    {
+                        id: 4,
+                        text: 'Separator vessel package ready for final review. All calculations completed.',
+                        timestamp: '2024-01-18, 11:30 AM',
+                        sender: 'PK',
+                        type: 'text'
+                    },
+                    {
+                        id: 5,
+                        text: 'Great work! Please prepare the formal quotation document.',
+                        timestamp: '2024-01-18, 2:45 PM',
+                        sender: 'CM',
+                        type: 'text'
+                    }
+                ]
+            });
+            const [files, setFiles] = useState({
+                'VS1770': [
+                    {
+                        id: 'file1',
+                        name: 'PetroTech_Specifications.pdf',
+                        size: 2048576,
+                        type: 'application/pdf',
+                        timestamp: '2024-01-15, 9:45 AM',
+                        uploadedBy: 'CM',
+                        url: '#' // Would be actual file URL in production
+                    },
+                    {
+                        id: 'file2',
+                        name: 'Material_Calculations.xlsx',
+                        size: 1024000,
+                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        timestamp: '2024-01-16, 2:30 PM',
+                        uploadedBy: 'SG',
+                        url: '#'
+                    }
+                ],
+                'VS1771': [
+                    {
+                        id: 'file3',
+                        name: 'Separator_Drawings.pdf',
+                        size: 5242880,
+                        type: 'application/pdf',
+                        timestamp: '2024-01-18, 9:15 AM',
+                        uploadedBy: 'PK',
+                        url: '#'
+                    }
+                ]
+            });
+            const [newTenderForm, setNewTenderForm] = useState({
+                vsNumber: '',
+                client: '',
+                project: '',
+                value: '',
+                priorityNumber: 1,
+                assignedTo: 'Unassigned',
+                salesManager: 'Craig Malt',
+                planner: 'Lewis McDonald',
+                designer: 'Unassigned',
+                dueDate: '',
+                requiresDesign: false
+            });
+            const [showStatusChange, setShowStatusChange] = useState(false);
+            const [showAssignAction, setShowAssignAction] = useState(false);
+            const [selectedTenderForAssign, setSelectedTenderForAssign] = useState(null);
+            const [newActionAssignee, setNewActionAssignee] = useState('');
+
+            const getActionStatusColor = (actionFrom) => {
+                if (!actionFrom || actionFrom === 'Complete') return 'bg-green-500';
+                if (actionFrom === 'Awaiting Assignment') return 'bg-gray-500'; // Waiting for assignment
+                if (actionFrom.includes('Scott') || actionFrom.includes('Peter')) return 'bg-red-500'; // Estimators - urgent
+                if (actionFrom.includes('Dave') || actionFrom.includes('Brandon') || actionFrom.includes('Sheryl')) return 'bg-orange-500'; // Designers
+                if (actionFrom.includes('Craig')) return 'bg-purple-500'; // Sales
+                if (actionFrom.includes('Lewis')) return 'bg-blue-500'; // Planning
+                return 'bg-yellow-500'; // Default
+            };
+
+            const stats = {
+                total: enquiries.length,
+                actionDesigners: enquiries.filter(e => e.actionFrom && (e.actionFrom.includes('Dave') || e.actionFrom.includes('Brandon') || e.actionFrom.includes('Sheryl'))).length,
+                actionEstimators: enquiries.filter(e => e.actionFrom && (e.actionFrom.includes('Scott') || e.actionFrom.includes('Peter'))).length,
+                actionSales: enquiries.filter(e => e.actionFrom && e.actionFrom.includes('Craig')).length,
+                actionPlanning: enquiries.filter(e => e.actionFrom && e.actionFrom.includes('Lewis')).length,
+                totalValue: enquiries.reduce((sum, e) => sum + (e.value > 0 ? e.value : 0), 0)
+            };
+
+            const handleNewTenderSubmit = (e) => {
+                e.preventDefault();
+                
+                // Use manually entered VS number or generate new one if empty
+                let vsNumber = newTenderForm.vsNumber;
+                if (!vsNumber) {
+                    const maxVSNumber = Math.max(...enquiries.map(e => parseInt(e.id.replace('VS', ''))));
+                    vsNumber = `VS${maxVSNumber + 1}`;
+                }
+                
+                // Determine initial action required
+                let initialAction = 'Craig Malt'; // Default to sales manager
+                if (newTenderForm.requiresDesign && newTenderForm.designer !== 'Unassigned') {
+                    initialAction = newTenderForm.designer; // Start with designer if design required
+                } else if (newTenderForm.assignedTo !== 'Unassigned') {
+                    initialAction = newTenderForm.assignedTo; // Or start with estimator
+                }
+
+                // Create new tender
+                const newTender = {
+                    id: vsNumber,
+                    client: newTenderForm.client,
+                    project: newTenderForm.project,
+                    value: newTenderForm.value ? parseInt(newTenderForm.value) : 0,
+                    status: `Action Required: ${initialAction}`,
+                    actionFrom: initialAction,
+                    priorityNumber: newTenderForm.priorityNumber,
+                    assignedTo: newTenderForm.assignedTo,
+                    salesManager: newTenderForm.salesManager,
+                    planner: newTenderForm.planner,
+                    designer: newTenderForm.designer,
+                    dateReceived: new Date().toISOString().split('T')[0],
+                    dueDate: newTenderForm.dueDate,
+                    requiresDesign: newTenderForm.requiresDesign,
+                    comments: []
+                };
+                
+                // Add to enquiries
+                setEnquiries([...enquiries, newTender]);
+                
+                // Reset form and close modal
+                setNewTenderForm({
+                    vsNumber: '',
+                    client: '',
+                    project: '',
+                    value: '',
+                    priorityNumber: 1,
+                    assignedTo: 'Unassigned',
+                    salesManager: 'Craig Malt',
+                    planner: 'Lewis McDonald',
+                    designer: 'Unassigned',
+                    dueDate: '',
+                    requiresDesign: false
+                });
+                setShowNewEnquiry(false);
+            };
+
+            const handleFormChange = (field, value) => {
+                setNewTenderForm(prev => ({
+                    ...prev,
+                    [field]: value
+                }));
+            };
+
+            const sendMessage = () => {
+                if (!newMessage.trim() || !selectedEnquiry) return;
+                
+                const messageId = Date.now();
+                const message = {
+                    id: messageId,
+                    text: newMessage,
+                    timestamp: new Date().toLocaleString(),
+                    sender: 'GM', // Current user
+                    type: 'text'
+                };
+                
+                setMessages(prev => ({
+                    ...prev,
+                    [selectedEnquiry.id]: [...(prev[selectedEnquiry.id] || []), message]
+                }));
+                
+                setNewMessage('');
+            };
+
+            const handleFileUpload = (event) => {
+                const uploadedFiles = Array.from(event.target.files);
+                if (!selectedEnquiry || uploadedFiles.length === 0) return;
+                
+                uploadedFiles.forEach(file => {
+                    const fileId = Date.now() + Math.random();
+                    const fileObj = {
+                        id: fileId,
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        timestamp: new Date().toLocaleString(),
+                        uploadedBy: 'GM',
+                        url: URL.createObjectURL(file) // In real app, this would be uploaded to server
+                    };
+                    
+                    setFiles(prev => ({
+                        ...prev,
+                        [selectedEnquiry.id]: [...(prev[selectedEnquiry.id] || []), fileObj]
+                    }));
+                    
+                    // Also add as a message in chat
+                    const message = {
+                        id: fileId + '_msg',
+                        text: `Uploaded: ${file.name}`,
+                        timestamp: fileObj.timestamp,
+                        sender: 'GM',
+                        type: 'file',
+                        fileId: fileId
+                    };
+                    
+                    setMessages(prev => ({
+                        ...prev,
+                        [selectedEnquiry.id]: [...(prev[selectedEnquiry.id] || []), message]
+                    }));
+                });
+                
+                // Reset file input
+                event.target.value = '';
+            };
+
+            const getFileIcon = (fileType) => {
+                if (fileType.includes('pdf')) return 'file-text';
+                if (fileType.includes('excel') || fileType.includes('spreadsheet')) return 'file-spreadsheet';
+                if (fileType.includes('word') || fileType.includes('document')) return 'file-text';
+                if (fileType.includes('image')) return 'image';
+                return 'file';
+            };
+
+            const formatFileSize = (bytes) => {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            };
+
+            const getPriorityColor = (priorityNumber) => {
+                if (priorityNumber === 1) return 'bg-red-500 text-white'; // Highest priority
+                if (priorityNumber === 2) return 'bg-orange-500 text-white';
+                if (priorityNumber === 3) return 'bg-yellow-500 text-black';
+                if (priorityNumber === 4) return 'bg-blue-500 text-white';
+                if (priorityNumber === 5) return 'bg-gray-500 text-white'; // Lowest priority
+                return 'bg-gray-500 text-white'; // Default
+            };
+
+            const completeMyTask = (tenderId) => {
+                setEnquiries(prev => prev.map(enquiry => {
+                    if (enquiry.id === tenderId) {
+                        return {
+                            ...enquiry,
+                            status: 'Awaiting Assignment',
+                            actionFrom: 'Awaiting Assignment'
+                        };
+                    }
+                    return enquiry;
+                }));
+                setShowStatusChange(false);
+            };
+
+            const assignActionTo = (tenderId, assignee) => {
+                setEnquiries(prev => prev.map(enquiry => {
+                    if (enquiry.id === tenderId) {
+                        return {
+                            ...enquiry,
+                            status: `Action Required: ${assignee}`,
+                            actionFrom: assignee
+                        };
+                    }
+                    return enquiry;
+                }));
+                setShowAssignAction(false);
+                setSelectedTenderForAssign(null);
+                setNewActionAssignee('');
+            };
+
+            const openAssignDialog = (tender) => {
+                setSelectedTenderForAssign(tender);
+                setNewActionAssignee(tender.actionFrom === 'Awaiting Assignment' ? '' : tender.actionFrom);
+                setShowAssignAction(true);
+            };
+
+            const canManageActions = (currentUser = 'GM') => {
+                // Craig and estimators can manage actions
+                return currentUser === 'Craig Malt' || currentUser === 'Scott Goodfellow' || currentUser === 'Peter Krempin' || currentUser === 'GM';
+            };
+
+            // Get top 5 priority tenders for home page
+            const getTopPriorityTenders = () => {
+                return enquiries
+                    .sort((a, b) => a.priorityNumber - b.priorityNumber) // Sort by priority (1 = highest)
+                    .slice(0, 5); // Take top 5
+            };
+
+            // Create Lucide icons - render after any state change
+            React.useEffect(() => {
+                const timer = setTimeout(() => {
+                    lucide.createIcons();
+                }, 50);
+                return () => clearTimeout(timer);
+            }, [currentView, selectedEnquiry, activeTab, showEnquiryDetails, showNewEnquiry, previewDocument, messages, files]);
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+                    {/* Background Animation */}
+                    <div className="fixed inset-0 overflow-hidden pointer-events-none">
+                        <div className="absolute w-96 h-96 -top-48 -left-48 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+                        <div className="absolute w-96 h-96 -bottom-48 -right-48 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+                    </div>
+
+                    {/* Header */}
+                    <header className="relative z-10 bg-white/10 backdrop-blur-lg border-b border-white/20">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div className="flex items-center justify-between h-16">
+                                <div className="flex items-center space-x-4">
+                                    <div 
+                                        className="flex items-center space-x-2 cursor-pointer" 
+                                        onClick={() => setCurrentView('dashboard')}
+                                    >
+                                        <i data-lucide="building" className="h-8 w-8 text-blue-400"></i>
+                                        <h1 className="text-2xl font-bold text-white">VesselForge</h1>
+                                    </div>
+                                    <nav className="hidden md:flex space-x-1">
+                                        <button
+                                            onClick={() => setCurrentView('dashboard')}
+                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                                currentView === 'dashboard' 
+                                                    ? 'bg-white/20 text-white' 
+                                                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                                            }`}
+                                        >
+                                            Dashboard
+                                        </button>
+                                        <button
+                                            onClick={() => setCurrentView('enquiries')}
+                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                                currentView === 'enquiries' 
+                                                    ? 'bg-white/20 text-white' 
+                                                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                                            }`}
+                                        >
+                                            Tenders
+                                        </button>
+                                    </nav>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center">
+                                        <i data-lucide="user" className="h-5 w-5 text-white"></i>
+                                    </div>
+                                    <span className="text-white text-sm font-medium">GM</span>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        {currentView === 'dashboard' ? (
+                            // Dashboard View
+                            <>
+                                <div className="mb-8">
+                                    <h2 className="text-3xl font-bold text-white mb-2">Tender Management Dashboard</h2>
+                                    <p className="text-white/70">Track and manage all pressure vessel enquiries in real-time</p>
+                                </div>
+
+                                {/* ACTION REQUIRED Stats Cards */}
+                                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+                                    <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg p-4 shadow-lg">
+                                        <i data-lucide="file-text" className="h-6 w-6 text-blue-200 mb-2"></i>
+                                        <p className="text-2xl font-bold text-white">{stats.total}</p>
+                                        <p className="text-blue-100 text-xs">Total Active</p>
+                                    </div>
+                                    <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-lg p-4 shadow-lg border-2 border-white/30">
+                                        <div className="text-white text-xs font-bold mb-1">🚨 ACTION</div>
+                                        <p className="text-2xl font-bold text-white">{stats.actionDesigners}</p>
+                                        <p className="text-orange-100 text-xs">Designers</p>
+                                    </div>
+                                    <div className="bg-gradient-to-br from-red-600 to-red-700 rounded-lg p-4 shadow-lg border-2 border-white/30">
+                                        <div className="text-white text-xs font-bold mb-1">🚨 ACTION</div>
+                                        <p className="text-2xl font-bold text-white">{stats.actionEstimators}</p>
+                                        <p className="text-red-100 text-xs">Estimators</p>
+                                    </div>
+                                    <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg p-4 shadow-lg border-2 border-white/30">
+                                        <div className="text-white text-xs font-bold mb-1">🚨 ACTION</div>
+                                        <p className="text-2xl font-bold text-white">{stats.actionSales}</p>
+                                        <p className="text-purple-100 text-xs">Sales</p>
+                                    </div>
+                                    <div className="bg-gradient-to-br from-emerald-600 to-teal-600 rounded-lg p-4 shadow-lg">
+                                        <i data-lucide="trending-up" className="h-6 w-6 text-emerald-200 mb-2"></i>
+                                        <p className="text-xl font-bold text-white">${(stats.totalValue / 1000).toFixed(0)}k</p>
+                                        <p className="text-emerald-100 text-xs">Pipeline</p>
+                                    </div>
+                                </div>
+
+                                {/* Top 5 Priority Tenders */}
+                                <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div>
+                                            <h2 className="text-xl font-bold text-white">Top 5 Priority Tenders</h2>
+                                            <p className="text-white/60 text-sm">Showing highest priority items only</p>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <button
+                                                onClick={() => setCurrentView('enquiries')}
+                                                className="flex items-center space-x-2 px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-all"
+                                            >
+                                                <i data-lucide="list" className="h-4 w-4"></i>
+                                                <span>View All</span>
+                                            </button>
+                                            <button
+                                                onClick={() => setShowNewEnquiry(true)}
+                                                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all shadow-lg"
+                                            >
+                                                <i data-lucide="plus" className="h-4 w-4"></i>
+                                                <span>New Tender</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="text-left border-b border-white/10">
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Priority</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">VS #</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Client</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Project</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Action Required</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Manage</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {getTopPriorityTenders().map((enquiry) => (
+                                                    <tr 
+                                                        key={enquiry.id}
+                                                        className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                                                    >
+                                                        <td className="py-3">
+                                                            <span className={`text-xs px-2 py-1 rounded-full font-bold ${getPriorityColor(enquiry.priorityNumber)}`}>
+                                                                P{enquiry.priorityNumber}
+                                                            </span>
+                                                        </td>
+                                                        <td 
+                                                            className="py-3 text-white font-medium text-sm cursor-pointer hover:text-blue-400"
+                                                            onClick={() => {
+                                                                setSelectedEnquiry(enquiry);
+                                                                setShowEnquiryDetails(true);
+                                                            }}
+                                                        >
+                                                            {enquiry.id}
+                                                        </td>
+                                                        <td className="py-3 text-white/80 text-sm">{enquiry.client}</td>
+                                                        <td className="py-3 text-white/80 text-sm max-w-[200px] truncate">{enquiry.project}</td>
+                                                        <td className="py-3">
+                                                            <div className={`${getActionStatusColor(enquiry.actionFrom)} rounded px-2 py-1 text-center text-xs`}>
+                                                                <div className="text-white font-bold">🚨 {enquiry.actionFrom}</div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-3">
+                                                            <div className="flex space-x-1">
+                                                                {canManageActions() && (
+                                                                    <button
+                                                                        onClick={() => openAssignDialog(enquiry)}
+                                                                        className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
+                                                                        title="Assign Action"
+                                                                    >
+                                                                        👤 Assign
+                                                                    </button>
+                                                                )}
+                                                                <button
+                                                                    onClick={() => completeMyTask(enquiry.id)}
+                                                                    className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-colors"
+                                                                    title="Mark Complete"
+                                                                >
+                                                                    ✅ Done
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            // Tenders View
+                            <div className="flex flex-col">
+                                {/* Search Bar */}
+                                <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20 mb-6">
+                                    <div className="flex items-center space-x-4">
+                                        <div className="flex-1 flex items-center space-x-2">
+                                            <i data-lucide="search" className="h-5 w-5 text-white/60"></i>
+                                            <input
+                                                type="text"
+                                                placeholder="Search tenders..."
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                                className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-white/40"
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={() => setShowNewEnquiry(true)}
+                                            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all shadow-lg"
+                                        >
+                                            <i data-lucide="plus" className="h-4 w-4"></i>
+                                            <span>New Tender</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                {/* Tender Cards Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                                            {enquiries.filter(enq => 
+                                            enq.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                            enq.project.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                            enq.id.toLowerCase().includes(searchTerm.toLowerCase())
+                                        ).map((enquiry) => (
+                                            <div
+                                                key={enquiry.id}
+                                                onClick={() => {
+                                                    setSelectedEnquiry(enquiry);
+                                                    setShowEnquiryDetails(true);
+                                                }}
+                                                className={`p-4 bg-white/10 backdrop-blur-lg rounded-lg border transition-all cursor-pointer hover:shadow-lg hover:transform hover:-translate-y-1 ${
+                                                    selectedEnquiry?.id === enquiry.id 
+                                                        ? 'border-blue-400 bg-white/15 shadow-lg ring-2 ring-blue-400/50' 
+                                                        : 'border-white/20 hover:bg-white/15'
+                                                }`}
+                                            >
+                                                {/* ACTION REQUIRED - BIG AND OBVIOUS */}
+                                                <div className={`${getActionStatusColor(enquiry.actionFrom)} rounded-lg p-3 mb-3 text-center border-2 border-white/30 relative`}>
+                                                    <div className="text-white font-bold text-sm mb-1">🚨 ACTION REQUIRED</div>
+                                                    <div className="text-white font-bold text-lg mb-2">{enquiry.actionFrom}</div>
+                                                    {enquiry.actionFrom !== 'Awaiting Assignment' && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation(); // Prevent card click
+                                                                completeMyTask(enquiry.id);
+                                                            }}
+                                                            className="bg-white/20 hover:bg-white/30 text-white text-xs px-2 py-1 rounded transition-colors"
+                                                        >
+                                                            ✅ Mark Complete
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                {/* Card Header */}
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex items-center space-x-2">
+                                                        <h3 className="text-white font-bold text-lg">{enquiry.id}</h3>
+                                                    </div>
+                                                    <div className="flex items-center space-x-2">
+                                                        <span className={`text-xs px-2 py-1 rounded-full font-bold ${getPriorityColor(enquiry.priorityNumber)}`}>
+                                                            P{enquiry.priorityNumber}
+                                                        </span>
+                                                        <span className="text-white/80 text-xs font-medium">Due: {enquiry.dueDate}</span>
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Client Info */}
+                                                <p className="text-white/90 font-medium mb-1">{enquiry.client}</p>
+                                                <p className="text-white/60 text-sm mb-3 line-clamp-2">{enquiry.project}</p>
+                                                
+                                                {/* Card Footer */}
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        <span className="text-white/60">Value</span>
+                                                        <span className="text-white font-bold">
+                                                            {enquiry.value > 0 ? `$${(enquiry.value / 1000).toFixed(0)}k` : 'TBD'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        <span className="text-white/60">Estimator</span>
+                                                        <span className="text-white/80">{enquiry.assignedTo}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* New Tender Modal */}
+                    {showNewEnquiry && (
+                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                            <div className="bg-slate-800 rounded-2xl p-6 max-w-lg w-full mx-4 border border-white/20 max-h-[90vh] overflow-y-auto">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h3 className="text-xl font-bold text-white">Create New Tender</h3>
+                                    <button
+                                        onClick={() => setShowNewEnquiry(false)}
+                                        className="text-white/60 hover:text-white text-2xl font-bold"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                                
+                                <form onSubmit={handleNewTenderSubmit} className="space-y-4">
+                                    {/* VS Number */}
+                                    <div>
+                                        <label className="block text-white/80 text-sm font-medium mb-2">
+                                            VS Number (Leave blank to auto-generate)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={newTenderForm.vsNumber}
+                                            onChange={(e) => handleFormChange('vsNumber', e.target.value)}
+                                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-400"
+                                            placeholder="e.g., VS1773"
+                                        />
+                                    </div>
+
+                                    {/* Client */}
+                                    <div>
+                                        <label className="block text-white/80 text-sm font-medium mb-2">
+                                            Client Name *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            required
+                                            value={newTenderForm.client}
+                                            onChange={(e) => handleFormChange('client', e.target.value)}
+                                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-400"
+                                            placeholder="Enter client company name"
+                                        />
+                                    </div>
+
+                                    {/* Project */}
+                                    <div>
+                                        <label className="block text-white/80 text-sm font-medium mb-2">
+                                            Project Description *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            required
+                                            value={newTenderForm.project}
+                                            onChange={(e) => handleFormChange('project', e.target.value)}
+                                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-400"
+                                            placeholder="e.g., High Pressure Storage Vessel"
+                                        />
+                                    </div>
+
+                                    {/* Value and Priority Row */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-white/80 text-sm font-medium mb-2">
+                                                Estimated Value (Optional)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={newTenderForm.value}
+                                                onChange={(e) => handleFormChange('value', e.target.value)}
+                                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-400"
+                                                placeholder="To be determined after estimation"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-white/80 text-sm font-medium mb-2">
+                                                Priority Number (Craig's Ranking)
+                                            </label>
+                                            <select
+                                                value={newTenderForm.priorityNumber}
+                                                onChange={(e) => handleFormChange('priorityNumber', parseInt(e.target.value))}
+                                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-400"
+                                            >
+                                                <option value={1}>P1 - Highest Priority</option>
+                                                <option value={2}>P2 - High Priority</option>
+                                                <option value={3}>P3 - Medium Priority</option>
+                                                <option value={4}>P4 - Low Priority</option>
+                                                <option value={5}>P5 - Lowest Priority</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Assignee and Sales Manager Row */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-white/80 text-sm font-medium mb-2">
+                                                Assigned Estimator
+                                            </label>
+                                            <select
+                                                value={newTenderForm.assignedTo}
+                                                onChange={(e) => handleFormChange('assignedTo', e.target.value)}
+                                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-400"
+                                            >
+                                                <option value="Unassigned">Unassigned</option>
+                                                <option value="Scott Goodfellow">Scott Goodfellow</option>
+                                                <option value="Peter Krempin">Peter Krempin</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-white/80 text-sm font-medium mb-2">
+                                                Sales Manager
+                                            </label>
+                                            <select
+                                                value={newTenderForm.salesManager}
+                                                onChange={(e) => handleFormChange('salesManager', e.target.value)}
+                                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-400"
+                                            >
+                                                <option value="Craig Malt">Craig Malt</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Planner and Designer Row */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-white/80 text-sm font-medium mb-2">
+                                                Planner
+                                            </label>
+                                            <select
+                                                value={newTenderForm.planner}
+                                                onChange={(e) => handleFormChange('planner', e.target.value)}
+                                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-400"
+                                            >
+                                                <option value="Lewis McDonald">Lewis McDonald</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-white/80 text-sm font-medium mb-2">
+                                                Designer (if required)
+                                            </label>
+                                            <select
+                                                value={newTenderForm.designer}
+                                                onChange={(e) => handleFormChange('designer', e.target.value)}
+                                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-400"
+                                            >
+                                                <option value="Unassigned">Unassigned</option>
+                                                <option value="Dave Richards">Dave Richards</option>
+                                                <option value="Brandon Gregg">Brandon Gregg</option>
+                                                <option value="Sheryl">Sheryl</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Due Date */}
+                                    <div>
+                                        <label className="block text-white/80 text-sm font-medium mb-2">
+                                            Due Date *
+                                        </label>
+                                        <input
+                                            type="date"
+                                            required
+                                            value={newTenderForm.dueDate}
+                                            onChange={(e) => handleFormChange('dueDate', e.target.value)}
+                                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-400"
+                                        />
+                                    </div>
+
+                                    {/* Requires Design */}
+                                    <div className="flex items-center space-x-3">
+                                        <input
+                                            type="checkbox"
+                                            id="requiresDesign"
+                                            checked={newTenderForm.requiresDesign}
+                                            onChange={(e) => handleFormChange('requiresDesign', e.target.checked)}
+                                            className="w-4 h-4 text-blue-600 bg-white/10 border-white/20 rounded focus:ring-blue-500"
+                                        />
+                                        <label htmlFor="requiresDesign" className="text-white/80 text-sm">
+                                            Requires Custom Design
+                                        </label>
+                                    </div>
+
+                                    {/* Submit Buttons */}
+                                    <div className="flex space-x-3 pt-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowNewEnquiry(false)}
+                                            className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                                        >
+                                            Create Tender
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Tender Communication Platform */}
+                    {showEnquiryDetails && selectedEnquiry && (
+                        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50">
+                            <div className="bg-slate-900 w-full h-full border border-white/20 overflow-hidden flex flex-col">
+                                {/* Header */}
+                                <div className="bg-gradient-to-r from-slate-800 to-slate-700 border-b border-white/20 p-4">
+                                    <div className="flex items-center justify-between">
+                                        {/* Left Side - Tender Info */}
+                                        <div className="flex items-center space-x-4">
+                                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                                                <i data-lucide="building" className="h-6 w-6 text-white"></i>
+                                            </div>
+                                            <div>
+                                                <h1 className="text-2xl font-bold text-white">{selectedEnquiry.id}</h1>
+                                                <p className="text-white/70 text-sm">{selectedEnquiry.client}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Center - Project & Status */}
+                                        <div className="flex-1 mx-6">
+                                            <div className="bg-slate-800/50 rounded-lg p-3 border border-white/10">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <h3 className="text-white font-medium text-sm truncate flex-1 mr-4">{selectedEnquiry.project}</h3>
+                                                    <div className="flex items-center space-x-2">
+                                                        <div className={`${getActionStatusColor(selectedEnquiry.actionFrom)} rounded px-2 py-1 text-center`}>
+                                                            <div className="text-white font-bold text-xs">🚨 ACTION</div>
+                                                            <div className="text-white font-bold text-xs">{selectedEnquiry.actionFrom}</div>
+                                                        </div>
+                                                        <span className={`px-2 py-1 rounded text-xs font-bold ${getPriorityColor(selectedEnquiry.priorityNumber)}`}>
+                                                            P{selectedEnquiry.priorityNumber}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4 text-xs">
+                                                    <div>
+                                                        <p className="text-white/50">Due Date</p>
+                                                        <p className="text-white font-medium">{selectedEnquiry.dueDate}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-white/50">Value</p>
+                                                        <p className="text-white font-medium">
+                                                            {selectedEnquiry.value > 0 ? `$${selectedEnquiry.value.toLocaleString()}` : 'TBD'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Right Side - Team & Close */}
+                                        <div className="flex items-center space-x-4">
+                                            <div className="bg-slate-800/50 rounded-lg p-3 border border-white/10">
+                                                <p className="text-white/50 text-xs mb-2">Team</p>
+                                                <div className="space-y-1 text-xs">
+                                                    <div className="flex items-center space-x-2">
+                                                        <span className="w-2 h-2 bg-blue-400 rounded-full"></span>
+                                                        <span className="text-white/80">Est: {selectedEnquiry.assignedTo}</span>
+                                                    </div>
+                                                    <div className="flex items-center space-x-2">
+                                                        <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+                                                        <span className="text-white/80">Sales: {selectedEnquiry.salesManager}</span>
+                                                    </div>
+                                                    {selectedEnquiry.requiresDesign && (
+                                                        <div className="flex items-center space-x-2">
+                                                            <span className="w-2 h-2 bg-orange-400 rounded-full"></span>
+                                                            <span className="text-white/80">Design: {selectedEnquiry.designer}</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex items-center space-x-2">
+                                                        <span className="w-2 h-2 bg-purple-400 rounded-full"></span>
+                                                        <span className="text-white/80">Plan: {selectedEnquiry.planner}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    setShowEnquiryDetails(false);
+                                                    setActiveTab('chat');
+                                                    setPreviewDocument(null);
+                                                }}
+                                                className="w-8 h-8 bg-white/10 hover:bg-white/20 text-white rounded-lg flex items-center justify-center transition-colors text-lg font-bold"
+                                                title="Close Tender"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Tab Navigation */}
+                                <div className="flex border-b border-white/20 bg-slate-800/50 px-4">
+                                    <button
+                                        onClick={() => {
+                                            setActiveTab('chat');
+                                            setPreviewDocument(null);
+                                        }}
+                                        className={`px-4 py-3 text-sm font-medium transition-colors relative ${
+                                            activeTab === 'chat' 
+                                                ? 'text-blue-400 bg-white/5' 
+                                                : 'text-white/60 hover:text-white hover:bg-white/5'
+                                        }`}
+                                    >
+                                        <i data-lucide="message-square" className="h-4 w-4 inline mr-2"></i>
+                                        Communication
+                                        {activeTab === 'chat' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-400"></div>}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setActiveTab('files');
+                                            setPreviewDocument(null);
+                                        }}
+                                        className={`px-4 py-3 text-sm font-medium transition-colors relative ${
+                                            activeTab === 'files' 
+                                                ? 'text-blue-400 bg-white/5' 
+                                                : 'text-white/60 hover:text-white hover:bg-white/5'
+                                        }`}
+                                    >
+                                        <i data-lucide="folder" className="h-4 w-4 inline mr-2"></i>
+                                        Documents ({(files[selectedEnquiry.id] || []).length})
+                                        {activeTab === 'files' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-400"></div>}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setActiveTab('details');
+                                            setPreviewDocument(null);
+                                        }}
+                                        className={`px-4 py-3 text-sm font-medium transition-colors relative ${
+                                            activeTab === 'details' 
+                                                ? 'text-blue-400 bg-white/5' 
+                                                : 'text-white/60 hover:text-white hover:bg-white/5'
+                                        }`}
+                                    >
+                                        <i data-lucide="info" className="h-4 w-4 inline mr-2"></i>
+                                        Project Details
+                                        {activeTab === 'details' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-400"></div>}
+                                    </button>
+                                </div>
+
+                                {/* Tab Content */}
+                                <div className="flex-1 overflow-hidden">
+                                    {activeTab === 'chat' && (
+                                        <div className="h-full flex">
+                                            {/* Messages Area */}
+                                            <div className="flex-1 flex flex-col">
+                                                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-900/50">
+                                                    {(messages[selectedEnquiry.id] || []).length === 0 ? (
+                                                        <div className="text-center text-white/60 py-12">
+                                                            <i data-lucide="message-square" className="h-12 w-12 mx-auto mb-4 opacity-50"></i>
+                                                            <h3 className="text-lg font-medium mb-2">Start the conversation</h3>
+                                                            <p className="text-sm">No messages yet for this tender. Begin collaborating with your team!</p>
+                                                        </div>
+                                                    ) : (
+                                                        (messages[selectedEnquiry.id] || []).map((message) => (
+                                                            <div key={message.id} className="flex items-start space-x-3">
+                                                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                                                                    <span className="text-white text-xs font-bold">{message.sender}</span>
+                                                                </div>
+                                                                <div className="flex-1 max-w-3xl">
+                                                                    <div className="flex items-center space-x-2 mb-1">
+                                                                        <span className="text-white font-medium text-sm">{message.sender}</span>
+                                                                        <span className="text-white/40 text-xs">{message.timestamp}</span>
+                                                                    </div>
+                                                                    <div className="bg-slate-800/70 rounded-lg p-3 shadow-lg border border-white/10">
+                                                                        {message.type === 'file' ? (
+                                                                            <div className="flex items-center space-x-2">
+                                                                                <i data-lucide={getFileIcon((files[selectedEnquiry.id] || []).find(f => f.id === message.fileId)?.type || '')} className="h-4 w-4 text-blue-400"></i>
+                                                                                <span className="text-white text-sm">{message.text}</span>
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        const file = (files[selectedEnquiry.id] || []).find(f => f.id === message.fileId);
+                                                                                        if (file) setPreviewDocument(file);
+                                                                                    }}
+                                                                                    className="ml-auto px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded transition-colors"
+                                                                                    title="Preview Document"
+                                                                                >
+                                                                                    👁 View
+                                                                                </button>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <p className="text-white leading-relaxed text-sm">{message.text}</p>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+
+                                                {/* Message Input */}
+                                                <div className="p-3 border-t border-white/20 bg-slate-800/50">
+                                                    <div className="flex space-x-2">
+                                                        <input
+                                                            type="text"
+                                                            value={newMessage}
+                                                            onChange={(e) => setNewMessage(e.target.value)}
+                                                            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                                                            placeholder="Type your message..."
+                                                            className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-400 text-sm"
+                                                        />
+                                                        <label className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg cursor-pointer transition-colors flex items-center text-sm" title="Attach Files">
+                                                            <span className="mr-1">📎</span>
+                                                            <i data-lucide="paperclip" className="h-4 w-4 mr-1 hidden"></i>
+                                                            <input
+                                                                type="file"
+                                                                multiple
+                                                                onChange={handleFileUpload}
+                                                                className="hidden"
+                                                                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.csv"
+                                                            />
+                                                        </label>
+                                                        <button
+                                                            onClick={sendMessage}
+                                                            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center text-sm"
+                                                            title="Send Message"
+                                                        >
+                                                            <span className="mr-1">➤</span>
+                                                            <i data-lucide="send" className="h-4 w-4 mr-1 hidden"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Document Preview Sidebar */}
+                                            {previewDocument && (
+                                                <div className="w-1/2 border-l border-white/20 bg-slate-800/30 flex flex-col">
+                                                    <div className="p-6 border-b border-white/20 flex items-center justify-between bg-slate-800/50">
+                                                        <div>
+                                                            <h3 className="text-white font-semibold text-lg">{previewDocument.name}</h3>
+                                                            <p className="text-white/60 text-sm">{formatFileSize(previewDocument.size)} • {previewDocument.timestamp}</p>
+                                                        </div>
+                                                        <div className="flex items-center space-x-2">
+                                                            <a
+                                                                href={previewDocument.url}
+                                                                download={previewDocument.name}
+                                                                className="w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center justify-center transition-colors text-lg"
+                                                                title="Download"
+                                                            >
+                                                                <span>⬇</span>
+                                                                <i data-lucide="download" className="h-5 w-5 hidden"></i>
+                                                            </a>
+                                                            <button
+                                                                onClick={() => setPreviewDocument(null)}
+                                                                className="w-10 h-10 bg-slate-600 hover:bg-slate-700 text-white rounded-lg flex items-center justify-center transition-colors"
+                                                                title="Close Preview"
+                                                            >
+                                                                ✕
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex-1 p-6">
+                                                        {previewDocument.type.includes('image') ? (
+                                                            <div className="h-full flex flex-col">
+                                                                <img 
+                                                                    src={previewDocument.url} 
+                                                                    alt={previewDocument.name}
+                                                                    className="w-full h-auto max-h-full rounded-xl shadow-lg object-contain"
+                                                                />
+                                                                <div className="mt-4 flex justify-center">
+                                                                    <a
+                                                                        href={previewDocument.url}
+                                                                        download={previewDocument.name}
+                                                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                                                                    >
+                                                                        <i data-lucide="download" className="h-4 w-4 inline mr-2"></i>
+                                                                        Download Image
+                                                                    </a>
+                                                                </div>
+                                                            </div>
+                                                        ) : previewDocument.type.includes('pdf') ? (
+                                                            <div className="h-full bg-white rounded-xl flex items-center justify-center shadow-lg">
+                                                                <div className="text-center text-gray-600 p-8">
+                                                                    <i data-lucide="file-text" className="h-20 w-20 mx-auto mb-6 text-gray-400"></i>
+                                                                    <h4 className="font-semibold text-lg mb-2">{previewDocument.name}</h4>
+                                                                    <p className="text-sm text-gray-500 mb-6">PDF Document Preview</p>
+                                                                    <div className="space-y-3">
+                                                                        <a
+                                                                            href={previewDocument.url}
+                                                                            download={previewDocument.name}
+                                                                            className="block w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                                                                        >
+                                                                            <i data-lucide="download" className="h-4 w-4 inline mr-2"></i>
+                                                                            Download PDF
+                                                                        </a>
+                                                                        <p className="text-xs text-gray-400">Click to download and view in PDF viewer</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="h-full bg-slate-700/50 rounded-xl flex items-center justify-center">
+                                                                <div className="text-center text-white/60 p-8">
+                                                                    <i data-lucide={getFileIcon(previewDocument.type)} className="h-20 w-20 mx-auto mb-6"></i>
+                                                                    <h4 className="font-semibold text-lg mb-2">{previewDocument.name}</h4>
+                                                                    <p className="text-sm mb-2">{formatFileSize(previewDocument.size)}</p>
+                                                                    <p className="text-xs text-white/40 mb-6">Uploaded by {previewDocument.uploadedBy}</p>
+                                                                    <a
+                                                                        href={previewDocument.url}
+                                                                        download={previewDocument.name}
+                                                                        className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                                                                    >
+                                                                        <i data-lucide="download" className="h-4 w-4 inline mr-2"></i>
+                                                                        Download File
+                                                                    </a>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'files' && (
+                                        <div className="h-full flex">
+                                            {/* Files List */}
+                                            <div className="flex-1 overflow-y-auto p-8 bg-slate-900/50">
+                                                {(files[selectedEnquiry.id] || []).length === 0 ? (
+                                                    <div className="text-center text-white/60 py-16">
+                                                        <i data-lucide="folder-open" className="h-20 w-20 mx-auto mb-6 opacity-50"></i>
+                                                        <h3 className="text-2xl font-medium mb-4">No documents yet</h3>
+                                                        <p className="text-white/50 mb-8">Upload project documents, specifications, drawings, and calculations.</p>
+                                                        <label className="inline-block px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl cursor-pointer transition-colors font-medium">
+                                                            <span className="mr-3">⬆</span>
+                                                            <i data-lucide="upload" className="h-5 w-5 inline mr-3 hidden"></i>
+                                                            Upload Documents
+                                                            <input
+                                                                type="file"
+                                                                multiple
+                                                                onChange={handleFileUpload}
+                                                                className="hidden"
+                                                                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.csv"
+                                                            />
+                                                        </label>
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-4">
+                                                        <div className="flex items-center justify-between mb-6">
+                                                            <h2 className="text-2xl font-bold text-white">Project Documents</h2>
+                                                            <label className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl cursor-pointer transition-colors font-medium">
+                                                                <span className="mr-2">+</span>
+                                                                <i data-lucide="plus" className="h-4 w-4 inline mr-2 hidden"></i>
+                                                                Add Files
+                                                                <input
+                                                                    type="file"
+                                                                    multiple
+                                                                    onChange={handleFileUpload}
+                                                                    className="hidden"
+                                                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.csv"
+                                                                />
+                                                            </label>
+                                                        </div>
+                                                        {(files[selectedEnquiry.id] || []).map((file) => (
+                                                            <div key={file.id} className="bg-slate-800/50 rounded-xl p-6 hover:bg-slate-800/70 transition-colors border border-white/10">
+                                                                <div className="flex items-center space-x-4">
+                                                                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                                                                        <i data-lucide={getFileIcon(file.type)} className="h-8 w-8 text-white"></i>
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <h3 className="text-white font-semibold text-lg truncate">{file.name}</h3>
+                                                                        <div className="flex items-center space-x-4 mt-1">
+                                                                            <span className="text-white/60">{formatFileSize(file.size)}</span>
+                                                                            <span className="text-white/40">•</span>
+                                                                            <span className="text-white/60">{file.timestamp}</span>
+                                                                            <span className="text-white/40">•</span>
+                                                                            <span className="text-white/60">by {file.uploadedBy}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex space-x-3">
+                                                                        <button
+                                                                            onClick={() => setPreviewDocument(file)}
+                                                                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                                                                            title="Preview Document"
+                                                                        >
+                                                                            <span className="mr-2">👁</span>
+                                                                            <i data-lucide="eye" className="h-4 w-4 inline mr-2 hidden"></i>
+                                                                            View
+                                                                        </button>
+                                                                        <a
+                                                                            href={file.url}
+                                                                            download={file.name}
+                                                                            className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors font-medium"
+                                                                            title="Download File"
+                                                                        >
+                                                                            <span className="mr-2">⬇</span>
+                                                                            <i data-lucide="download" className="h-4 w-4 inline mr-2 hidden"></i>
+                                                                            Download
+                                                                        </a>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Document Preview Sidebar */}
+                                            {previewDocument && (
+                                                <div className="w-1/2 border-l border-white/20 bg-slate-800/30 flex flex-col">
+                                                    <div className="p-6 border-b border-white/20 flex items-center justify-between">
+                                                        <div>
+                                                            <h3 className="text-white font-semibold text-lg">{previewDocument.name}</h3>
+                                                            <p className="text-white/60 text-sm">{formatFileSize(previewDocument.size)} • {previewDocument.timestamp}</p>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setPreviewDocument(null)}
+                                                            className="w-8 h-8 bg-slate-600 hover:bg-slate-700 text-white rounded-lg flex items-center justify-center transition-colors text-lg font-bold"
+                                                            title="Close Preview"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    </div>
+                                                    <div className="flex-1 p-6">
+                                                        {previewDocument.type.includes('image') ? (
+                                                            <img 
+                                                                src={previewDocument.url} 
+                                                                alt={previewDocument.name}
+                                                                className="w-full h-auto rounded-xl shadow-lg"
+                                                            />
+                                                        ) : previewDocument.type.includes('pdf') ? (
+                                                            <div className="h-full bg-white rounded-xl flex items-center justify-center shadow-lg">
+                                                                <div className="text-center text-gray-600 p-8">
+                                                                    <i data-lucide="file-text" className="h-20 w-20 mx-auto mb-6 text-gray-400"></i>
+                                                                    <h4 className="font-semibold text-lg mb-2">{previewDocument.name}</h4>
+                                                                    <p className="text-sm text-gray-500 mb-6">PDF Document Preview</p>
+                                                                    <div className="space-y-3">
+                                                                        <a
+                                                                            href={previewDocument.url}
+                                                                            download={previewDocument.name}
+                                                                            className="block w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                                                                        >
+                                                                            <i data-lucide="download" className="h-4 w-4 inline mr-2"></i>
+                                                                            Download PDF
+                                                                        </a>
+                                                                        <p className="text-xs text-gray-400">Click to download and view in PDF viewer</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="h-full bg-slate-700/50 rounded-xl flex items-center justify-center">
+                                                                <div className="text-center text-white/60 p-8">
+                                                                    <i data-lucide={getFileIcon(previewDocument.type)} className="h-20 w-20 mx-auto mb-6"></i>
+                                                                    <h4 className="font-semibold text-lg mb-2">{previewDocument.name}</h4>
+                                                                    <p className="text-sm mb-2">{formatFileSize(previewDocument.size)}</p>
+                                                                    <p className="text-xs text-white/40 mb-6">Uploaded by {previewDocument.uploadedBy}</p>
+                                                                    <a
+                                                                        href={previewDocument.url}
+                                                                        download={previewDocument.name}
+                                                                        className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                                                                    >
+                                                                        <i data-lucide="download" className="h-4 w-4 inline mr-2"></i>
+                                                                        Download File
+                                                                    </a>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'details' && (
+                                        <div className="h-full overflow-y-auto p-8 bg-slate-900/50 space-y-8">
+                                            {/* Project Info */}
+                                            <div className="bg-slate-800/50 rounded-xl p-8 border border-white/10">
+                                                <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
+                                                    <i data-lucide="info" className="h-6 w-6 mr-3 text-blue-400"></i>
+                                                    Project Details
+                                                </h2>
+                                                <div className="grid grid-cols-2 gap-8">
+                                                    <div className="space-y-4">
+                                                        <div>
+                                                            <p className="text-white/60 text-sm font-medium mb-1">Client Company</p>
+                                                            <p className="text-white font-semibold text-lg">{selectedEnquiry.client}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-white/60 text-sm font-medium mb-1">Project Description</p>
+                                                            <p className="text-white font-medium">{selectedEnquiry.project}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-4">
+                                                        <div>
+                                                            <p className="text-white/60 text-sm font-medium mb-1">Estimated Value</p>
+                                                            <p className="text-white font-bold text-2xl">
+                                                                {selectedEnquiry.value > 0 ? `$${selectedEnquiry.value.toLocaleString()}` : 'TBD'}
+                                                            </p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-white/60 text-sm font-medium mb-1">Custom Design Required</p>
+                                                            <div className="flex items-center space-x-2">
+                                                                <div className={`w-3 h-3 rounded-full ${selectedEnquiry.requiresDesign ? 'bg-blue-400' : 'bg-green-400'}`}></div>
+                                                                <p className={`font-medium ${selectedEnquiry.requiresDesign ? 'text-blue-400' : 'text-green-400'}`}>
+                                                                    {selectedEnquiry.requiresDesign ? 'Yes' : 'No'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Team & Timeline */}
+                                            <div className="bg-slate-800/50 rounded-xl p-6 border border-white/10">
+                                                <h2 className="text-xl font-bold text-white mb-4 flex items-center">
+                                                    <i data-lucide="users" className="h-5 w-5 mr-2 text-purple-400"></i>
+                                                    Team & Timeline
+                                                </h2>
+                                                <div className="grid grid-cols-2 gap-6">
+                                                    <div className="space-y-3">
+                                                        <div className="flex items-center space-x-3">
+                                                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                                                                <i data-lucide="user" className="h-4 w-4 text-white"></i>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-white/60 text-xs">Estimator</p>
+                                                                <p className="text-white font-medium text-sm">{selectedEnquiry.assignedTo}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center space-x-3">
+                                                            <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center">
+                                                                <i data-lucide="user" className="h-4 w-4 text-white"></i>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-white/60 text-xs">Sales Manager</p>
+                                                                <p className="text-white font-medium text-sm">{selectedEnquiry.salesManager}</p>
+                                                            </div>
+                                                        </div>
+                                                        {selectedEnquiry.requiresDesign && (
+                                                            <div className="flex items-center space-x-3">
+                                                                <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center">
+                                                                    <i data-lucide="paintbrush" className="h-4 w-4 text-white"></i>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-white/60 text-xs">Designer</p>
+                                                                    <p className="text-white font-medium text-sm">{selectedEnquiry.designer}</p>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        <div className="flex items-center space-x-3">
+                                                            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center">
+                                                                <i data-lucide="calendar" className="h-4 w-4 text-white"></i>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-white/60 text-xs">Planner</p>
+                                                                <p className="text-white font-medium text-sm">{selectedEnquiry.planner}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                        <div>
+                                                            <p className="text-white/60 text-xs font-medium mb-1">Date Received</p>
+                                                            <p className="text-white font-medium text-sm">{selectedEnquiry.dateReceived}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-white/60 text-xs font-medium mb-1">Due Date</p>
+                                                            <p className="text-white font-medium text-sm">{selectedEnquiry.dueDate}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-white/60 text-xs font-medium mb-1">Action Required</p>
+                                                            <div className={`${getActionStatusColor(selectedEnquiry.actionFrom)} rounded px-2 py-1 text-center inline-block`}>
+                                                                <div className="text-white font-bold text-xs">🚨 ACTION</div>
+                                                                <div className="text-white font-bold text-xs">{selectedEnquiry.actionFrom}</div>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-white/60 text-xs font-medium mb-1">Priority (Craig's Ranking)</p>
+                                                            <span className={`px-2 py-1 rounded text-xs font-bold ${getPriorityColor(selectedEnquiry.priorityNumber)}`}>
+                                                                P{selectedEnquiry.priorityNumber}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+
+
+                                            {/* Action Buttons */}
+                                            <div className="grid grid-cols-3 gap-4">
+                                                {canManageActions() && (
+                                                    <button 
+                                                        onClick={() => openAssignDialog(selectedEnquiry)}
+                                                        className="px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-medium"
+                                                    >
+                                                        <i data-lucide="users" className="h-5 w-5 inline mr-2"></i>
+                                                        👤 Assign Action
+                                                    </button>
+                                                )}
+                                                <button 
+                                                    onClick={() => completeMyTask(selectedEnquiry.id)}
+                                                    className="px-6 py-4 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-colors font-medium"
+                                                >
+                                                    <i data-lucide="check-circle" className="h-5 w-5 inline mr-2"></i>
+                                                    ✅ Complete My Task
+                                                </button>
+                                                <button className="px-6 py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl transition-colors font-medium">
+                                                    <i data-lucide="download" className="h-5 w-5 inline mr-2"></i>
+                                                    Export Report
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Assign Action Modal */}
+                    {showAssignAction && selectedTenderForAssign && (
+                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                            <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 border border-white/20">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h3 className="text-xl font-bold text-white">Assign Action Required</h3>
+                                    <button
+                                        onClick={() => setShowAssignAction(false)}
+                                        className="text-white/60 hover:text-white text-2xl font-bold"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                                
+                                <div className="space-y-4">
+                                    <div>
+                                        <p className="text-white/80 text-sm mb-2">Tender: <span className="font-bold text-white">{selectedTenderForAssign.id}</span></p>
+                                        <p className="text-white/70 text-sm">{selectedTenderForAssign.client} - {selectedTenderForAssign.project}</p>
+                                    </div>
+                                    
+                                    <div>
+                                        <label className="block text-white/80 text-sm font-medium mb-2">
+                                            Assign Action To:
+                                        </label>
+                                        <select
+                                            value={newActionAssignee}
+                                            onChange={(e) => setNewActionAssignee(e.target.value)}
+                                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-400"
+                                        >
+                                            <option value="">Select Person...</option>
+                                            <option value="Scott Goodfellow">Scott Goodfellow (Estimator)</option>
+                                            <option value="Peter Krempin">Peter Krempin (Estimator)</option>
+                                            <option value="Dave Richards">Dave Richards (Designer)</option>
+                                            <option value="Brandon Gregg">Brandon Gregg (Designer)</option>
+                                            <option value="Sheryl">Sheryl (Designer)</option>
+                                            <option value="Craig Malt">Craig Malt (Sales Manager)</option>
+                                            <option value="Lewis McDonald">Lewis McDonald (Planner)</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="flex space-x-3 pt-4">
+                                        <button
+                                            onClick={() => setShowAssignAction(false)}
+                                            className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={() => assignActionTo(selectedTenderForAssign.id, newActionAssignee)}
+                                            disabled={!newActionAssignee}
+                                            className={`flex-1 px-4 py-2 text-white rounded-lg transition-colors ${
+                                                newActionAssignee 
+                                                    ? 'bg-blue-600 hover:bg-blue-700' 
+                                                    : 'bg-gray-500 cursor-not-allowed'
+                                            }`}
+                                        >
+                                            👤 Assign Action
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        ReactDOM.render(<VesselForge />, document.getElementById('root'));
+    </script>
+</body>
+</html> 
