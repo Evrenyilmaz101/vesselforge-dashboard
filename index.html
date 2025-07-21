@@ -84,6 +84,7 @@
                     value: 125000,
                     status: 'Action Required: Scott Goodfellow',
                     actionFrom: 'Scott Goodfellow',
+                    tenderStatus: 'Active', // Active, Won, Lost, Cancelled, On Hold
                     priorityNumber: 1,
                     assignedTo: 'Scott Goodfellow',
                     salesManager: 'Craig Malt',
@@ -101,6 +102,7 @@
                     value: 280000,
                     status: 'Action Required: Craig Malt',
                     actionFrom: 'Craig Malt',
+                    tenderStatus: 'Active',
                     priorityNumber: 3,
                     assignedTo: 'Peter Krempin',
                     salesManager: 'Craig Malt',
@@ -118,6 +120,7 @@
                     value: 0,
                     status: 'Action Required: Brandon Gregg',
                     actionFrom: 'Brandon Gregg',
+                    tenderStatus: 'Active',
                     priorityNumber: 2,
                     assignedTo: 'Unassigned',
                     salesManager: 'Craig Malt',
@@ -194,6 +197,7 @@
                 client: '',
                 project: '',
                 value: '',
+                tenderStatus: 'Active',
                 priorityNumber: 1,
                 assignedTo: 'Unassigned',
                 salesManager: 'Craig Malt',
@@ -206,6 +210,11 @@
             const [showAssignAction, setShowAssignAction] = useState(false);
             const [selectedTenderForAssign, setSelectedTenderForAssign] = useState(null);
             const [newActionAssignee, setNewActionAssignee] = useState('');
+            const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+            const [tenderToDelete, setTenderToDelete] = useState(null);
+            const [showStatusUpdate, setShowStatusUpdate] = useState(false);
+            const [selectedTenderForStatus, setSelectedTenderForStatus] = useState(null);
+            const [newTenderStatus, setNewTenderStatus] = useState('');
 
             const getActionStatusColor = (actionFrom) => {
                 if (!actionFrom || actionFrom === 'Complete') return 'bg-green-500';
@@ -437,9 +446,64 @@
             // Get top 5 priority tenders for home page
             const getTopPriorityTenders = () => {
                 return enquiries
+                    .filter(enquiry => enquiry.tenderStatus === 'Active') // Only show active tenders
                     .sort((a, b) => a.priorityNumber - b.priorityNumber) // Sort by priority (1 = highest)
                     .slice(0, 5); // Take top 5
             };
+
+            // Delete tender with confirmation
+            const openDeleteConfirm = (tender) => {
+                setTenderToDelete(tender);
+                setShowDeleteConfirm(true);
+            };
+
+            const confirmDeleteTender = () => {
+                if (tenderToDelete) {
+                    setEnquiries(prev => prev.filter(enquiry => enquiry.id !== tenderToDelete.id));
+                    setShowDeleteConfirm(false);
+                    setTenderToDelete(null);
+                    if (selectedEnquiry?.id === tenderToDelete.id) {
+                        setShowEnquiryDetails(false);
+                        setSelectedEnquiry(null);
+                    }
+                }
+            };
+
+            // Update tender status
+            const openStatusUpdate = (tender) => {
+                setSelectedTenderForStatus(tender);
+                setNewTenderStatus(tender.tenderStatus);
+                setShowStatusUpdate(true);
+            };
+
+            const updateTenderStatus = () => {
+                if (selectedTenderForStatus && newTenderStatus) {
+                    setEnquiries(prev => prev.map(enquiry => 
+                        enquiry.id === selectedTenderForStatus.id 
+                            ? { ...enquiry, tenderStatus: newTenderStatus }
+                            : enquiry
+                    ));
+                    setShowStatusUpdate(false);
+                    setSelectedTenderForStatus(null);
+                    setNewTenderStatus('');
+                }
+            };
+
+            // Get status color
+            const getTenderStatusColor = (status) => {
+                switch (status) {
+                    case 'Won': return 'bg-green-500 text-white';
+                    case 'Lost': return 'bg-red-500 text-white';
+                    case 'Cancelled': return 'bg-gray-500 text-white';
+                    case 'On Hold': return 'bg-yellow-500 text-black';
+                    case 'Active': return 'bg-blue-500 text-white';
+                    default: return 'bg-gray-400 text-white';
+                }
+            };
+
+            // Filter tenders by status
+            const getActiveTenders = () => enquiries.filter(t => t.tenderStatus === 'Active');
+            const getCompletedTenders = () => enquiries.filter(t => ['Won', 'Lost', 'Cancelled'].includes(t.tenderStatus));
 
             // Create Lucide icons - render after any state change
             React.useEffect(() => {
@@ -557,6 +621,20 @@
                                                 <span>View All</span>
                                             </button>
                                             <button
+                                                onClick={() => setCurrentView('completed')}
+                                                className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all"
+                                            >
+                                                <i data-lucide="check-circle" className="h-4 w-4"></i>
+                                                <span>Completed</span>
+                                            </button>
+                                            <button
+                                                onClick={() => setCurrentView('analytics')}
+                                                className="flex items-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-all"
+                                            >
+                                                <i data-lucide="bar-chart-3" className="h-4 w-4"></i>
+                                                <span>Analytics</span>
+                                            </button>
+                                            <button
                                                 onClick={() => setShowNewEnquiry(true)}
                                                 className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all shadow-lg"
                                             >
@@ -606,7 +684,7 @@
                                                             </div>
                                                         </td>
                                                         <td className="py-3">
-                                                            <div className="flex space-x-1">
+                                                            <div className="flex flex-wrap gap-1">
                                                                 {canManageActions() && (
                                                                     <button
                                                                         onClick={() => openAssignDialog(enquiry)}
@@ -622,6 +700,20 @@
                                                                     title="Mark Complete"
                                                                 >
                                                                     ✅ Done
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => openStatusUpdate(enquiry)}
+                                                                    className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded transition-colors"
+                                                                    title="Update Status"
+                                                                >
+                                                                    📊 Status
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => openDeleteConfirm(enquiry)}
+                                                                    className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
+                                                                    title="Delete Tender"
+                                                                >
+                                                                    🗑️ Delete
                                                                 </button>
                                                             </div>
                                                         </td>
@@ -726,6 +818,143 @@
                                                 </div>
                                             </div>
                                         ))}
+                                </div>
+                            </div>
+                        ) : currentView === 'completed' ? (
+                            // Completed Tenders View
+                            <div className="space-y-6">
+                                <div className="mb-8">
+                                    <h2 className="text-3xl font-bold text-white mb-2">Completed Tenders</h2>
+                                    <p className="text-white/70">Track won, lost, and cancelled tenders for performance analysis</p>
+                                </div>
+
+                                <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="text-left border-b border-white/10">
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">VS #</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Client</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Project</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Status</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Value</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Estimator</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {getCompletedTenders().map((enquiry) => (
+                                                    <tr key={enquiry.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                                        <td className="py-3 text-white font-medium text-sm">{enquiry.id}</td>
+                                                        <td className="py-3 text-white/80 text-sm">{enquiry.client}</td>
+                                                        <td className="py-3 text-white/80 text-sm max-w-[200px] truncate">{enquiry.project}</td>
+                                                        <td className="py-3">
+                                                            <span className={`text-xs px-2 py-1 rounded-full font-bold ${getTenderStatusColor(enquiry.tenderStatus)}`}>
+                                                                {enquiry.tenderStatus}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 text-white font-medium text-sm">
+                                                            {enquiry.value > 0 ? `$${(enquiry.value / 1000).toFixed(0)}k` : 'TBD'}
+                                                        </td>
+                                                        <td className="py-3 text-white/80 text-sm">{enquiry.assignedTo}</td>
+                                                    </tr>
+                                                ))}
+                                                {getCompletedTenders().length === 0 && (
+                                                    <tr>
+                                                        <td colSpan="6" className="text-center text-white/60 py-12">
+                                                            No completed tenders yet.
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : currentView === 'analytics' ? (
+                            // Analytics View
+                            <div className="space-y-6">
+                                <div className="mb-8">
+                                    <h2 className="text-3xl font-bold text-white mb-2">Team Performance Analytics</h2>
+                                    <p className="text-white/70">Monitor team efficiency and tender success rates</p>
+                                </div>
+
+                                {(() => {
+                                    const totalTenders = enquiries.length;
+                                    const wonTenders = enquiries.filter(t => t.tenderStatus === 'Won').length;
+                                    const lostTenders = enquiries.filter(t => t.tenderStatus === 'Lost').length;
+                                    const activeTenders = enquiries.filter(t => t.tenderStatus === 'Active').length;
+                                    const winRate = totalTenders > 0 ? ((wonTenders / (wonTenders + lostTenders)) * 100).toFixed(1) : '0';
+                                    const totalValue = enquiries.filter(t => t.tenderStatus === 'Won').reduce((sum, t) => sum + t.value, 0);
+                                    
+                                    return (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                            <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-xl p-6 shadow-lg">
+                                                <i data-lucide="trophy" className="h-8 w-8 text-green-200 mb-3"></i>
+                                                <p className="text-3xl font-bold text-white">{wonTenders}</p>
+                                                <p className="text-green-100 text-sm">Tenders Won</p>
+                                            </div>
+                                            <div className="bg-gradient-to-br from-red-600 to-red-700 rounded-xl p-6 shadow-lg">
+                                                <i data-lucide="x-circle" className="h-8 w-8 text-red-200 mb-3"></i>
+                                                <p className="text-3xl font-bold text-white">{lostTenders}</p>
+                                                <p className="text-red-100 text-sm">Tenders Lost</p>
+                                            </div>
+                                            <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6 shadow-lg">
+                                                <i data-lucide="percent" className="h-8 w-8 text-blue-200 mb-3"></i>
+                                                <p className="text-3xl font-bold text-white">{winRate}%</p>
+                                                <p className="text-blue-100 text-sm">Win Rate</p>
+                                            </div>
+                                            <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl p-6 shadow-lg">
+                                                <i data-lucide="dollar-sign" className="h-8 w-8 text-purple-200 mb-3"></i>
+                                                <p className="text-3xl font-bold text-white">${(totalValue / 1000).toFixed(0)}k</p>
+                                                <p className="text-purple-100 text-sm">Total Won Value</p>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+                                        <h3 className="text-xl font-bold text-white mb-4">Estimator Performance</h3>
+                                        <div className="space-y-3">
+                                            {['Scott Goodfellow', 'Peter Krempin'].map(estimator => {
+                                                const estimatorTenders = enquiries.filter(t => t.assignedTo === estimator);
+                                                const estimatorWon = estimatorTenders.filter(t => t.tenderStatus === 'Won').length;
+                                                const estimatorLost = estimatorTenders.filter(t => t.tenderStatus === 'Lost').length;
+                                                const estimatorWinRate = (estimatorWon + estimatorLost) > 0 ? ((estimatorWon / (estimatorWon + estimatorLost)) * 100).toFixed(1) : '0';
+                                                
+                                                return (
+                                                    <div key={estimator} className="bg-slate-800/50 rounded-lg p-4">
+                                                        <div className="flex justify-between items-center mb-2">
+                                                            <h4 className="text-white font-medium">{estimator}</h4>
+                                                            <span className="text-white/60 text-sm">{estimatorTenders.length} total</span>
+                                                        </div>
+                                                        <div className="flex space-x-4 text-sm">
+                                                            <span className="text-green-400">Won: {estimatorWon}</span>
+                                                            <span className="text-red-400">Lost: {estimatorLost}</span>
+                                                            <span className="text-blue-400">Rate: {estimatorWinRate}%</span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+                                        <h3 className="text-xl font-bold text-white mb-4">Recent Activity</h3>
+                                        <div className="space-y-3">
+                                            {enquiries.slice(0, 5).map(tender => (
+                                                <div key={tender.id} className="bg-slate-800/50 rounded-lg p-3">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-white font-medium text-sm">{tender.id}</span>
+                                                        <span className={`text-xs px-2 py-1 rounded-full ${getTenderStatusColor(tender.tenderStatus)}`}>
+                                                            {tender.tenderStatus}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-white/60 text-xs mt-1">{tender.client}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -1592,6 +1821,108 @@
                                             }`}
                                         >
                                             👤 Assign Action
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Status Update Modal */}
+                    {showStatusUpdate && selectedTenderForStatus && (
+                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                            <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 border border-white/20">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h3 className="text-xl font-bold text-white">Update Tender Status</h3>
+                                    <button
+                                        onClick={() => setShowStatusUpdate(false)}
+                                        className="text-white/60 hover:text-white text-2xl font-bold"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                                
+                                <div className="space-y-4">
+                                    <div>
+                                        <p className="text-white/80 text-sm mb-2">Tender: <span className="font-bold text-white">{selectedTenderForStatus.id}</span></p>
+                                        <p className="text-white/70 text-sm">{selectedTenderForStatus.client} - {selectedTenderForStatus.project}</p>
+                                    </div>
+                                    
+                                    <div>
+                                        <label className="block text-white/80 text-sm font-medium mb-2">
+                                            Tender Status:
+                                        </label>
+                                        <select
+                                            value={newTenderStatus}
+                                            onChange={(e) => setNewTenderStatus(e.target.value)}
+                                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-400"
+                                        >
+                                            <option value="Active">Active</option>
+                                            <option value="Won">Won ✅</option>
+                                            <option value="Lost">Lost ❌</option>
+                                            <option value="Cancelled">Cancelled</option>
+                                            <option value="On Hold">On Hold</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="flex space-x-3 pt-4">
+                                        <button
+                                            onClick={() => setShowStatusUpdate(false)}
+                                            className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={updateTenderStatus}
+                                            className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                                        >
+                                            📊 Update Status
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Delete Confirmation Modal */}
+                    {showDeleteConfirm && tenderToDelete && (
+                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                            <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 border border-red-500/50">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h3 className="text-xl font-bold text-red-400">⚠️ Delete Tender</h3>
+                                    <button
+                                        onClick={() => setShowDeleteConfirm(false)}
+                                        className="text-white/60 hover:text-white text-2xl font-bold"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                                
+                                <div className="space-y-4">
+                                    <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                                        <p className="text-red-400 font-medium mb-2">This action cannot be undone!</p>
+                                        <p className="text-white/80 text-sm">Are you sure you want to delete this tender?</p>
+                                    </div>
+                                    
+                                    <div className="bg-slate-700/50 rounded-lg p-3">
+                                        <p className="text-white font-bold">{tenderToDelete.id}</p>
+                                        <p className="text-white/80 text-sm">{tenderToDelete.client}</p>
+                                        <p className="text-white/70 text-sm">{tenderToDelete.project}</p>
+                                        <p className="text-white/60 text-xs mt-2">Value: {tenderToDelete.value > 0 ? `$${(tenderToDelete.value / 1000).toFixed(0)}k` : 'TBD'}</p>
+                                    </div>
+
+                                    <div className="flex space-x-3 pt-4">
+                                        <button
+                                            onClick={() => setShowDeleteConfirm(false)}
+                                            className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={confirmDeleteTender}
+                                            className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                                        >
+                                            🗑️ Delete Tender
                                         </button>
                                     </div>
                                 </div>
