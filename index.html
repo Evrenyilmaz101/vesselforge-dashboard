@@ -76,62 +76,86 @@
 
         const VesselForge = () => {
             const [currentView, setCurrentView] = useState('dashboard');
-            const [enquiries, setEnquiries] = useState([
-                {
-                    id: 'VS1770',
-                    client: 'PetroTech Industries',
-                    project: 'High Pressure Storage Vessel',
-                    value: 125000,
-                    status: 'Action Required: Scott Goodfellow',
-                    actionFrom: 'Scott Goodfellow',
-                    tenderStatus: 'Active', // Active, Won, Lost, Cancelled, On Hold
-                    priorityNumber: 1,
-                    assignedTo: 'Scott Goodfellow',
-                    salesManager: 'Craig Malt',
-                    planner: 'Lewis McDonald',
-                    designer: 'Dave Richards',
-                    dateReceived: '2024-01-15',
-                    dueDate: '2024-01-22',
-                    requiresDesign: true,
-                    comments: []
-                },
-                {
-                    id: 'VS1771',
-                    client: 'Global Energy Corp',
-                    project: 'Separator Vessel Package',
-                    value: 280000,
-                    status: 'Action Required: Craig Malt',
-                    actionFrom: 'Craig Malt',
-                    tenderStatus: 'Active',
-                    priorityNumber: 3,
-                    assignedTo: 'Peter Krempin',
-                    salesManager: 'Craig Malt',
-                    planner: 'Lewis McDonald',
-                    designer: 'Unassigned',
-                    dateReceived: '2024-01-14',
-                    dueDate: '2024-01-21',
-                    requiresDesign: false,
-                    comments: []
-                },
-                {
-                    id: 'VS1772',
-                    client: 'ChemFlow Solutions',
-                    project: 'Reactor Vessel',
-                    value: 0,
-                    status: 'Action Required: Brandon Gregg',
-                    actionFrom: 'Brandon Gregg',
-                    tenderStatus: 'Active',
-                    priorityNumber: 2,
-                    assignedTo: 'Unassigned',
-                    salesManager: 'Craig Malt',
-                    planner: 'Lewis McDonald',
-                    designer: 'Brandon Gregg',
-                    dateReceived: '2024-01-16',
-                    dueDate: '2024-01-23',
-                    requiresDesign: true,
-                    comments: []
-                }
-            ]);
+            const [enquiries, setEnquiries] = useState([]);
+            
+            // Firebase real-time listener for tenders
+            useEffect(() => {
+                const tendersRef = database.ref('tenders');
+                const unsubscribe = tendersRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        const tendersList = Object.values(data);
+                        setEnquiries(tendersList);
+                    } else {
+                        // Initialize with sample data if empty
+                        const initialTenders = [
+                            {
+                                id: 'VS1770',
+                                client: 'PetroTech Industries',
+                                project: 'High Pressure Storage Vessel',
+                                value: 125000,
+                                status: 'Action Required: Scott Goodfellow',
+                                actionFrom: 'Scott Goodfellow',
+                                tenderStatus: 'Active',
+                                priorityNumber: 1,
+                                assignedTo: 'Scott Goodfellow',
+                                salesManager: 'Craig Malt',
+                                planner: 'Lewis McDonald',
+                                designer: 'Dave Richards',
+                                dateReceived: '2024-01-15',
+                                dueDate: '2024-01-22',
+                                requiresDesign: true,
+                                comments: []
+                            },
+                            {
+                                id: 'VS1771',
+                                client: 'Global Energy Corp',
+                                project: 'Separator Vessel Package',
+                                value: 280000,
+                                status: 'Action Required: Craig Malt',
+                                actionFrom: 'Craig Malt',
+                                tenderStatus: 'Active',
+                                priorityNumber: 3,
+                                assignedTo: 'Peter Krempin',
+                                salesManager: 'Craig Malt',
+                                planner: 'Lewis McDonald',
+                                designer: 'Unassigned',
+                                dateReceived: '2024-01-14',
+                                dueDate: '2024-01-21',
+                                requiresDesign: false,
+                                comments: []
+                            },
+                            {
+                                id: 'VS1772',
+                                client: 'ChemFlow Solutions',
+                                project: 'Reactor Vessel',
+                                value: 0,
+                                status: 'Action Required: Brandon Gregg',
+                                actionFrom: 'Brandon Gregg',
+                                tenderStatus: 'Active',
+                                priorityNumber: 2,
+                                assignedTo: 'Unassigned',
+                                salesManager: 'Craig Malt',
+                                planner: 'Lewis McDonald',
+                                designer: 'Brandon Gregg',
+                                dateReceived: '2024-01-16',
+                                dueDate: '2024-01-23',
+                                requiresDesign: true,
+                                comments: []
+                            }
+                        ];
+                        
+                        // Save initial data to Firebase
+                        initialTenders.forEach(tender => {
+                            database.ref(`tenders/${tender.id}`).set(tender);
+                        });
+                        setEnquiries(initialTenders);
+                    }
+                });
+
+                // Cleanup listener
+                return () => tendersRef.off('value', unsubscribe);
+            }, []);
 
             const [selectedEnquiry, setSelectedEnquiry] = useState(null);
             const [showNewEnquiry, setShowNewEnquiry] = useState(false);
@@ -261,6 +285,7 @@
                     value: newTenderForm.value ? parseInt(newTenderForm.value) : 0,
                     status: `Action Required: ${initialAction}`,
                     actionFrom: initialAction,
+                    tenderStatus: 'Active',
                     priorityNumber: newTenderForm.priorityNumber,
                     assignedTo: newTenderForm.assignedTo,
                     salesManager: newTenderForm.salesManager,
@@ -272,8 +297,8 @@
                     comments: []
                 };
                 
-                // Add to enquiries
-                setEnquiries([...enquiries, newTender]);
+                // Save to Firebase
+                database.ref(`tenders/${newTender.id}`).set(newTender);
                 
                 // Reset form and close modal
                 setNewTenderForm({
@@ -403,30 +428,20 @@
             };
 
             const completeMyTask = (tenderId) => {
-                setEnquiries(prev => prev.map(enquiry => {
-                    if (enquiry.id === tenderId) {
-                        return {
-                            ...enquiry,
-                            status: 'Awaiting Assignment',
-                            actionFrom: 'Awaiting Assignment'
-                        };
-                    }
-                    return enquiry;
-                }));
+                // Update in Firebase
+                database.ref(`tenders/${tenderId}`).update({
+                    status: 'Awaiting Assignment',
+                    actionFrom: 'Awaiting Assignment'
+                });
                 setShowStatusChange(false);
             };
 
             const assignActionTo = (tenderId, assignee) => {
-                setEnquiries(prev => prev.map(enquiry => {
-                    if (enquiry.id === tenderId) {
-                        return {
-                            ...enquiry,
-                            status: `Action Required: ${assignee}`,
-                            actionFrom: assignee
-                        };
-                    }
-                    return enquiry;
-                }));
+                // Update in Firebase
+                database.ref(`tenders/${tenderId}`).update({
+                    status: `Action Required: ${assignee}`,
+                    actionFrom: assignee
+                });
                 setShowAssignAction(false);
                 setSelectedTenderForAssign(null);
                 setNewActionAssignee('');
@@ -459,7 +474,8 @@
 
             const confirmDeleteTender = () => {
                 if (tenderToDelete) {
-                    setEnquiries(prev => prev.filter(enquiry => enquiry.id !== tenderToDelete.id));
+                    // Delete from Firebase
+                    database.ref(`tenders/${tenderToDelete.id}`).remove();
                     setShowDeleteConfirm(false);
                     setTenderToDelete(null);
                     if (selectedEnquiry?.id === tenderToDelete.id) {
@@ -478,11 +494,8 @@
 
             const updateTenderStatus = () => {
                 if (selectedTenderForStatus && newTenderStatus) {
-                    setEnquiries(prev => prev.map(enquiry => 
-                        enquiry.id === selectedTenderForStatus.id 
-                            ? { ...enquiry, tenderStatus: newTenderStatus }
-                            : enquiry
-                    ));
+                    // Update in Firebase
+                    database.ref(`tenders/${selectedTenderForStatus.id}/tenderStatus`).set(newTenderStatus);
                     setShowStatusUpdate(false);
                     setSelectedTenderForStatus(null);
                     setNewTenderStatus('');
