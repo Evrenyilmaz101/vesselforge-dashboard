@@ -9,6 +9,11 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
     <style>
         @keyframes blob {
             0% { transform: translate(0px, 0px) scale(1); }
@@ -38,8 +43,37 @@
 <body>
     <div id="root"></div>
     <script type="text/babel">
-        const { useState } = React;
+        const { useState, useEffect } = React;
         const { Building, Calendar, Users, FileText, CheckCircle, AlertCircle, Clock, Send, MessageSquare, Plus, TrendingUp, DollarSign, BarChart3, User, ChevronRight, Bell, Search, Paperclip, Download, File, Image, Info, Eye, X, Folder, FolderOpen, Upload, Edit, Paintbrush, Calculator, List } = lucide;
+
+        // ======================================================================
+        // FIREBASE CONFIGURATION - REPLACE WITH YOUR ACTUAL CONFIG
+        // ======================================================================
+        // 1. Go to https://console.firebase.google.com/
+        // 2. Create new project: "vesselforge-dashboard"
+        // 3. Add web app and copy config below
+        // 4. Enable Realtime Database (test mode)
+        // 5. Enable Storage (test mode)
+        // ======================================================================
+        
+        const firebaseConfig = {
+            // REPLACE THESE VALUES WITH YOUR ACTUAL FIREBASE CONFIG
+            apiKey: "your-api-key-here",
+            authDomain: "your-project.firebaseapp.com",
+            databaseURL: "https://your-project-default-rtdb.firebaseio.com",
+            projectId: "your-project-id",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "your-app-id"
+        };
+
+        // Initialize Firebase (check if already initialized)
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        
+        const database = firebase.database();
+        const storage = firebase.storage();
 
         const VesselForge = () => {
             const [currentView, setCurrentView] = useState('dashboard');
@@ -104,80 +138,58 @@
             const [activeTab, setActiveTab] = useState('chat');
             const [newMessage, setNewMessage] = useState('');
             const [previewDocument, setPreviewDocument] = useState(null);
-            const [messages, setMessages] = useState({
-                'VS1770': [
-                    {
-                        id: 1,
-                        text: 'New high pressure storage vessel enquiry received from PetroTech Industries. Please review the specifications.',
-                        timestamp: '2024-01-15, 9:30 AM',
-                        sender: 'CM',
-                        type: 'text'
-                    },
-                    {
-                        id: 2,
-                        text: 'I\'ve reviewed the initial requirements. Working pressure is 300 PSI, need to confirm material specifications.',
-                        timestamp: '2024-01-15, 2:15 PM',
-                        sender: 'SG',
-                        type: 'text'
-                    },
-                    {
-                        id: 3,
-                        text: 'Client confirmed material: SA-516 Grade 70. Proceeding with detailed calculations.',
-                        timestamp: '2024-01-16, 10:00 AM',
-                        sender: 'SG',
-                        type: 'text'
+            const [messages, setMessages] = useState({});
+            
+            // Firebase real-time listener for messages
+            useEffect(() => {
+                if (!selectedEnquiry) return;
+                
+                const messagesRef = database.ref(`tender-messages/${selectedEnquiry.id}`);
+                const unsubscribe = messagesRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        const messagesList = Object.values(data).sort((a, b) => a.timestampMs - b.timestampMs);
+                        setMessages(prev => ({
+                            ...prev,
+                            [selectedEnquiry.id]: messagesList
+                        }));
+                    } else {
+                        setMessages(prev => ({
+                            ...prev,
+                            [selectedEnquiry.id]: []
+                        }));
                     }
-                ],
-                'VS1771': [
-                    {
-                        id: 4,
-                        text: 'Separator vessel package ready for final review. All calculations completed.',
-                        timestamp: '2024-01-18, 11:30 AM',
-                        sender: 'PK',
-                        type: 'text'
-                    },
-                    {
-                        id: 5,
-                        text: 'Great work! Please prepare the formal quotation document.',
-                        timestamp: '2024-01-18, 2:45 PM',
-                        sender: 'CM',
-                        type: 'text'
+                });
+
+                // Cleanup listener on unmount
+                return () => messagesRef.off('value', unsubscribe);
+            }, [selectedEnquiry?.id]);
+            const [files, setFiles] = useState({});
+            
+            // Firebase real-time listener for files
+            useEffect(() => {
+                if (!selectedEnquiry) return;
+                
+                const filesRef = database.ref(`tender-files/${selectedEnquiry.id}`);
+                const unsubscribe = filesRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        const filesList = Object.values(data).sort((a, b) => a.timestampMs - b.timestampMs);
+                        setFiles(prev => ({
+                            ...prev,
+                            [selectedEnquiry.id]: filesList
+                        }));
+                    } else {
+                        setFiles(prev => ({
+                            ...prev,
+                            [selectedEnquiry.id]: []
+                        }));
                     }
-                ]
-            });
-            const [files, setFiles] = useState({
-                'VS1770': [
-                    {
-                        id: 'file1',
-                        name: 'PetroTech_Specifications.pdf',
-                        size: 2048576,
-                        type: 'application/pdf',
-                        timestamp: '2024-01-15, 9:45 AM',
-                        uploadedBy: 'CM',
-                        url: '#' // Would be actual file URL in production
-                    },
-                    {
-                        id: 'file2',
-                        name: 'Material_Calculations.xlsx',
-                        size: 1024000,
-                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        timestamp: '2024-01-16, 2:30 PM',
-                        uploadedBy: 'SG',
-                        url: '#'
-                    }
-                ],
-                'VS1771': [
-                    {
-                        id: 'file3',
-                        name: 'Separator_Drawings.pdf',
-                        size: 5242880,
-                        type: 'application/pdf',
-                        timestamp: '2024-01-18, 9:15 AM',
-                        uploadedBy: 'PK',
-                        url: '#'
-                    }
-                ]
-            });
+                });
+
+                // Cleanup listener on unmount
+                return () => filesRef.off('value', unsubscribe);
+            }, [selectedEnquiry?.id]);
             const [newTenderForm, setNewTenderForm] = useState({
                 vsNumber: '',
                 client: '',
@@ -279,7 +291,7 @@
                 }));
             };
 
-            const sendMessage = () => {
+            const sendMessage = async () => {
                 if (!newMessage.trim() || !selectedEnquiry) return;
                 
                 const messageId = Date.now();
@@ -287,54 +299,71 @@
                     id: messageId,
                     text: newMessage,
                     timestamp: new Date().toLocaleString(),
+                    timestampMs: Date.now(), // For sorting
                     sender: 'GM', // Current user
                     type: 'text'
                 };
                 
-                setMessages(prev => ({
-                    ...prev,
-                    [selectedEnquiry.id]: [...(prev[selectedEnquiry.id] || []), message]
-                }));
-                
-                setNewMessage('');
+                try {
+                    // Save to Firebase
+                    await database.ref(`tender-messages/${selectedEnquiry.id}/${messageId}`).set(message);
+                    setNewMessage('');
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    alert('Failed to send message. Please try again.');
+                }
             };
 
-            const handleFileUpload = (event) => {
+            const handleFileUpload = async (event) => {
                 const uploadedFiles = Array.from(event.target.files);
                 if (!selectedEnquiry || uploadedFiles.length === 0) return;
                 
-                uploadedFiles.forEach(file => {
-                    const fileId = Date.now() + Math.random();
-                    const fileObj = {
-                        id: fileId,
-                        name: file.name,
-                        size: file.size,
-                        type: file.type,
-                        timestamp: new Date().toLocaleString(),
-                        uploadedBy: 'GM',
-                        url: URL.createObjectURL(file) // In real app, this would be uploaded to server
-                    };
-                    
-                    setFiles(prev => ({
-                        ...prev,
-                        [selectedEnquiry.id]: [...(prev[selectedEnquiry.id] || []), fileObj]
-                    }));
-                    
-                    // Also add as a message in chat
-                    const message = {
-                        id: fileId + '_msg',
-                        text: `Uploaded: ${file.name}`,
-                        timestamp: fileObj.timestamp,
-                        sender: 'GM',
-                        type: 'file',
-                        fileId: fileId
-                    };
-                    
-                    setMessages(prev => ({
-                        ...prev,
-                        [selectedEnquiry.id]: [...(prev[selectedEnquiry.id] || []), message]
-                    }));
-                });
+                for (const file of uploadedFiles) {
+                    try {
+                        const fileId = Date.now() + Math.random();
+                        const fileName = `${selectedEnquiry.id}/${fileId}_${file.name}`;
+                        
+                        // Upload to Firebase Storage
+                        const storageRef = storage.ref().child(`tender-files/${fileName}`);
+                        const uploadTask = await storageRef.put(file);
+                        const downloadURL = await uploadTask.ref.getDownloadURL();
+                        
+                        // Create file object
+                        const fileObj = {
+                            id: fileId,
+                            name: file.name,
+                            size: file.size,
+                            type: file.type,
+                            timestamp: new Date().toLocaleString(),
+                            timestampMs: Date.now(),
+                            uploadedBy: 'GM',
+                            url: downloadURL
+                        };
+                        
+                        // Save file info to Firebase Database
+                        await database.ref(`tender-files/${selectedEnquiry.id}/${fileId}`).set(fileObj);
+                        
+                        // Add as a message in chat
+                        const message = {
+                            id: fileId + '_msg',
+                            text: `📎 Uploaded: ${file.name}`,
+                            timestamp: fileObj.timestamp,
+                            timestampMs: fileObj.timestampMs,
+                            sender: 'GM',
+                            type: 'file',
+                            fileId: fileId,
+                            fileName: file.name,
+                            fileUrl: downloadURL
+                        };
+                        
+                        // Save message to Firebase
+                        await database.ref(`tender-messages/${selectedEnquiry.id}/${fileId + '_msg'}`).set(message);
+                        
+                    } catch (error) {
+                        console.error('Error uploading file:', error);
+                        alert(`Failed to upload ${file.name}. Please try again.`);
+                    }
+                }
                 
                 // Reset file input
                 event.target.value = '';
