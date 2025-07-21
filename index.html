@@ -724,7 +724,7 @@
                                     </div>
                                 </div>
                             </>
-                        ) : (
+                        ) : currentView === 'enquiries' ? (
                             // Tenders View
                             <div className="flex flex-col">
                                 {/* Search Bar */}
@@ -957,7 +957,7 @@
                                     </div>
                                 </div>
                             </div>
-                        )}
+                        ) : null}
                     </main>
 
                     {/* New Tender Modal */}
