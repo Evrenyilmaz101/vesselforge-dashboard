@@ -96,70 +96,7 @@
                 return () => tendersRef.off('value', unsubscribe);
             }, []);
 
-            // Add sample data for testing
-            const addSampleData = () => {
-                const sampleTenders = [
-                    {
-                        id: 'VS1770',
-                        client: 'PetroTech Industries',
-                        project: 'High Pressure Storage Vessel',
-                        value: 125000,
-                        status: 'Action Required: Scott Goodfellow',
-                        actionFrom: 'Scott Goodfellow',
-                        tenderStatus: 'Active',
-                        priorityNumber: 1,
-                        assignedTo: 'Scott Goodfellow',
-                        salesManager: 'Craig Malt',
-                        planner: 'Lewis McDonald',
-                        designer: 'Dave Richards',
-                        dateReceived: '2024-01-15',
-                        dueDate: '2024-01-22',
-                        requiresDesign: true,
-                        comments: []
-                    },
-                    {
-                        id: 'VS1771',
-                        client: 'Global Energy Corp',
-                        project: 'Separator Vessel Package',
-                        value: 280000,
-                        status: 'Action Required: Craig Malt',
-                        actionFrom: 'Craig Malt',
-                        tenderStatus: 'Active',
-                        priorityNumber: 3,
-                        assignedTo: 'Peter Krempin',
-                        salesManager: 'Craig Malt',
-                        planner: 'Lewis McDonald',
-                        designer: 'Unassigned',
-                        dateReceived: '2024-01-14',
-                        dueDate: '2024-01-21',
-                        requiresDesign: false,
-                        comments: []
-                    },
-                    {
-                        id: 'VS1772',
-                        client: 'ChemFlow Solutions',
-                        project: 'Reactor Vessel',
-                        value: 0,
-                        status: 'Action Required: Brandon Gregg',
-                        actionFrom: 'Brandon Gregg',
-                        tenderStatus: 'Active',
-                        priorityNumber: 2,
-                        assignedTo: 'Unassigned',
-                        salesManager: 'Craig Malt',
-                        planner: 'Lewis McDonald',
-                        designer: 'Brandon Gregg',
-                        dateReceived: '2024-01-16',
-                        dueDate: '2024-01-23',
-                        requiresDesign: true,
-                        comments: []
-                    }
-                ];
-                
-                // Save sample data to Firebase
-                sampleTenders.forEach(tender => {
-                    database.ref(`tenders/${tender.id}`).set(tender);
-                });
-            };
+
 
             const [selectedEnquiry, setSelectedEnquiry] = useState(null);
             const [showNewEnquiry, setShowNewEnquiry] = useState(false);
@@ -742,19 +679,13 @@
                                                             <div className="text-white/60">
                                                                 <i data-lucide="file-text" className="h-12 w-12 mx-auto mb-4 opacity-50"></i>
                                                                 <h3 className="text-lg font-medium mb-2 text-white">No active tenders</h3>
-                                                                <p className="text-sm mb-4">Start by creating your first tender or add sample data for testing.</p>
-                                                                <div className="flex justify-center space-x-3">
+                                                                <p className="text-sm mb-4">Start by creating your first tender to get going.</p>
+                                                                <div className="flex justify-center">
                                                                     <button
                                                                         onClick={() => setShowNewEnquiry(true)}
                                                                         className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
                                                                     >
                                                                         ➕ Create First Tender
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={addSampleData}
-                                                                        className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded-lg transition-colors"
-                                                                    >
-                                                                        📊 Add Sample Data
                                                                     </button>
                                                                 </div>
                                                             </div>
