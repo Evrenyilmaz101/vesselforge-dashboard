@@ -44,7 +44,7 @@
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect } = React;
-        const { Building, Calendar, Users, FileText, CheckCircle, AlertCircle, Clock, Send, MessageSquare, Plus, TrendingUp, DollarSign, BarChart3, User, ChevronRight, Bell, Search, Paperclip, Download, File, Image, Info, Eye, X, Folder, FolderOpen, Upload, Edit, Paintbrush, Calculator, List } = lucide;
+        const { Building, Calendar, Users, FileText, CheckCircle, AlertCircle, Clock, Send, MessageSquare, Plus, TrendingUp, DollarSign, BarChart3, User, ChevronRight, Bell, Search, Paperclip, Download, File, Image, Info, Eye, X, Folder, FolderOpen, Upload, Edit, Paintbrush, Calculator, List, Trophy, XCircle, Archive } = lucide;
 
         // ======================================================================
         // FIREBASE CONFIGURATION - REPLACE WITH YOUR ACTUAL CONFIG
@@ -457,7 +457,9 @@
 
             // Filter tenders by status
             const getActiveTenders = () => enquiries.filter(t => t.tenderStatus === 'Active');
-            const getCompletedTenders = () => enquiries.filter(t => ['Won', 'Lost', 'Cancelled'].includes(t.tenderStatus));
+            const getWonTenders = () => enquiries.filter(t => t.tenderStatus === 'Won');
+            const getLostTenders = () => enquiries.filter(t => t.tenderStatus === 'Lost');
+            const getArchiveTenders = () => enquiries.filter(t => ['Cancelled', 'On Hold'].includes(t.tenderStatus));
 
             // Create Lucide icons - render after any state change
             React.useEffect(() => {
@@ -575,11 +577,25 @@
                                                 <span>View All</span>
                                             </button>
                                             <button
-                                                onClick={() => setCurrentView('completed')}
-                                                className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all"
+                                                onClick={() => setCurrentView('won')}
+                                                className="flex items-center space-x-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all text-sm"
                                             >
-                                                <i data-lucide="check-circle" className="h-4 w-4"></i>
-                                                <span>Completed</span>
+                                                <i data-lucide="trophy" className="h-4 w-4"></i>
+                                                <span>Won</span>
+                                            </button>
+                                            <button
+                                                onClick={() => setCurrentView('lost')}
+                                                className="flex items-center space-x-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all text-sm"
+                                            >
+                                                <i data-lucide="x-circle" className="h-4 w-4"></i>
+                                                <span>Lost</span>
+                                            </button>
+                                            <button
+                                                onClick={() => setCurrentView('archive')}
+                                                className="flex items-center space-x-2 px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-all text-sm"
+                                            >
+                                                <i data-lucide="archive" className="h-4 w-4"></i>
+                                                <span>Archive</span>
                                             </button>
                                             <button
                                                 onClick={() => setCurrentView('analytics')}
@@ -729,7 +745,7 @@
                                             enq.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                             enq.project.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                             enq.id.toLowerCase().includes(searchTerm.toLowerCase())
-                                        ).map((enquiry) => (
+                                        ).filter(enq => enq.tenderStatus === 'Active').map((enquiry) => (
                                             <div
                                                 key={enquiry.id}
                                                 onClick={() => {
@@ -793,12 +809,104 @@
                                         ))}
                                 </div>
                             </div>
-                        ) : currentView === 'completed' ? (
-                            // Completed Tenders View
+                        ) : currentView === 'won' ? (
+                            // Won Tenders View
                             <div className="space-y-6">
                                 <div className="mb-8">
-                                    <h2 className="text-3xl font-bold text-white mb-2">Completed Tenders</h2>
-                                    <p className="text-white/70">Track won, lost, and cancelled tenders for performance analysis</p>
+                                    <h2 className="text-3xl font-bold text-white mb-2">🏆 Won Tenders</h2>
+                                    <p className="text-white/70">Successful tender submissions and project wins</p>
+                                </div>
+
+                                <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="text-left border-b border-white/10">
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">VS #</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Client</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Project</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Value</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Estimator</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Date Won</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {getWonTenders().map((enquiry) => (
+                                                    <tr key={enquiry.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                                        <td className="py-3 text-white font-medium text-sm">{enquiry.id}</td>
+                                                        <td className="py-3 text-white/80 text-sm">{enquiry.client}</td>
+                                                        <td className="py-3 text-white/80 text-sm max-w-[200px] truncate">{enquiry.project}</td>
+                                                        <td className="py-3 text-green-400 font-bold text-sm">
+                                                            {enquiry.value > 0 ? `$${(enquiry.value / 1000).toFixed(0)}k` : 'TBD'}
+                                                        </td>
+                                                        <td className="py-3 text-white/80 text-sm">{enquiry.assignedTo}</td>
+                                                        <td className="py-3 text-white/60 text-sm">{enquiry.dateReceived}</td>
+                                                    </tr>
+                                                ))}
+                                                {getWonTenders().length === 0 && (
+                                                    <tr>
+                                                        <td colSpan="6" className="text-center text-white/60 py-12">
+                                                            No won tenders yet. Keep up the great work! 🎯
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : currentView === 'lost' ? (
+                            // Lost Tenders View
+                            <div className="space-y-6">
+                                <div className="mb-8">
+                                    <h2 className="text-3xl font-bold text-white mb-2">❌ Lost Tenders</h2>
+                                    <p className="text-white/70">Unsuccessful tender submissions for learning and improvement</p>
+                                </div>
+
+                                <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="text-left border-b border-white/10">
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">VS #</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Client</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Project</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Est. Value</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Estimator</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Date Lost</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {getLostTenders().map((enquiry) => (
+                                                    <tr key={enquiry.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                                        <td className="py-3 text-white font-medium text-sm">{enquiry.id}</td>
+                                                        <td className="py-3 text-white/80 text-sm">{enquiry.client}</td>
+                                                        <td className="py-3 text-white/80 text-sm max-w-[200px] truncate">{enquiry.project}</td>
+                                                        <td className="py-3 text-white/60 text-sm">
+                                                            {enquiry.value > 0 ? `$${(enquiry.value / 1000).toFixed(0)}k` : 'TBD'}
+                                                        </td>
+                                                        <td className="py-3 text-white/80 text-sm">{enquiry.assignedTo}</td>
+                                                        <td className="py-3 text-white/60 text-sm">{enquiry.dateReceived}</td>
+                                                    </tr>
+                                                ))}
+                                                {getLostTenders().length === 0 && (
+                                                    <tr>
+                                                        <td colSpan="6" className="text-center text-white/60 py-12">
+                                                            No lost tenders yet. Great track record! 💪
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : currentView === 'archive' ? (
+                            // Archive View (Cancelled, On Hold)
+                            <div className="space-y-6">
+                                <div className="mb-8">
+                                    <h2 className="text-3xl font-bold text-white mb-2">📁 Archive</h2>
+                                    <p className="text-white/70">Cancelled and on-hold tenders</p>
                                 </div>
 
                                 <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
@@ -811,11 +919,11 @@
                                                     <th className="pb-3 text-white/60 font-medium text-sm">Project</th>
                                                     <th className="pb-3 text-white/60 font-medium text-sm">Status</th>
                                                     <th className="pb-3 text-white/60 font-medium text-sm">Value</th>
-                                                    <th className="pb-3 text-white/60 font-medium text-sm">Estimator</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Date</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {getCompletedTenders().map((enquiry) => (
+                                                {getArchiveTenders().map((enquiry) => (
                                                     <tr key={enquiry.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                                                         <td className="py-3 text-white font-medium text-sm">{enquiry.id}</td>
                                                         <td className="py-3 text-white/80 text-sm">{enquiry.client}</td>
@@ -825,16 +933,16 @@
                                                                 {enquiry.tenderStatus}
                                                             </span>
                                                         </td>
-                                                        <td className="py-3 text-white font-medium text-sm">
+                                                        <td className="py-3 text-white/60 text-sm">
                                                             {enquiry.value > 0 ? `$${(enquiry.value / 1000).toFixed(0)}k` : 'TBD'}
                                                         </td>
-                                                        <td className="py-3 text-white/80 text-sm">{enquiry.assignedTo}</td>
+                                                        <td className="py-3 text-white/60 text-sm">{enquiry.dateReceived}</td>
                                                     </tr>
                                                 ))}
-                                                {getCompletedTenders().length === 0 && (
+                                                {getArchiveTenders().length === 0 && (
                                                     <tr>
                                                         <td colSpan="6" className="text-center text-white/60 py-12">
-                                                            No completed tenders yet.
+                                                            No archived tenders yet.
                                                         </td>
                                                     </tr>
                                                 )}
