@@ -186,36 +186,6 @@
             const [actionAlertMessage, setActionAlertMessage] = useState('');
             const [individualActionMessages, setIndividualActionMessages] = useState({});
             const [actionCompletions, setActionCompletions] = useState({});
-            const [tenderCompletions, setTenderCompletions] = useState({}); // Track who completed actions by tender
-            
-            // Load action completions from Firebase for ALL tenders
-            useEffect(() => {
-                const completionsRef = firebase.database().ref('action-completions');
-                completionsRef.on('value', (snapshot) => {
-                    const allCompletions = snapshot.val() || {};
-                    // Flatten the structure for easy lookup
-                    const flatCompletions = {};
-                    Object.keys(allCompletions).forEach(tenderId => {
-                        Object.keys(allCompletions[tenderId]).forEach(completionKey => {
-                            flatCompletions[completionKey] = allCompletions[tenderId][completionKey];
-                        });
-                    });
-                    setActionCompletions(flatCompletions);
-                });
-                
-                return () => completionsRef.off();
-            }, []);
-
-            // Load tender-level completions from Firebase
-            useEffect(() => {
-                const tenderCompletionsRef = firebase.database().ref('tender-completions');
-                tenderCompletionsRef.on('value', (snapshot) => {
-                    const completions = snapshot.val() || {};
-                    setTenderCompletions(completions);
-                });
-                
-                return () => tenderCompletionsRef.off();
-            }, []);
             
             // TODO: Future user account system
             // const [currentUser, setCurrentUser] = useState({
@@ -234,24 +204,14 @@
             
             const currentUser = 'GM'; // Simplified for now
 
-            const getActionStatusColor = (actionFrom, tender = null) => {
-                // If we have a tender object, check active people instead of just actionFrom
-                let activePeople = [];
-                if (tender) {
-                    activePeople = getActivePeopleForTender(tender);
-                    if (activePeople.length === 0) return 'bg-green-500'; // All completed
-                } else {
-                    // Fallback to original logic for non-tender contexts
-                    if (!actionFrom || actionFrom === 'Complete') return 'bg-green-500';
-                    if (actionFrom === 'Awaiting Assignment') return 'bg-gray-500';
-                    
-                    if (Array.isArray(actionFrom)) {
-                        if (actionFrom.length === 0) return 'bg-green-500';
-                        activePeople = actionFrom;
-                    } else {
-                        activePeople = [actionFrom];
-                    }
-                }
+            const getActionStatusColor = (tender) => {
+                const activePeople = getActivePeopleForTender(tender);
+                
+                // If no active people, it's complete
+                if (activePeople.length === 0) return 'bg-green-500';
+                
+                // If awaiting assignment
+                if (tender.actionFrom === 'Awaiting Assignment') return 'bg-gray-500';
                 
                 // Determine color based on active people
                 const actionString = activePeople.join(' ');
@@ -262,34 +222,7 @@
                 return 'bg-yellow-500'; // Default/mixed
             };
 
-            const formatActionFrom = (actionFrom, tenderId, messageId) => {
-                if (!actionFrom || actionFrom === 'Complete') return 'Complete';
-                if (actionFrom === 'Awaiting Assignment') return 'Awaiting Assignment';
-                if (Array.isArray(actionFrom)) {
-                    if (actionFrom.length === 0) return 'Complete';
-                    
-                    // Filter out people who have completed their actions (if we have a messageId)
-                    let activePeople = actionFrom;
-                    if (messageId) {
-                        activePeople = actionFrom.filter(person => !isActionCompleted(messageId, person));
-                        if (activePeople.length === 0) return 'Complete';
-                    }
-                    
-                    return activePeople.length > 2 ? `${activePeople.slice(0, 2).join(', ')} +${activePeople.length - 2}` : activePeople.join(', ');
-                }
-                return actionFrom;
-            };
 
-            const getActiveActionPeople = (actionFrom, messageId) => {
-                if (!actionFrom || actionFrom === 'Complete') return [];
-                if (actionFrom === 'Awaiting Assignment') return [];
-                if (Array.isArray(actionFrom)) {
-                    if (!messageId) return actionFrom;
-                    return actionFrom.filter(person => !isActionCompleted(messageId, person));
-                }
-                if (!messageId) return [actionFrom];
-                return isActionCompleted(messageId, actionFrom) ? [] : [actionFrom];
-            };
 
             const completeAction = async (messageId, completedBy = currentUser) => {
                 const completionKey = `${messageId}_${completedBy}`;
@@ -300,31 +233,29 @@
                 };
                 
                 try {
-                    // Save completion to Firebase (both message-level and tender-level)
-                    await firebase.database().ref(`action-completions/${selectedEnquiry.id}/${completionKey}`).set(completion);
+                    // Store completion for this specific message
+                    setActionCompletions(prev => ({
+                        ...prev,
+                        [completionKey]: completion
+                    }));
                     
-                    // Also save to tender-level completions for easy access across views
-                    await firebase.database().ref(`tender-completions/${selectedEnquiry.id}/${completedBy}`).set({
-                        completedBy,
-                        timestamp: new Date().toLocaleString(),
-                        messageId
-                    });
-                    
-                    // Update the actual tender's actionFrom field ONLY if this person was actually assigned
-                    if (selectedEnquiry && Array.isArray(selectedEnquiry.actionFrom) && selectedEnquiry.actionFrom.includes(completedBy)) {
-                        // Remove the completed person from actionFrom array
-                        const updatedActionFrom = selectedEnquiry.actionFrom.filter(person => person !== completedBy);
+                    // Update the tender to track who has completed actions
+                    if (selectedEnquiry) {
+                        const currentCompletedBy = selectedEnquiry.completedBy || [];
+                        const updatedCompletedBy = [...new Set([...currentCompletedBy, completedBy])]; // Add if not already there
                         
-                        // If no one left, mark as complete
-                        const finalActionFrom = updatedActionFrom.length === 0 ? 'Complete' : updatedActionFrom;
+                        // Update the tender with completion info
+                        const tenderRef = firebase.database().ref(`tenders/${selectedEnquiry.id}`);
+                        await tenderRef.update({completedBy: updatedCompletedBy});
                         
-                        // Update in Firebase
-                        const tenderRef = firebase.database().ref(`tenders/${selectedEnquiry.id}`);
-                        await tenderRef.update({actionFrom: finalActionFrom});
-                    } else if (selectedEnquiry && selectedEnquiry.actionFrom === completedBy) {
-                        // Single person action - mark as complete
-                        const tenderRef = firebase.database().ref(`tenders/${selectedEnquiry.id}`);
-                        await tenderRef.update({actionFrom: 'Complete'});
+                        // Also update actionFrom to remove completed people if they were assigned
+                        if (Array.isArray(selectedEnquiry.actionFrom)) {
+                            const remainingActions = selectedEnquiry.actionFrom.filter(person => !updatedCompletedBy.includes(person));
+                            const finalActionFrom = remainingActions.length === 0 ? 'Complete' : remainingActions;
+                            await tenderRef.update({actionFrom: finalActionFrom});
+                        } else if (selectedEnquiry.actionFrom === completedBy) {
+                            await tenderRef.update({actionFrom: 'Complete'});
+                        }
                     }
                 } catch (error) {
                     console.error('Error completing action:', error);
@@ -336,18 +267,20 @@
                 return actionCompletions[completionKey] !== undefined;
             };
 
-            const isPersonActionCompleted = (tenderId, person) => {
-                return tenderCompletions[tenderId] && tenderCompletions[tenderId][person] !== undefined;
+            const isPersonActionCompleted = (tender, person) => {
+                return tender.completedBy && tender.completedBy.includes(person);
             };
 
             const getActivePeopleForTender = (tender) => {
                 if (!tender.actionFrom || tender.actionFrom === 'Complete') return [];
                 if (tender.actionFrom === 'Awaiting Assignment') return [];
                 
+                const completedBy = tender.completedBy || [];
+                
                 if (Array.isArray(tender.actionFrom)) {
-                    return tender.actionFrom.filter(person => !isPersonActionCompleted(tender.id, person));
+                    return tender.actionFrom.filter(person => !completedBy.includes(person));
                 } else {
-                    return isPersonActionCompleted(tender.id, tender.actionFrom) ? [] : [tender.actionFrom];
+                    return completedBy.includes(tender.actionFrom) ? [] : [tender.actionFrom];
                 }
             };
 
@@ -370,13 +303,8 @@
                     vsNumber = `VS${maxVSNumber + 1}`;
                 }
                 
-                // Determine initial action required
+                // Determine initial action required - always start with awaiting assignment
                 let initialAction = 'Awaiting Assignment'; // No auto-assignment
-                if (newTenderForm.requiresDesign && newTenderForm.designer !== 'Unassigned') {
-                    initialAction = newTenderForm.designer; // Start with designer if design required
-                } else if (newTenderForm.assignedTo !== 'Unassigned') {
-                    initialAction = newTenderForm.assignedTo; // Or start with estimator
-                }
 
                 // Create new tender
                 const newTender = {
@@ -395,7 +323,8 @@
                     dateReceived: new Date().toISOString().split('T')[0],
                     dueDate: newTenderForm.dueDate,
                     requiresDesign: newTenderForm.requiresDesign,
-                    comments: []
+                    comments: [],
+                    completedBy: [] // Initialize empty completion tracking
                 };
                 
                 // Save to Firebase
@@ -909,7 +838,7 @@
                                                         <td className="py-3 text-white/80 text-sm">{enquiry.client}</td>
                                                         <td className="py-3 text-white/80 text-sm max-w-[200px] truncate">{enquiry.project}</td>
                                                         <td className="py-3">
-                                                            <div className={`${getActionStatusColor(enquiry.actionFrom, enquiry)} rounded px-2 py-1 text-center text-xs`}>
+                                                            <div className={`${getActionStatusColor(enquiry)} rounded px-2 py-1 text-center text-xs`}>
                                                                 <div className="text-white font-bold">
                                                                     {(() => {
                                                                         const activePeople = getActivePeopleForTender(enquiry);
@@ -1619,7 +1548,7 @@
                                                 <div className="flex items-center justify-between mb-2">
                                                     <h3 className="text-white font-medium text-sm truncate flex-1 mr-4">{selectedEnquiry.project}</h3>
                                                     <div className="flex items-center space-x-2">
-                                                        <div className={`${getActionStatusColor(selectedEnquiry.actionFrom, selectedEnquiry)} rounded px-2 py-1 text-center`}>
+                                                        <div className={`${getActionStatusColor(selectedEnquiry)} rounded px-2 py-1 text-center`}>
                                                             <div className="text-white font-bold text-xs">
                                                                 {(() => {
                                                                     const activePeople = getActivePeopleForTender(selectedEnquiry);
@@ -2253,7 +2182,7 @@
                                                         </div>
                                                         <div>
                                                             <p className="text-white/60 text-xs font-medium mb-1">Action Required</p>
-                                                            <div className={`${getActionStatusColor(selectedEnquiry.actionFrom, selectedEnquiry)} rounded px-2 py-1 text-center inline-block`}>
+                                                            <div className={`${getActionStatusColor(selectedEnquiry)} rounded px-2 py-1 text-center inline-block`}>
                                                                 <div className="text-white font-bold text-xs">
                                                                     {(() => {
                                                                         const activePeople = getActivePeopleForTender(selectedEnquiry);
