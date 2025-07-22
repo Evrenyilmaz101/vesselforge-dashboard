@@ -1653,11 +1653,15 @@
                                                         (messages[selectedEnquiry.id] || []).map((message) => (
                                                             <div key={message.id} className="flex items-start space-x-3">
                                                                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
-                                                                    <span className="text-white text-xs font-bold">{message.sender}</span>
+                                                                    <span className="text-white text-xs font-bold">
+                                                                        {message.type === 'action-alert' ? (message.createdBy || currentUser) : message.sender}
+                                                                    </span>
                                                                 </div>
                                                                 <div className="flex-1 max-w-3xl">
                                                                     <div className="flex items-center space-x-2 mb-1">
-                                                                        <span className="text-white font-medium text-sm">{message.sender}</span>
+                                                                        <span className="text-white font-medium text-sm">
+                                                                            {message.type === 'action-alert' ? (message.createdBy || currentUser) : message.sender}
+                                                                        </span>
                                                                         <span className="text-white/40 text-xs">{message.timestamp}</span>
                                                                     </div>
                                                                     <div className="py-1">
