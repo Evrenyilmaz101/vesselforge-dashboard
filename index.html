@@ -210,6 +210,7 @@
                 
                 // Handle array of people (multiple assignments)
                 if (Array.isArray(actionFrom)) {
+                    if (actionFrom.length === 0) return 'bg-green-500'; // All completed
                     const actionString = actionFrom.join(' ');
                     if (actionString.includes('Scott') || actionString.includes('Peter')) return 'bg-red-500'; // Estimators - urgent
                     if (actionString.includes('Dave') || actionString.includes('Brandon') || actionString.includes('Sheryl')) return 'bg-orange-500'; // Designers
@@ -230,6 +231,7 @@
                 if (!actionFrom || actionFrom === 'Complete') return 'Complete';
                 if (actionFrom === 'Awaiting Assignment') return 'Awaiting Assignment';
                 if (Array.isArray(actionFrom)) {
+                    if (actionFrom.length === 0) return 'Complete';
                     return actionFrom.length > 2 ? `${actionFrom.slice(0, 2).join(', ')} +${actionFrom.length - 2}` : actionFrom.join(', ');
                 }
                 return actionFrom;
@@ -248,7 +250,22 @@
                     [completionKey]: completion
                 }));
 
-                // Note: No longer sending completion messages to chat - the visual state is enough
+                // Update the actual tender's actionFrom field
+                if (selectedEnquiry && Array.isArray(selectedEnquiry.actionFrom)) {
+                    // Remove the completed person from actionFrom array
+                    const updatedActionFrom = selectedEnquiry.actionFrom.filter(person => person !== completedBy);
+                    
+                    // If no one left, mark as complete
+                    const finalActionFrom = updatedActionFrom.length === 0 ? 'Complete' : updatedActionFrom;
+                    
+                    // Update in Firebase
+                    const tenderRef = firebase.database().ref(`tenders/${selectedEnquiry.id}`);
+                    tenderRef.update({actionFrom: finalActionFrom});
+                } else if (selectedEnquiry && selectedEnquiry.actionFrom === completedBy) {
+                    // Single person action - mark as complete
+                    const tenderRef = firebase.database().ref(`tenders/${selectedEnquiry.id}`);
+                    tenderRef.update({actionFrom: 'Complete'});
+                }
             };
 
             const isActionCompleted = (messageId, person) => {
@@ -816,14 +833,20 @@
                                                         <td className="py-3">
                                                             <div className={`${getActionStatusColor(enquiry.actionFrom)} rounded px-2 py-1 text-center text-xs`}>
                                                                 <div className="text-white font-bold">
-                                                                    🚨 {Array.isArray(enquiry.actionFrom) ? (
-                                                                        <div className="space-y-1">
-                                                                            {enquiry.actionFrom.map((person, index) => (
-                                                                                <div key={index}>{person}</div>
-                                                                            ))}
-                                                                        </div>
+                                                                    {enquiry.actionFrom === 'Complete' || (Array.isArray(enquiry.actionFrom) && enquiry.actionFrom.length === 0) ? (
+                                                                        <span>✅ COMPLETE</span>
                                                                     ) : (
-                                                                        enquiry.actionFrom
+                                                                        <>
+                                                                            🚨 {Array.isArray(enquiry.actionFrom) ? (
+                                                                                <div className="space-y-1">
+                                                                                    {enquiry.actionFrom.map((person, index) => (
+                                                                                        <div key={index}>{person}</div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            ) : (
+                                                                                enquiry.actionFrom
+                                                                            )}
+                                                                        </>
                                                                     )}
                                                                 </div>
                                                             </div>
@@ -1514,9 +1537,14 @@
                                                     <h3 className="text-white font-medium text-sm truncate flex-1 mr-4">{selectedEnquiry.project}</h3>
                                                     <div className="flex items-center space-x-2">
                                                         <div className={`${getActionStatusColor(selectedEnquiry.actionFrom)} rounded px-2 py-1 text-center`}>
-                                                            <div className="text-white font-bold text-xs">🚨 ACTION</div>
                                                             <div className="text-white font-bold text-xs">
-                                                                {Array.isArray(selectedEnquiry.actionFrom) ? (
+                                                                {selectedEnquiry.actionFrom === 'Complete' || (Array.isArray(selectedEnquiry.actionFrom) && selectedEnquiry.actionFrom.length === 0) ? 
+                                                                    '✅ ACTION' : '🚨 ACTION'}
+                                                            </div>
+                                                            <div className="text-white font-bold text-xs">
+                                                                {selectedEnquiry.actionFrom === 'Complete' || (Array.isArray(selectedEnquiry.actionFrom) && selectedEnquiry.actionFrom.length === 0) ? (
+                                                                    <span>✅ COMPLETE</span>
+                                                                ) : Array.isArray(selectedEnquiry.actionFrom) ? (
                                                                     <div className="space-y-1">
                                                                         {selectedEnquiry.actionFrom.map((person, index) => (
                                                                             <div key={index}>{person}</div>
@@ -2136,9 +2164,14 @@
                                                         <div>
                                                             <p className="text-white/60 text-xs font-medium mb-1">Action Required</p>
                                                             <div className={`${getActionStatusColor(selectedEnquiry.actionFrom)} rounded px-2 py-1 text-center inline-block`}>
-                                                                <div className="text-white font-bold text-xs">🚨 ACTION</div>
                                                                 <div className="text-white font-bold text-xs">
-                                                                    {Array.isArray(selectedEnquiry.actionFrom) ? (
+                                                                    {selectedEnquiry.actionFrom === 'Complete' || (Array.isArray(selectedEnquiry.actionFrom) && selectedEnquiry.actionFrom.length === 0) ? 
+                                                                        '✅ ACTION' : '🚨 ACTION'}
+                                                                </div>
+                                                                <div className="text-white font-bold text-xs">
+                                                                    {selectedEnquiry.actionFrom === 'Complete' || (Array.isArray(selectedEnquiry.actionFrom) && selectedEnquiry.actionFrom.length === 0) ? (
+                                                                        <span>✅ COMPLETE</span>
+                                                                    ) : Array.isArray(selectedEnquiry.actionFrom) ? (
                                                                         <div className="space-y-1">
                                                                             {selectedEnquiry.actionFrom.map((person, index) => (
                                                                                 <div key={index}>{person}</div>
