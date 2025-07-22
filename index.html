@@ -185,7 +185,7 @@
             const [actionAlertPeople, setActionAlertPeople] = useState([]);
             const [actionAlertMessage, setActionAlertMessage] = useState('');
             const [individualActionMessages, setIndividualActionMessages] = useState({});
-            const [actionCompletions, setActionCompletions] = useState({});
+            // Action completions now stored in tender.completedBy instead of local state
             
             // TODO: Future user account system
             // const [currentUser, setCurrentUser] = useState({
@@ -207,14 +207,14 @@
             const getActionStatusColor = (tender) => {
                 const activePeople = getActivePeopleForTender(tender);
                 
-                // If no active people, it's complete
-                if (activePeople.length === 0) return 'bg-green-500';
+                // If awaiting assignment - gray
+                if (activePeople === 'awaiting') return 'bg-gray-500';
                 
-                // If awaiting assignment
-                if (tender.actionFrom === 'Awaiting Assignment') return 'bg-gray-500';
+                // If no active people, it's complete
+                if (Array.isArray(activePeople) && activePeople.length === 0) return 'bg-green-500';
                 
                 // Determine color based on active people
-                const actionString = activePeople.join(' ');
+                const actionString = Array.isArray(activePeople) ? activePeople.join(' ') : '';
                 if (actionString.includes('Scott') || actionString.includes('Peter')) return 'bg-red-500'; // Estimators - urgent
                 if (actionString.includes('Dave') || actionString.includes('Brandon') || actionString.includes('Sheryl')) return 'bg-orange-500'; // Designers
                 if (actionString.includes('Craig')) return 'bg-purple-500'; // Sales
@@ -225,20 +225,7 @@
 
 
             const completeAction = async (messageId, completedBy = currentUser) => {
-                const completionKey = `${messageId}_${completedBy}`;
-                const completion = {
-                    messageId,
-                    completedBy,
-                    timestamp: new Date().toLocaleString()
-                };
-                
                 try {
-                    // Store completion for this specific message
-                    setActionCompletions(prev => ({
-                        ...prev,
-                        [completionKey]: completion
-                    }));
-                    
                     // Update the tender to track who has completed actions
                     if (selectedEnquiry) {
                         const currentCompletedBy = selectedEnquiry.completedBy || [];
@@ -263,8 +250,8 @@
             };
 
             const isActionCompleted = (messageId, person) => {
-                const completionKey = `${messageId}_${person}`;
-                return actionCompletions[completionKey] !== undefined;
+                // Check if this person has completed their action for this tender
+                return selectedEnquiry && selectedEnquiry.completedBy && selectedEnquiry.completedBy.includes(person);
             };
 
             const isPersonActionCompleted = (tender, person) => {
@@ -273,7 +260,7 @@
 
             const getActivePeopleForTender = (tender) => {
                 if (!tender.actionFrom || tender.actionFrom === 'Complete') return [];
-                if (tender.actionFrom === 'Awaiting Assignment') return [];
+                if (tender.actionFrom === 'Awaiting Assignment') return 'awaiting'; // Special flag for awaiting assignment
                 
                 const completedBy = tender.completedBy || [];
                 
@@ -842,9 +829,11 @@
                                                                 <div className="text-white font-bold">
                                                                     {(() => {
                                                                         const activePeople = getActivePeopleForTender(enquiry);
-                                                                        if (activePeople.length === 0) {
+                                                                        if (activePeople === 'awaiting') {
+                                                                            return <span>📝 NO ACTION ALERT</span>;
+                                                                        } else if (Array.isArray(activePeople) && activePeople.length === 0) {
                                                                             return <span>✅ COMPLETE</span>;
-                                                                        } else {
+                                                                        } else if (Array.isArray(activePeople)) {
                                                                             return (
                                                                                 <>
                                                                                     🚨 {activePeople.length === 1 ? (
@@ -859,6 +848,7 @@
                                                                                 </>
                                                                             );
                                                                         }
+                                                                        return <span>📝 NO ACTION ALERT</span>;
                                                                     })()}
                                                                 </div>
                                                             </div>
@@ -1552,17 +1542,21 @@
                                                             <div className="text-white font-bold text-xs">
                                                                 {(() => {
                                                                     const activePeople = getActivePeopleForTender(selectedEnquiry);
-                                                                    return activePeople.length === 0 ? '✅ ACTION' : '🚨 ACTION';
+                                                                    if (activePeople === 'awaiting') return '📝 NO ACTION';
+                                                                    if (Array.isArray(activePeople) && activePeople.length === 0) return '✅ ACTION';
+                                                                    return '🚨 ACTION';
                                                                 })()}
                                                             </div>
                                                             <div className="text-white font-bold text-xs">
                                                                 {(() => {
                                                                     const activePeople = getActivePeopleForTender(selectedEnquiry);
-                                                                    if (activePeople.length === 0) {
+                                                                    if (activePeople === 'awaiting') {
+                                                                        return <span>📝 NO ACTION ALERT</span>;
+                                                                    } else if (Array.isArray(activePeople) && activePeople.length === 0) {
                                                                         return <span>✅ COMPLETE</span>;
-                                                                    } else if (activePeople.length === 1) {
+                                                                    } else if (Array.isArray(activePeople) && activePeople.length === 1) {
                                                                         return activePeople[0];
-                                                                    } else {
+                                                                    } else if (Array.isArray(activePeople)) {
                                                                         return (
                                                                             <div className="space-y-1">
                                                                                 {activePeople.map((person, index) => (
@@ -1571,6 +1565,7 @@
                                                                             </div>
                                                                         );
                                                                     }
+                                                                    return <span>📝 NO ACTION ALERT</span>;
                                                                 })()}
                                                             </div>
                                                         </div>
@@ -2186,17 +2181,21 @@
                                                                 <div className="text-white font-bold text-xs">
                                                                     {(() => {
                                                                         const activePeople = getActivePeopleForTender(selectedEnquiry);
-                                                                        return activePeople.length === 0 ? '✅ ACTION' : '🚨 ACTION';
+                                                                        if (activePeople === 'awaiting') return '📝 NO ACTION';
+                                                                        if (Array.isArray(activePeople) && activePeople.length === 0) return '✅ ACTION';
+                                                                        return '🚨 ACTION';
                                                                     })()}
                                                                 </div>
                                                                 <div className="text-white font-bold text-xs">
                                                                     {(() => {
                                                                         const activePeople = getActivePeopleForTender(selectedEnquiry);
-                                                                        if (activePeople.length === 0) {
+                                                                        if (activePeople === 'awaiting') {
+                                                                            return <span>📝 NO ACTION ALERT</span>;
+                                                                        } else if (Array.isArray(activePeople) && activePeople.length === 0) {
                                                                             return <span>✅ COMPLETE</span>;
-                                                                        } else if (activePeople.length === 1) {
+                                                                        } else if (Array.isArray(activePeople) && activePeople.length === 1) {
                                                                             return activePeople[0];
-                                                                        } else {
+                                                                        } else if (Array.isArray(activePeople)) {
                                                                             return (
                                                                                 <div className="space-y-1">
                                                                                     {activePeople.map((person, index) => (
@@ -2205,6 +2204,7 @@
                                                                                 </div>
                                                                             );
                                                                         }
+                                                                        return <span>📝 NO ACTION ALERT</span>;
                                                                     })()}
                                                                 </div>
                                                             </div>
