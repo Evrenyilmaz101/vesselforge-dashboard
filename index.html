@@ -186,6 +186,36 @@
             const [actionAlertMessage, setActionAlertMessage] = useState('');
             const [individualActionMessages, setIndividualActionMessages] = useState({});
             const [actionCompletions, setActionCompletions] = useState({});
+            const [tenderCompletions, setTenderCompletions] = useState({}); // Track who completed actions by tender
+            
+            // Load action completions from Firebase for ALL tenders
+            useEffect(() => {
+                const completionsRef = firebase.database().ref('action-completions');
+                completionsRef.on('value', (snapshot) => {
+                    const allCompletions = snapshot.val() || {};
+                    // Flatten the structure for easy lookup
+                    const flatCompletions = {};
+                    Object.keys(allCompletions).forEach(tenderId => {
+                        Object.keys(allCompletions[tenderId]).forEach(completionKey => {
+                            flatCompletions[completionKey] = allCompletions[tenderId][completionKey];
+                        });
+                    });
+                    setActionCompletions(flatCompletions);
+                });
+                
+                return () => completionsRef.off();
+            }, []);
+
+            // Load tender-level completions from Firebase
+            useEffect(() => {
+                const tenderCompletionsRef = firebase.database().ref('tender-completions');
+                tenderCompletionsRef.on('value', (snapshot) => {
+                    const completions = snapshot.val() || {};
+                    setTenderCompletions(completions);
+                });
+                
+                return () => tenderCompletionsRef.off();
+            }, []);
             
             // TODO: Future user account system
             // const [currentUser, setCurrentUser] = useState({
@@ -204,40 +234,64 @@
             
             const currentUser = 'GM'; // Simplified for now
 
-            const getActionStatusColor = (actionFrom) => {
-                if (!actionFrom || actionFrom === 'Complete') return 'bg-green-500';
-                if (actionFrom === 'Awaiting Assignment') return 'bg-gray-500'; // Waiting for assignment
-                
-                // Handle array of people (multiple assignments)
-                if (Array.isArray(actionFrom)) {
-                    if (actionFrom.length === 0) return 'bg-green-500'; // All completed
-                    const actionString = actionFrom.join(' ');
-                    if (actionString.includes('Scott') || actionString.includes('Peter')) return 'bg-red-500'; // Estimators - urgent
-                    if (actionString.includes('Dave') || actionString.includes('Brandon') || actionString.includes('Sheryl')) return 'bg-orange-500'; // Designers
-                    if (actionString.includes('Craig')) return 'bg-purple-500'; // Sales
-                    if (actionString.includes('Lewis')) return 'bg-blue-500'; // Planning
-                    return 'bg-yellow-500'; // Multiple mixed roles
+            const getActionStatusColor = (actionFrom, tender = null) => {
+                // If we have a tender object, check active people instead of just actionFrom
+                let activePeople = [];
+                if (tender) {
+                    activePeople = getActivePeopleForTender(tender);
+                    if (activePeople.length === 0) return 'bg-green-500'; // All completed
+                } else {
+                    // Fallback to original logic for non-tender contexts
+                    if (!actionFrom || actionFrom === 'Complete') return 'bg-green-500';
+                    if (actionFrom === 'Awaiting Assignment') return 'bg-gray-500';
+                    
+                    if (Array.isArray(actionFrom)) {
+                        if (actionFrom.length === 0) return 'bg-green-500';
+                        activePeople = actionFrom;
+                    } else {
+                        activePeople = [actionFrom];
+                    }
                 }
                 
-                // Handle single person (legacy support)
-                if (actionFrom.includes('Scott') || actionFrom.includes('Peter')) return 'bg-red-500'; // Estimators - urgent
-                if (actionFrom.includes('Dave') || actionFrom.includes('Brandon') || actionFrom.includes('Sheryl')) return 'bg-orange-500'; // Designers
-                if (actionFrom.includes('Craig')) return 'bg-purple-500'; // Sales
-                if (actionFrom.includes('Lewis')) return 'bg-blue-500'; // Planning
-                return 'bg-yellow-500'; // Default
+                // Determine color based on active people
+                const actionString = activePeople.join(' ');
+                if (actionString.includes('Scott') || actionString.includes('Peter')) return 'bg-red-500'; // Estimators - urgent
+                if (actionString.includes('Dave') || actionString.includes('Brandon') || actionString.includes('Sheryl')) return 'bg-orange-500'; // Designers
+                if (actionString.includes('Craig')) return 'bg-purple-500'; // Sales
+                if (actionString.includes('Lewis')) return 'bg-blue-500'; // Planning
+                return 'bg-yellow-500'; // Default/mixed
             };
 
-            const formatActionFrom = (actionFrom) => {
+            const formatActionFrom = (actionFrom, tenderId, messageId) => {
                 if (!actionFrom || actionFrom === 'Complete') return 'Complete';
                 if (actionFrom === 'Awaiting Assignment') return 'Awaiting Assignment';
                 if (Array.isArray(actionFrom)) {
                     if (actionFrom.length === 0) return 'Complete';
-                    return actionFrom.length > 2 ? `${actionFrom.slice(0, 2).join(', ')} +${actionFrom.length - 2}` : actionFrom.join(', ');
+                    
+                    // Filter out people who have completed their actions (if we have a messageId)
+                    let activePeople = actionFrom;
+                    if (messageId) {
+                        activePeople = actionFrom.filter(person => !isActionCompleted(messageId, person));
+                        if (activePeople.length === 0) return 'Complete';
+                    }
+                    
+                    return activePeople.length > 2 ? `${activePeople.slice(0, 2).join(', ')} +${activePeople.length - 2}` : activePeople.join(', ');
                 }
                 return actionFrom;
             };
 
-            const completeAction = (messageId, completedBy = currentUser) => {
+            const getActiveActionPeople = (actionFrom, messageId) => {
+                if (!actionFrom || actionFrom === 'Complete') return [];
+                if (actionFrom === 'Awaiting Assignment') return [];
+                if (Array.isArray(actionFrom)) {
+                    if (!messageId) return actionFrom;
+                    return actionFrom.filter(person => !isActionCompleted(messageId, person));
+                }
+                if (!messageId) return [actionFrom];
+                return isActionCompleted(messageId, actionFrom) ? [] : [actionFrom];
+            };
+
+            const completeAction = async (messageId, completedBy = currentUser) => {
                 const completionKey = `${messageId}_${completedBy}`;
                 const completion = {
                     messageId,
@@ -245,32 +299,56 @@
                     timestamp: new Date().toLocaleString()
                 };
                 
-                setActionCompletions(prev => ({
-                    ...prev,
-                    [completionKey]: completion
-                }));
-
-                // Update the actual tender's actionFrom field
-                if (selectedEnquiry && Array.isArray(selectedEnquiry.actionFrom)) {
-                    // Remove the completed person from actionFrom array
-                    const updatedActionFrom = selectedEnquiry.actionFrom.filter(person => person !== completedBy);
+                try {
+                    // Save completion to Firebase (both message-level and tender-level)
+                    await firebase.database().ref(`action-completions/${selectedEnquiry.id}/${completionKey}`).set(completion);
                     
-                    // If no one left, mark as complete
-                    const finalActionFrom = updatedActionFrom.length === 0 ? 'Complete' : updatedActionFrom;
+                    // Also save to tender-level completions for easy access across views
+                    await firebase.database().ref(`tender-completions/${selectedEnquiry.id}/${completedBy}`).set({
+                        completedBy,
+                        timestamp: new Date().toLocaleString(),
+                        messageId
+                    });
                     
-                    // Update in Firebase
-                    const tenderRef = firebase.database().ref(`tenders/${selectedEnquiry.id}`);
-                    tenderRef.update({actionFrom: finalActionFrom});
-                } else if (selectedEnquiry && selectedEnquiry.actionFrom === completedBy) {
-                    // Single person action - mark as complete
-                    const tenderRef = firebase.database().ref(`tenders/${selectedEnquiry.id}`);
-                    tenderRef.update({actionFrom: 'Complete'});
+                    // Update the actual tender's actionFrom field ONLY if this person was actually assigned
+                    if (selectedEnquiry && Array.isArray(selectedEnquiry.actionFrom) && selectedEnquiry.actionFrom.includes(completedBy)) {
+                        // Remove the completed person from actionFrom array
+                        const updatedActionFrom = selectedEnquiry.actionFrom.filter(person => person !== completedBy);
+                        
+                        // If no one left, mark as complete
+                        const finalActionFrom = updatedActionFrom.length === 0 ? 'Complete' : updatedActionFrom;
+                        
+                        // Update in Firebase
+                        const tenderRef = firebase.database().ref(`tenders/${selectedEnquiry.id}`);
+                        await tenderRef.update({actionFrom: finalActionFrom});
+                    } else if (selectedEnquiry && selectedEnquiry.actionFrom === completedBy) {
+                        // Single person action - mark as complete
+                        const tenderRef = firebase.database().ref(`tenders/${selectedEnquiry.id}`);
+                        await tenderRef.update({actionFrom: 'Complete'});
+                    }
+                } catch (error) {
+                    console.error('Error completing action:', error);
                 }
             };
 
             const isActionCompleted = (messageId, person) => {
                 const completionKey = `${messageId}_${person}`;
                 return actionCompletions[completionKey] !== undefined;
+            };
+
+            const isPersonActionCompleted = (tenderId, person) => {
+                return tenderCompletions[tenderId] && tenderCompletions[tenderId][person] !== undefined;
+            };
+
+            const getActivePeopleForTender = (tender) => {
+                if (!tender.actionFrom || tender.actionFrom === 'Complete') return [];
+                if (tender.actionFrom === 'Awaiting Assignment') return [];
+                
+                if (Array.isArray(tender.actionFrom)) {
+                    return tender.actionFrom.filter(person => !isPersonActionCompleted(tender.id, person));
+                } else {
+                    return isPersonActionCompleted(tender.id, tender.actionFrom) ? [] : [tender.actionFrom];
+                }
             };
 
             const stats = {
@@ -293,7 +371,7 @@
                 }
                 
                 // Determine initial action required
-                let initialAction = 'Craig Malt'; // Default to sales manager
+                let initialAction = 'Awaiting Assignment'; // No auto-assignment
                 if (newTenderForm.requiresDesign && newTenderForm.designer !== 'Unassigned') {
                     initialAction = newTenderForm.designer; // Start with designer if design required
                 } else if (newTenderForm.assignedTo !== 'Unassigned') {
@@ -831,23 +909,28 @@
                                                         <td className="py-3 text-white/80 text-sm">{enquiry.client}</td>
                                                         <td className="py-3 text-white/80 text-sm max-w-[200px] truncate">{enquiry.project}</td>
                                                         <td className="py-3">
-                                                            <div className={`${getActionStatusColor(enquiry.actionFrom)} rounded px-2 py-1 text-center text-xs`}>
+                                                            <div className={`${getActionStatusColor(enquiry.actionFrom, enquiry)} rounded px-2 py-1 text-center text-xs`}>
                                                                 <div className="text-white font-bold">
-                                                                    {enquiry.actionFrom === 'Complete' || (Array.isArray(enquiry.actionFrom) && enquiry.actionFrom.length === 0) ? (
-                                                                        <span>✅ COMPLETE</span>
-                                                                    ) : (
-                                                                        <>
-                                                                            🚨 {Array.isArray(enquiry.actionFrom) ? (
-                                                                                <div className="space-y-1">
-                                                                                    {enquiry.actionFrom.map((person, index) => (
-                                                                                        <div key={index}>{person}</div>
-                                                                                    ))}
-                                                                                </div>
-                                                                            ) : (
-                                                                                enquiry.actionFrom
-                                                                            )}
-                                                                        </>
-                                                                    )}
+                                                                    {(() => {
+                                                                        const activePeople = getActivePeopleForTender(enquiry);
+                                                                        if (activePeople.length === 0) {
+                                                                            return <span>✅ COMPLETE</span>;
+                                                                        } else {
+                                                                            return (
+                                                                                <>
+                                                                                    🚨 {activePeople.length === 1 ? (
+                                                                                        activePeople[0]
+                                                                                    ) : (
+                                                                                        <div className="space-y-1">
+                                                                                            {activePeople.map((person, index) => (
+                                                                                                <div key={index}>{person}</div>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </>
+                                                                            );
+                                                                        }
+                                                                    })()}
                                                                 </div>
                                                             </div>
                                                         </td>
@@ -1536,23 +1619,30 @@
                                                 <div className="flex items-center justify-between mb-2">
                                                     <h3 className="text-white font-medium text-sm truncate flex-1 mr-4">{selectedEnquiry.project}</h3>
                                                     <div className="flex items-center space-x-2">
-                                                        <div className={`${getActionStatusColor(selectedEnquiry.actionFrom)} rounded px-2 py-1 text-center`}>
+                                                        <div className={`${getActionStatusColor(selectedEnquiry.actionFrom, selectedEnquiry)} rounded px-2 py-1 text-center`}>
                                                             <div className="text-white font-bold text-xs">
-                                                                {selectedEnquiry.actionFrom === 'Complete' || (Array.isArray(selectedEnquiry.actionFrom) && selectedEnquiry.actionFrom.length === 0) ? 
-                                                                    '✅ ACTION' : '🚨 ACTION'}
+                                                                {(() => {
+                                                                    const activePeople = getActivePeopleForTender(selectedEnquiry);
+                                                                    return activePeople.length === 0 ? '✅ ACTION' : '🚨 ACTION';
+                                                                })()}
                                                             </div>
                                                             <div className="text-white font-bold text-xs">
-                                                                {selectedEnquiry.actionFrom === 'Complete' || (Array.isArray(selectedEnquiry.actionFrom) && selectedEnquiry.actionFrom.length === 0) ? (
-                                                                    <span>✅ COMPLETE</span>
-                                                                ) : Array.isArray(selectedEnquiry.actionFrom) ? (
-                                                                    <div className="space-y-1">
-                                                                        {selectedEnquiry.actionFrom.map((person, index) => (
-                                                                            <div key={index}>{person}</div>
-                                                                        ))}
-                                                                    </div>
-                                                                ) : (
-                                                                    selectedEnquiry.actionFrom
-                                                                )}
+                                                                {(() => {
+                                                                    const activePeople = getActivePeopleForTender(selectedEnquiry);
+                                                                    if (activePeople.length === 0) {
+                                                                        return <span>✅ COMPLETE</span>;
+                                                                    } else if (activePeople.length === 1) {
+                                                                        return activePeople[0];
+                                                                    } else {
+                                                                        return (
+                                                                            <div className="space-y-1">
+                                                                                {activePeople.map((person, index) => (
+                                                                                    <div key={index}>{person}</div>
+                                                                                ))}
+                                                                            </div>
+                                                                        );
+                                                                    }
+                                                                })()}
                                                             </div>
                                                         </div>
                                                         <span className={`px-2 py-1 rounded text-xs font-bold ${getPriorityColor(selectedEnquiry.priorityNumber)}`}>
@@ -2163,23 +2253,30 @@
                                                         </div>
                                                         <div>
                                                             <p className="text-white/60 text-xs font-medium mb-1">Action Required</p>
-                                                            <div className={`${getActionStatusColor(selectedEnquiry.actionFrom)} rounded px-2 py-1 text-center inline-block`}>
+                                                            <div className={`${getActionStatusColor(selectedEnquiry.actionFrom, selectedEnquiry)} rounded px-2 py-1 text-center inline-block`}>
                                                                 <div className="text-white font-bold text-xs">
-                                                                    {selectedEnquiry.actionFrom === 'Complete' || (Array.isArray(selectedEnquiry.actionFrom) && selectedEnquiry.actionFrom.length === 0) ? 
-                                                                        '✅ ACTION' : '🚨 ACTION'}
+                                                                    {(() => {
+                                                                        const activePeople = getActivePeopleForTender(selectedEnquiry);
+                                                                        return activePeople.length === 0 ? '✅ ACTION' : '🚨 ACTION';
+                                                                    })()}
                                                                 </div>
                                                                 <div className="text-white font-bold text-xs">
-                                                                    {selectedEnquiry.actionFrom === 'Complete' || (Array.isArray(selectedEnquiry.actionFrom) && selectedEnquiry.actionFrom.length === 0) ? (
-                                                                        <span>✅ COMPLETE</span>
-                                                                    ) : Array.isArray(selectedEnquiry.actionFrom) ? (
-                                                                        <div className="space-y-1">
-                                                                            {selectedEnquiry.actionFrom.map((person, index) => (
-                                                                                <div key={index}>{person}</div>
-                                                                            ))}
-                                                                        </div>
-                                                                    ) : (
-                                                                        selectedEnquiry.actionFrom
-                                                                    )}
+                                                                    {(() => {
+                                                                        const activePeople = getActivePeopleForTender(selectedEnquiry);
+                                                                        if (activePeople.length === 0) {
+                                                                            return <span>✅ COMPLETE</span>;
+                                                                        } else if (activePeople.length === 1) {
+                                                                            return activePeople[0];
+                                                                        } else {
+                                                                            return (
+                                                                                <div className="space-y-1">
+                                                                                    {activePeople.map((person, index) => (
+                                                                                        <div key={index}>{person}</div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            );
+                                                                        }
+                                                                    })()}
                                                                 </div>
                                                             </div>
                                                         </div>
