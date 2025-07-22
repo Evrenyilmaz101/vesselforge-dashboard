@@ -184,6 +184,7 @@
             const [showActionAlert, setShowActionAlert] = useState(false);
             const [actionAlertPeople, setActionAlertPeople] = useState([]);
             const [actionAlertMessage, setActionAlertMessage] = useState('');
+            const [individualActionMessages, setIndividualActionMessages] = useState({});
 
             const getActionStatusColor = (actionFrom) => {
                 if (!actionFrom || actionFrom === 'Complete') return 'bg-green-500';
@@ -1636,6 +1637,17 @@
                                                                                     👁 View
                                                                                 </button>
                                                                             </div>
+                                                                        ) : message.type === 'action-alert' ? (
+                                                                            <div className="bg-gradient-to-r from-red-600 to-orange-600 border-2 border-red-400 rounded-lg p-4 shadow-xl animate-pulse">
+                                                                                <div className="flex items-center space-x-2 mb-2">
+                                                                                    <span className="text-yellow-300 text-lg">⚠️</span>
+                                                                                    <span className="text-white font-bold text-sm uppercase tracking-wider">ACTION ALERT</span>
+                                                                                    <span className="text-yellow-300 text-lg">⚠️</span>
+                                                                                </div>
+                                                                                <div className="text-white font-medium text-sm whitespace-pre-line leading-relaxed">
+                                                                                    {message.text}
+                                                                                </div>
+                                                                            </div>
                                                                         ) : (
                                                                             <p className="text-white leading-relaxed text-sm">{message.text}</p>
                                                                         )}
@@ -1648,14 +1660,15 @@
 
                                                 {/* Action Alert Bar */}
                                                 <div className="px-3 py-2 border-t border-white/20 bg-slate-800/50">
-                                                    <button
-                                                        onClick={() => setShowActionAlert(true)}
-                                                        className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg transition-all shadow-lg font-medium"
-                                                    >
-                                                        <span>🚨</span>
-                                                        <span>Create Action Alert</span>
-                                                        <span className="text-xs opacity-80">(Assign to multiple people)</span>
-                                                    </button>
+                                                    <div className="flex justify-center">
+                                                        <button
+                                                            onClick={() => setShowActionAlert(true)}
+                                                            className="flex items-center space-x-2 px-6 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg transition-all shadow-lg font-medium"
+                                                        >
+                                                            <span>🚨</span>
+                                                            <span>Create Action Alert</span>
+                                                        </button>
+                                                    </div>
                                                 </div>
 
                                                 {/* Message Input */}
@@ -2262,6 +2275,7 @@
                                                 setShowActionAlert(false);
                                                 setActionAlertPeople([]);
                                                 setActionAlertMessage('');
+                                                setIndividualActionMessages({});
                                             }}
                                             className="text-white/60 hover:text-white text-2xl font-bold"
                                         >
@@ -2295,18 +2309,45 @@
                                             </div>
                                         </div>
 
-                                        <div>
-                                            <label className="block text-white/80 text-sm font-medium mb-2">
-                                                Action Required Message (Optional)
-                                            </label>
-                                            <textarea
-                                                value={actionAlertMessage}
-                                                onChange={(e) => setActionAlertMessage(e.target.value)}
-                                                placeholder="Describe what needs to be done..."
-                                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-orange-400 text-sm"
-                                                rows="3"
-                                            />
-                                        </div>
+                                        {actionAlertPeople.length > 1 ? (
+                                            <div>
+                                                <label className="block text-white/80 text-sm font-medium mb-3">
+                                                    Individual Action Instructions
+                                                </label>
+                                                <div className="space-y-3 max-h-60 overflow-y-auto">
+                                                    {actionAlertPeople.map(person => (
+                                                        <div key={person} className="bg-white/5 rounded-lg p-3 border border-white/10">
+                                                            <label className="block text-white font-medium text-sm mb-2">
+                                                                Action for {person}:
+                                                            </label>
+                                                            <textarea
+                                                                value={individualActionMessages[person] || ''}
+                                                                onChange={(e) => setIndividualActionMessages({
+                                                                    ...individualActionMessages,
+                                                                    [person]: e.target.value
+                                                                })}
+                                                                placeholder={`Specific action required from ${person}...`}
+                                                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-orange-400 text-sm"
+                                                                rows="2"
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <label className="block text-white/80 text-sm font-medium mb-2">
+                                                    Action Required Message (Optional)
+                                                </label>
+                                                <textarea
+                                                    value={actionAlertMessage}
+                                                    onChange={(e) => setActionAlertMessage(e.target.value)}
+                                                    placeholder="Describe what needs to be done..."
+                                                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-orange-400 text-sm"
+                                                    rows="3"
+                                                />
+                                            </div>
+                                        )}
 
                                         <div className="flex space-x-3 pt-4">
                                             <button
@@ -2314,6 +2355,7 @@
                                                     setShowActionAlert(false);
                                                     setActionAlertPeople([]);
                                                     setActionAlertMessage('');
+                                                    setIndividualActionMessages({});
                                                 }}
                                                 className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
                                             >
@@ -2332,12 +2374,25 @@
                                                         tenderRef.update({actionFrom: actionAlertPeople});
                                                         
                                                         // Send message about the action assignment
+                                                        let alertText = '';
+                                                        if (actionAlertPeople.length > 1) {
+                                                            // Multiple people with individual messages
+                                                            const individualActions = actionAlertPeople.map(person => {
+                                                                const personAction = individualActionMessages[person];
+                                                                return `👤 ${person}${personAction ? `: ${personAction}` : ''}`;
+                                                            }).join('\n');
+                                                            alertText = `🔥🚨 URGENT ACTION REQUIRED 🚨🔥\n\n${individualActions}`;
+                                                        } else {
+                                                            // Single person
+                                                            alertText = `🔥🚨 URGENT ACTION REQUIRED 🚨🔥\n\n👤 ${actionAlertPeople[0]}${actionAlertMessage ? `\n📋 ${actionAlertMessage}` : ''}`;
+                                                        }
+                                                        
                                                         const message = {
                                                             id: Math.floor(Math.random() * 1000000),
-                                                            text: `🚨 ACTION ALERT assigned to: ${actionAlertPeople.join(', ')}${actionAlertMessage ? ` - ${actionAlertMessage}` : ''}`,
+                                                            text: alertText,
                                                             sender: 'System',
                                                             timestamp: new Date().toLocaleString(),
-                                                            type: 'system'
+                                                            type: 'action-alert'
                                                         };
                                                         
                                                         const messagesRef = firebase.database().ref(`tender-messages/${selectedEnquiry.id}`);
@@ -2346,6 +2401,7 @@
                                                         setShowActionAlert(false);
                                                         setActionAlertPeople([]);
                                                         setActionAlertMessage('');
+                                                        setIndividualActionMessages({});
                                                     }
                                                 }}
                                                 disabled={actionAlertPeople.length === 0}
