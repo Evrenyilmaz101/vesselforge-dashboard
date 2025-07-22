@@ -233,19 +233,35 @@
                         const currentCompletedBy = selectedEnquiry.completedBy || [];
                         const updatedCompletedBy = [...new Set([...currentCompletedBy, completedBy])]; // Add if not already there
                         
-                        // Update the tender with completion info
-                        const tenderRef = firebase.database().ref(`tenders/${selectedEnquiry.id}`);
-                        await tenderRef.update({completedBy: updatedCompletedBy});
-                        
-                        // Also update actionFrom to remove completed people if they were assigned
+                        // Calculate the new actionFrom
+                        let finalActionFrom = selectedEnquiry.actionFrom;
                         if (Array.isArray(selectedEnquiry.actionFrom)) {
                             const remainingActions = selectedEnquiry.actionFrom.filter(person => !updatedCompletedBy.includes(person));
-                            // If all actions completed, reset to awaiting assignment instead of Complete
-                            const finalActionFrom = remainingActions.length === 0 ? 'Awaiting Assignment' : remainingActions;
-                            await tenderRef.update({actionFrom: finalActionFrom});
+                            finalActionFrom = remainingActions.length === 0 ? 'Awaiting Assignment' : remainingActions;
                         } else if (selectedEnquiry.actionFrom === completedBy) {
-                            await tenderRef.update({actionFrom: 'Awaiting Assignment'});
+                            finalActionFrom = 'Awaiting Assignment';
                         }
+                        
+                        // Update Firebase
+                        const tenderRef = firebase.database().ref(`tenders/${selectedEnquiry.id}`);
+                        await tenderRef.update({
+                            completedBy: updatedCompletedBy,
+                            actionFrom: finalActionFrom
+                        });
+                        
+                        // IMMEDIATELY update local state for instant UI response
+                        setSelectedEnquiry(prev => ({
+                            ...prev,
+                            completedBy: updatedCompletedBy,
+                            actionFrom: finalActionFrom
+                        }));
+                        
+                        // Also update the enquiries list so dashboard stays in sync
+                        setEnquiries(prev => prev.map(enquiry => 
+                            enquiry.id === selectedEnquiry.id 
+                                ? { ...enquiry, completedBy: updatedCompletedBy, actionFrom: finalActionFrom }
+                                : enquiry
+                        ));
                     }
                 } catch (error) {
                     console.error('Error completing action:', error);
