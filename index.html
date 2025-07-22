@@ -210,8 +210,10 @@
                 // If awaiting assignment - gray
                 if (activePeople === 'awaiting') return 'bg-gray-500';
                 
-                // If no active people, it's complete
-                if (Array.isArray(activePeople) && activePeople.length === 0) return 'bg-green-500';
+                // If no active people, check if it's complete or reset to awaiting
+                if (Array.isArray(activePeople) && activePeople.length === 0) {
+                    return tender.actionFrom === 'Awaiting Assignment' ? 'bg-gray-500' : 'bg-green-500';
+                }
                 
                 // Determine color based on active people
                 const actionString = Array.isArray(activePeople) ? activePeople.join(' ') : '';
@@ -238,10 +240,11 @@
                         // Also update actionFrom to remove completed people if they were assigned
                         if (Array.isArray(selectedEnquiry.actionFrom)) {
                             const remainingActions = selectedEnquiry.actionFrom.filter(person => !updatedCompletedBy.includes(person));
-                            const finalActionFrom = remainingActions.length === 0 ? 'Complete' : remainingActions;
+                            // If all actions completed, reset to awaiting assignment instead of Complete
+                            const finalActionFrom = remainingActions.length === 0 ? 'Awaiting Assignment' : remainingActions;
                             await tenderRef.update({actionFrom: finalActionFrom});
                         } else if (selectedEnquiry.actionFrom === completedBy) {
-                            await tenderRef.update({actionFrom: 'Complete'});
+                            await tenderRef.update({actionFrom: 'Awaiting Assignment'});
                         }
                     }
                 } catch (error) {
@@ -259,13 +262,17 @@
             };
 
             const getActivePeopleForTender = (tender) => {
-                if (!tender.actionFrom || tender.actionFrom === 'Complete') return [];
-                if (tender.actionFrom === 'Awaiting Assignment') return 'awaiting'; // Special flag for awaiting assignment
+                // If no actionFrom set or Complete, treat as awaiting assignment
+                if (!tender.actionFrom || tender.actionFrom === 'Complete' || tender.actionFrom === 'Awaiting Assignment') {
+                    return 'awaiting'; // Special flag for awaiting assignment
+                }
                 
                 const completedBy = tender.completedBy || [];
                 
                 if (Array.isArray(tender.actionFrom)) {
-                    return tender.actionFrom.filter(person => !completedBy.includes(person));
+                    const remainingPeople = tender.actionFrom.filter(person => !completedBy.includes(person));
+                    // If everyone completed their actions, we should reset to awaiting
+                    return remainingPeople.length === 0 ? [] : remainingPeople;
                 } else {
                     return completedBy.includes(tender.actionFrom) ? [] : [tender.actionFrom];
                 }
@@ -832,7 +839,8 @@
                                                                         if (activePeople === 'awaiting') {
                                                                             return <span>📝 NO ACTION ALERT</span>;
                                                                         } else if (Array.isArray(activePeople) && activePeople.length === 0) {
-                                                                            return <span>✅ COMPLETE</span>;
+                                                                            // Temporarily show complete until actionFrom resets to awaiting
+                                                                            return enquiry.actionFrom === 'Awaiting Assignment' ? <span>📝 NO ACTION ALERT</span> : <span>✅ COMPLETE</span>;
                                                                         } else if (Array.isArray(activePeople)) {
                                                                             return (
                                                                                 <>
@@ -1543,7 +1551,9 @@
                                                                 {(() => {
                                                                     const activePeople = getActivePeopleForTender(selectedEnquiry);
                                                                     if (activePeople === 'awaiting') return '📝 NO ACTION';
-                                                                    if (Array.isArray(activePeople) && activePeople.length === 0) return '✅ ACTION';
+                                                                    if (Array.isArray(activePeople) && activePeople.length === 0) {
+                                                                        return selectedEnquiry.actionFrom === 'Awaiting Assignment' ? '📝 NO ACTION' : '✅ ACTION';
+                                                                    }
                                                                     return '🚨 ACTION';
                                                                 })()}
                                                             </div>
@@ -1553,7 +1563,7 @@
                                                                     if (activePeople === 'awaiting') {
                                                                         return <span>📝 NO ACTION ALERT</span>;
                                                                     } else if (Array.isArray(activePeople) && activePeople.length === 0) {
-                                                                        return <span>✅ COMPLETE</span>;
+                                                                        return selectedEnquiry.actionFrom === 'Awaiting Assignment' ? <span>📝 NO ACTION ALERT</span> : <span>✅ COMPLETE</span>;
                                                                     } else if (Array.isArray(activePeople) && activePeople.length === 1) {
                                                                         return activePeople[0];
                                                                     } else if (Array.isArray(activePeople)) {
@@ -2182,7 +2192,9 @@
                                                                     {(() => {
                                                                         const activePeople = getActivePeopleForTender(selectedEnquiry);
                                                                         if (activePeople === 'awaiting') return '📝 NO ACTION';
-                                                                        if (Array.isArray(activePeople) && activePeople.length === 0) return '✅ ACTION';
+                                                                        if (Array.isArray(activePeople) && activePeople.length === 0) {
+                                                                            return selectedEnquiry.actionFrom === 'Awaiting Assignment' ? '📝 NO ACTION' : '✅ ACTION';
+                                                                        }
                                                                         return '🚨 ACTION';
                                                                     })()}
                                                                 </div>
@@ -2192,7 +2204,7 @@
                                                                         if (activePeople === 'awaiting') {
                                                                             return <span>📝 NO ACTION ALERT</span>;
                                                                         } else if (Array.isArray(activePeople) && activePeople.length === 0) {
-                                                                            return <span>✅ COMPLETE</span>;
+                                                                            return selectedEnquiry.actionFrom === 'Awaiting Assignment' ? <span>📝 NO ACTION ALERT</span> : <span>✅ COMPLETE</span>;
                                                                         } else if (Array.isArray(activePeople) && activePeople.length === 1) {
                                                                             return activePeople[0];
                                                                         } else if (Array.isArray(activePeople)) {
@@ -2518,14 +2530,18 @@
                                             <button
                                                 onClick={() => {
                                                     if (actionAlertPeople.length > 0) {
-                                                        // Update the tender with new action assignment
+                                                        // Update the tender with new action assignment and reset completions
                                                         const updatedTender = {
                                                             ...selectedEnquiry,
-                                                            actionFrom: actionAlertPeople
+                                                            actionFrom: actionAlertPeople,
+                                                            completedBy: [] // Reset completions when new action is assigned
                                                         };
                                                         
                                                         const tenderRef = firebase.database().ref(`tenders/${updatedTender.id}`);
-                                                        tenderRef.update({actionFrom: actionAlertPeople});
+                                                        tenderRef.update({
+                                                            actionFrom: actionAlertPeople,
+                                                            completedBy: [] // Reset completions for new action
+                                                        });
                                                         
                                                         // Send message about the action assignment
                                                         let alertText = '';
