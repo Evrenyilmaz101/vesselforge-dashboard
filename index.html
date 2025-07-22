@@ -779,17 +779,17 @@
                                                             </div>
                                                         </td>
                                                         <td className="py-3">
-                                                            <div className="flex items-center gap-3">
+                                                            <div className="flex items-center justify-between min-w-[140px]">
                                                                 <button
                                                                     onClick={() => openStatusUpdate(enquiry)}
-                                                                    className={`text-xs px-2 py-1 rounded-full font-bold cursor-pointer hover:opacity-80 transition-opacity ${getTenderStatusColor(enquiry.tenderStatus)}`}
+                                                                    className={`text-xs px-3 py-1 rounded-full font-bold cursor-pointer hover:opacity-80 transition-opacity ${getTenderStatusColor(enquiry.tenderStatus)}`}
                                                                     title="Click to change status"
                                                                 >
                                                                     {enquiry.tenderStatus}
                                                                 </button>
                                                                 <button
                                                                     onClick={() => openDeleteConfirm(enquiry)}
-                                                                    className="text-red-400 hover:text-red-300 hover:bg-red-900/20 p-1 rounded transition-colors"
+                                                                    className="text-red-400 hover:text-red-300 hover:bg-red-900/20 p-2 rounded-full transition-colors ml-4"
                                                                     title="Delete Tender"
                                                                 >
                                                                     ✕
