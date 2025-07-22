@@ -181,15 +181,39 @@
             const [selectedTenderForStatus, setSelectedTenderForStatus] = useState(null);
             const [newTenderStatus, setNewTenderStatus] = useState('');
             const [showSidebar, setShowSidebar] = useState(false);
+            const [showActionAlert, setShowActionAlert] = useState(false);
+            const [actionAlertPeople, setActionAlertPeople] = useState([]);
+            const [actionAlertMessage, setActionAlertMessage] = useState('');
 
             const getActionStatusColor = (actionFrom) => {
                 if (!actionFrom || actionFrom === 'Complete') return 'bg-green-500';
                 if (actionFrom === 'Awaiting Assignment') return 'bg-gray-500'; // Waiting for assignment
+                
+                // Handle array of people (multiple assignments)
+                if (Array.isArray(actionFrom)) {
+                    const actionString = actionFrom.join(' ');
+                    if (actionString.includes('Scott') || actionString.includes('Peter')) return 'bg-red-500'; // Estimators - urgent
+                    if (actionString.includes('Dave') || actionString.includes('Brandon') || actionString.includes('Sheryl')) return 'bg-orange-500'; // Designers
+                    if (actionString.includes('Craig')) return 'bg-purple-500'; // Sales
+                    if (actionString.includes('Lewis')) return 'bg-blue-500'; // Planning
+                    return 'bg-yellow-500'; // Multiple mixed roles
+                }
+                
+                // Handle single person (legacy support)
                 if (actionFrom.includes('Scott') || actionFrom.includes('Peter')) return 'bg-red-500'; // Estimators - urgent
                 if (actionFrom.includes('Dave') || actionFrom.includes('Brandon') || actionFrom.includes('Sheryl')) return 'bg-orange-500'; // Designers
                 if (actionFrom.includes('Craig')) return 'bg-purple-500'; // Sales
                 if (actionFrom.includes('Lewis')) return 'bg-blue-500'; // Planning
                 return 'bg-yellow-500'; // Default
+            };
+
+            const formatActionFrom = (actionFrom) => {
+                if (!actionFrom || actionFrom === 'Complete') return 'Complete';
+                if (actionFrom === 'Awaiting Assignment') return 'Awaiting Assignment';
+                if (Array.isArray(actionFrom)) {
+                    return actionFrom.length > 2 ? `${actionFrom.slice(0, 2).join(', ')} +${actionFrom.length - 2}` : actionFrom.join(', ');
+                }
+                return actionFrom;
             };
 
             const stats = {
@@ -751,40 +775,24 @@
                                                         <td className="py-3 text-white/80 text-sm max-w-[200px] truncate">{enquiry.project}</td>
                                                         <td className="py-3">
                                                             <div className={`${getActionStatusColor(enquiry.actionFrom)} rounded px-2 py-1 text-center text-xs`}>
-                                                                <div className="text-white font-bold">🚨 {enquiry.actionFrom}</div>
+                                                                <div className="text-white font-bold">🚨 {formatActionFrom(enquiry.actionFrom)}</div>
                                                             </div>
                                                         </td>
                                                         <td className="py-3">
-                                                            <div className="flex flex-wrap gap-1">
-                                                                {canManageActions() && (
-                                                                    <button
-                                                                        onClick={() => openAssignDialog(enquiry)}
-                                                                        className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
-                                                                        title="Assign Action"
-                                                                    >
-                                                                        👤 Assign
-                                                                    </button>
-                                                                )}
-                                                                <button
-                                                                    onClick={() => completeMyTask(enquiry.id)}
-                                                                    className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-colors"
-                                                                    title="Mark Complete"
-                                                                >
-                                                                    ✅ Done
-                                                                </button>
+                                                            <div className="flex items-center gap-3">
                                                                 <button
                                                                     onClick={() => openStatusUpdate(enquiry)}
-                                                                    className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded transition-colors"
-                                                                    title="Update Status"
+                                                                    className={`text-xs px-2 py-1 rounded-full font-bold cursor-pointer hover:opacity-80 transition-opacity ${getTenderStatusColor(enquiry.tenderStatus)}`}
+                                                                    title="Click to change status"
                                                                 >
-                                                                    📊 Status
+                                                                    {enquiry.tenderStatus}
                                                                 </button>
                                                                 <button
                                                                     onClick={() => openDeleteConfirm(enquiry)}
-                                                                    className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
+                                                                    className="text-red-400 hover:text-red-300 hover:bg-red-900/20 p-1 rounded transition-colors"
                                                                     title="Delete Tender"
                                                                 >
-                                                                    🗑️ Delete
+                                                                    ✕
                                                                 </button>
                                                             </div>
                                                         </td>
@@ -1618,6 +1626,18 @@
                                                     )}
                                                 </div>
 
+                                                {/* Action Alert Bar */}
+                                                <div className="px-3 py-2 border-t border-white/20 bg-slate-800/50">
+                                                    <button
+                                                        onClick={() => setShowActionAlert(true)}
+                                                        className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg transition-all shadow-lg font-medium"
+                                                    >
+                                                        <span>🚨</span>
+                                                        <span>Create Action Alert</span>
+                                                        <span className="text-xs opacity-80">(Assign to multiple people)</span>
+                                                    </button>
+                                                </div>
+
                                                 {/* Message Input */}
                                                 <div className="p-3 border-t border-white/20 bg-slate-700/20">
                                                     <div className="flex space-x-2">
@@ -2194,6 +2214,116 @@
                                         >
                                             🗑️ Delete Tender
                                         </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Action Alert Modal */}
+                    {showActionAlert && (
+                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                            <div className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-md border border-white/20">
+                                <div className="p-6">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h3 className="text-xl font-bold text-orange-400">🚨 Create Action Alert</h3>
+                                        <button
+                                            onClick={() => {
+                                                setShowActionAlert(false);
+                                                setActionAlertPeople([]);
+                                                setActionAlertMessage('');
+                                            }}
+                                            className="text-white/60 hover:text-white text-2xl font-bold"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-white/80 text-sm font-medium mb-2">
+                                                Assign Action To (Select Multiple)
+                                            </label>
+                                            <div className="space-y-2 max-h-40 overflow-y-auto">
+                                                {['Scott Goodfellow', 'Peter Krempin', 'Dave Richards', 'Brandon Gregg', 'Sheryl', 'Craig Malt', 'Lewis McDonald'].map(person => (
+                                                    <label key={person} className="flex items-center space-x-2 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={actionAlertPeople.includes(person)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setActionAlertPeople([...actionAlertPeople, person]);
+                                                                } else {
+                                                                    setActionAlertPeople(actionAlertPeople.filter(p => p !== person));
+                                                                }
+                                                            }}
+                                                            className="rounded"
+                                                        />
+                                                        <span className="text-white">{person}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-white/80 text-sm font-medium mb-2">
+                                                Action Required Message (Optional)
+                                            </label>
+                                            <textarea
+                                                value={actionAlertMessage}
+                                                onChange={(e) => setActionAlertMessage(e.target.value)}
+                                                placeholder="Describe what needs to be done..."
+                                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-orange-400 text-sm"
+                                                rows="3"
+                                            />
+                                        </div>
+
+                                        <div className="flex space-x-3 pt-4">
+                                            <button
+                                                onClick={() => {
+                                                    setShowActionAlert(false);
+                                                    setActionAlertPeople([]);
+                                                    setActionAlertMessage('');
+                                                }}
+                                                className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    if (actionAlertPeople.length > 0) {
+                                                        // Update the tender with new action assignment
+                                                        const updatedTender = {
+                                                            ...selectedEnquiry,
+                                                            actionFrom: actionAlertPeople
+                                                        };
+                                                        
+                                                        const tenderRef = firebase.database().ref(`tenders/${updatedTender.id}`);
+                                                        tenderRef.update({actionFrom: actionAlertPeople});
+                                                        
+                                                        // Send message about the action assignment
+                                                        const message = {
+                                                            id: Math.floor(Math.random() * 1000000),
+                                                            text: `🚨 ACTION ALERT assigned to: ${actionAlertPeople.join(', ')}${actionAlertMessage ? ` - ${actionAlertMessage}` : ''}`,
+                                                            sender: 'System',
+                                                            timestamp: new Date().toLocaleString(),
+                                                            type: 'system'
+                                                        };
+                                                        
+                                                        const messagesRef = firebase.database().ref(`tender-messages/${selectedEnquiry.id}`);
+                                                        messagesRef.push(message);
+                                                        
+                                                        setShowActionAlert(false);
+                                                        setActionAlertPeople([]);
+                                                        setActionAlertMessage('');
+                                                    }
+                                                }}
+                                                disabled={actionAlertPeople.length === 0}
+                                                className="flex-1 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                                            >
+                                                🚨 Create Alert
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
