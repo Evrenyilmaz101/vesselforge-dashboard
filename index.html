@@ -228,38 +228,69 @@
 
             const completeAction = async (messageId, completedBy = currentUser) => {
                 try {
-                    // Update the tender to track who has completed actions
-                    if (selectedEnquiry) {
-                        const currentCompletedBy = selectedEnquiry.completedBy || [];
-                        const updatedCompletedBy = [...new Set([...currentCompletedBy, completedBy])]; // Add if not already there
+                    // Find the specific message to update
+                    if (!selectedEnquiry || !messages[selectedEnquiry.id]) return;
+                    const currentMessages = messages[selectedEnquiry.id];
+                    const message = currentMessages.find(msg => msg.id === messageId);
+                    if (!message) return;
+                    
+                    // Update the specific message with completion data
+                    const currentMessageCompletions = message.completedBy || [];
+                    const updatedMessageCompletions = [...new Set([...currentMessageCompletions, completedBy])];
+                    
+                    // Update the message in Firebase
+                    const messageRef = firebase.database().ref(`tender-messages/${selectedEnquiry.id}/${messageId}`);
+                    await messageRef.update({
+                        completedBy: updatedMessageCompletions
+                    });
+                    
+                    // IMMEDIATELY update local messages state for instant UI response
+                    setMessages(prev => ({
+                        ...prev,
+                        [selectedEnquiry.id]: prev[selectedEnquiry.id].map(msg => 
+                            msg.id === messageId 
+                                ? { ...msg, completedBy: updatedMessageCompletions }
+                                : msg
+                        )
+                    }));
+                    
+                    // Check if this is the current/latest action alert by comparing with tender's actionFrom
+                    const isCurrentAction = Array.isArray(selectedEnquiry.actionFrom) 
+                        ? selectedEnquiry.actionFrom.includes(completedBy)
+                        : selectedEnquiry.actionFrom === completedBy;
+                    
+                    // Only update tender-level completion if this is the current action
+                    if (isCurrentAction) {
+                        const currentTenderCompletions = selectedEnquiry.completedBy || [];
+                        const updatedTenderCompletions = [...new Set([...currentTenderCompletions, completedBy])];
                         
-                        // Calculate the new actionFrom
+                        // Calculate the new actionFrom for the tender
                         let finalActionFrom = selectedEnquiry.actionFrom;
                         if (Array.isArray(selectedEnquiry.actionFrom)) {
-                            const remainingActions = selectedEnquiry.actionFrom.filter(person => !updatedCompletedBy.includes(person));
+                            const remainingActions = selectedEnquiry.actionFrom.filter(person => !updatedTenderCompletions.includes(person));
                             finalActionFrom = remainingActions.length === 0 ? 'Awaiting Assignment' : remainingActions;
                         } else if (selectedEnquiry.actionFrom === completedBy) {
                             finalActionFrom = 'Awaiting Assignment';
                         }
                         
-                        // Update Firebase
+                        // Update tender in Firebase
                         const tenderRef = firebase.database().ref(`tenders/${selectedEnquiry.id}`);
                         await tenderRef.update({
-                            completedBy: updatedCompletedBy,
+                            completedBy: updatedTenderCompletions,
                             actionFrom: finalActionFrom
                         });
                         
-                        // IMMEDIATELY update local state for instant UI response
+                        // Update local tender state
                         setSelectedEnquiry(prev => ({
                             ...prev,
-                            completedBy: updatedCompletedBy,
+                            completedBy: updatedTenderCompletions,
                             actionFrom: finalActionFrom
                         }));
                         
-                        // Also update the enquiries list so dashboard stays in sync
+                        // Update enquiries list for dashboard sync
                         setEnquiries(prev => prev.map(enquiry => 
                             enquiry.id === selectedEnquiry.id 
-                                ? { ...enquiry, completedBy: updatedCompletedBy, actionFrom: finalActionFrom }
+                                ? { ...enquiry, completedBy: updatedTenderCompletions, actionFrom: finalActionFrom }
                                 : enquiry
                         ));
                     }
@@ -269,8 +300,11 @@
             };
 
             const isActionCompleted = (messageId, person) => {
-                // Check if this person has completed their action for this tender
-                return selectedEnquiry && selectedEnquiry.completedBy && selectedEnquiry.completedBy.includes(person);
+                // Check if this person has completed their action for this specific message
+                if (!selectedEnquiry || !messages[selectedEnquiry.id]) return false;
+                const currentMessages = messages[selectedEnquiry.id];
+                const message = currentMessages.find(msg => msg.id === messageId);
+                return message && message.completedBy && message.completedBy.includes(person);
             };
 
             const isPersonActionCompleted = (tender, person) => {
