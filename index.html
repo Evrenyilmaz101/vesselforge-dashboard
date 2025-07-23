@@ -2486,19 +2486,31 @@
 
                                             {/* Team & Timeline */}
                                             <div className="bg-slate-800/50 rounded-xl p-6 border border-white/10">
-                                                <div className="flex items-center justify-between mb-6">
-                                                    <h2 className="text-xl font-bold text-white flex items-center">
-                                                        <i data-lucide="users" className="h-5 w-5 mr-2 text-purple-400"></i>
-                                                        Team & Timeline
-                                                    </h2>
-                                                    <button 
-                                                        onClick={() => openEditTeam(selectedEnquiry)}
-                                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors font-medium flex items-center"
-                                                    >
-                                                        <i data-lucide="edit" className="h-4 w-4 mr-2"></i>
-                                                        Edit Team Members
-                                                    </button>
-                                                </div>
+                                                                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h2 className="text-xl font-bold text-white flex items-center mb-2">
+                                <i data-lucide="users" className="h-5 w-5 mr-2 text-purple-400"></i>
+                                Team & Timeline
+                            </h2>
+                            <div className="flex gap-6 text-sm">
+                                <div>
+                                    <span className="text-white/60">Received:</span>
+                                    <span className="text-white font-medium ml-1">{selectedEnquiry.dateReceived}</span>
+                                </div>
+                                <div>
+                                    <span className="text-white/60">Due:</span>
+                                    <span className="text-white font-medium ml-1">{selectedEnquiry.dueDate}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => openEditTeam(selectedEnquiry)}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors font-medium flex items-center"
+                        >
+                            <i data-lucide="edit" className="h-4 w-4 mr-2"></i>
+                            Edit Team Members
+                        </button>
+                    </div>
 
                                                                 <div className="space-y-4">
                     {/* Estimators */}
@@ -2558,7 +2570,7 @@
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-white font-medium text-sm flex items-center">
                                 <i data-lucide="palette" className="h-4 w-4 mr-2 text-orange-400"></i>
-                                Designers
+                                Design Engineers
                             </h3>
                             <span className="text-orange-400 text-xs">
                                 {(selectedEnquiry.designers || (selectedEnquiry.designer ? [selectedEnquiry.designer] : [])).length}
@@ -2574,7 +2586,7 @@
                                 </span>
                             ))}
                             {!(selectedEnquiry.designers || selectedEnquiry.designer) && (
-                                <span className="text-white/60 text-xs italic">No designers assigned</span>
+                                <span className="text-white/60 text-xs italic">No design engineers assigned</span>
                             )}
                         </div>
                     </div>
@@ -2607,84 +2619,7 @@
                 </div>
                                             </div>
 
-                                            <div className="bg-slate-800/50 rounded-xl p-6 border border-white/10">
-                                                <div className="grid grid-cols-2 gap-6">
-                                                    <div className="space-y-3">
-                                                        <div>
-                                                            <p className="text-white/60 text-xs font-medium mb-1">Date Received</p>
-                                                            <p className="text-white font-medium text-sm">{selectedEnquiry.dateReceived}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-white/60 text-xs font-medium mb-1">Due Date</p>
-                                                            <p className="text-white font-medium text-sm">{selectedEnquiry.dueDate}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-white/60 text-xs font-medium mb-1">Customer</p>
-                                                            <p className="text-white font-medium text-sm">{selectedEnquiry.customer}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-white/60 text-xs font-medium mb-1">Location</p>
-                                                            <p className="text-white font-medium text-sm">{selectedEnquiry.location}</p>
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    <div className="space-y-3">
-                                                        <div>
-                                                            <p className="text-white/60 text-xs font-medium mb-1">Status</p>
-                                                            <span className={`px-2 py-1 rounded text-xs font-bold ${
-                                                                selectedEnquiry.status === 'Won' ? 'bg-green-500 text-white' :
-                                                                selectedEnquiry.status === 'Lost' ? 'bg-red-500 text-white' :
-                                                                selectedEnquiry.status === 'Active' ? 'bg-blue-500 text-white' :
-                                                                selectedEnquiry.status === 'Cancelled' ? 'bg-gray-500 text-white' :
-                                                                selectedEnquiry.status === 'Hold' ? 'bg-orange-500 text-white' :
-                                                                'bg-slate-500 text-white'
-                                                            }`}>
-                                                                {selectedEnquiry.status}
-                                                            </span>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-white/60 text-xs font-medium mb-1">Action Alert</p>
-                                                            <div className="text-white font-bold text-xs">
-                                                                {(() => {
-                                                                    const activePeople = getActivePeopleForTender(selectedEnquiry);
-                                                                    if (activePeople === 'awaiting') return '📝 NO ACTION';
-                                                                    if (Array.isArray(activePeople) && activePeople.length === 0) {
-                                                                        return selectedEnquiry.actionFrom === 'Awaiting Assignment' ? '📝 NO ACTION' : '✅ ACTION';
-                                                                    }
-                                                                    return '🚨 ACTION';
-                                                                })()}
-                                                            </div>
-                                                            <div className="text-white font-bold text-xs">
-                                                                {(() => {
-                                                                    const activePeople = getActivePeopleForTender(selectedEnquiry);
-                                                                    if (activePeople === 'awaiting') {
-                                                                        return <span>📝 NO ACTION ALERT</span>;
-                                                                    } else if (Array.isArray(activePeople) && activePeople.length === 0) {
-                                                                        return selectedEnquiry.actionFrom === 'Awaiting Assignment' ? <span>📝 NO ACTION ALERT</span> : <span>✅ COMPLETE</span>;
-                                                                    } else if (Array.isArray(activePeople) && activePeople.length === 1) {
-                                                                        return activePeople[0];
-                                                                    } else if (Array.isArray(activePeople)) {
-                                                                        return (
-                                                                            <div className="space-y-1">
-                                                                                {activePeople.map((person, index) => (
-                                                                                    <div key={index}>{person}</div>
-                                                                                ))}
-                                                                            </div>
-                                                                        );
-                                                                    }
-                                                                    return <span>📝 NO ACTION ALERT</span>;
-                                                                })()}
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-white/60 text-xs font-medium mb-1">Priority (Craig's Ranking)</p>
-                                                            <span className={`px-2 py-1 rounded text-xs font-bold ${getPriorityColor(selectedEnquiry.priorityNumber)}`}>
-                                                                P{selectedEnquiry.priorityNumber}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            
 
                                             {/* Action Buttons */}
                                             <div className="flex justify-center">
@@ -2891,8 +2826,8 @@
                                                 <i data-lucide="calculator" className="h-4 w-4 mr-2 text-blue-400"></i>
                                                 Estimators
                                             </label>
-                                            <div className="space-y-2 max-h-32 overflow-y-auto">
-                                                {['Scott Goodfellow', 'Peter Krempin', 'Dave Richards'].map(person => (
+                                                                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                                {['Peter Krempin', 'Scott Goodfellow'].map(person => (
                                                     <label key={person} className="flex items-center space-x-2 cursor-pointer">
                                                         <input
                                                             type="checkbox"
@@ -2924,8 +2859,8 @@
                                                 <i data-lucide="briefcase" className="h-4 w-4 mr-2 text-green-400"></i>
                                                 Sales Managers
                                             </label>
-                                            <div className="space-y-2 max-h-32 overflow-y-auto">
-                                                {['Craig Malt', 'Lewis McDonald', 'Sheryl'].map(person => (
+                                                                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                                {['Craig Malt'].map(person => (
                                                     <label key={person} className="flex items-center space-x-2 cursor-pointer">
                                                         <input
                                                             type="checkbox"
@@ -2952,13 +2887,13 @@
                                         </div>
 
                                         {/* Designers */}
-                                        <div>
-                                            <label className="block text-white/80 text-sm font-medium mb-3 flex items-center">
-                                                <i data-lucide="palette" className="h-4 w-4 mr-2 text-orange-400"></i>
-                                                Designers
-                                            </label>
-                                            <div className="space-y-2 max-h-32 overflow-y-auto">
-                                                {['Brandon Gregg', 'Dave Richards'].map(person => (
+                                                                <div>
+                            <label className="block text-white/80 text-sm font-medium mb-3 flex items-center">
+                                <i data-lucide="palette" className="h-4 w-4 mr-2 text-orange-400"></i>
+                                Design Engineers
+                            </label>
+                            <div className="space-y-2 max-h-32 overflow-y-auto">
+                                {['Dave Richards', 'Brandon Gregg', 'Sheryl Mirambil'].map(person => (
                                                     <label key={person} className="flex items-center space-x-2 cursor-pointer">
                                                         <input
                                                             type="checkbox"
@@ -2990,8 +2925,8 @@
                                                 <i data-lucide="clipboard-list" className="h-4 w-4 mr-2 text-purple-400"></i>
                                                 Planners
                                             </label>
-                                            <div className="space-y-2 max-h-32 overflow-y-auto">
-                                                {['Craig Malt', 'Lewis McDonald'].map(person => (
+                                                                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                                {['Lewis MacDonald'].map(person => (
                                                     <label key={person} className="flex items-center space-x-2 cursor-pointer">
                                                         <input
                                                             type="checkbox"
