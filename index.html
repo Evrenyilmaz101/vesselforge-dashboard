@@ -190,6 +190,10 @@
                 };
             }, [selectedEnquiry?.id]);
             const [files, setFiles] = useState({});
+            const [folders, setFolders] = useState({});
+            const [currentFolder, setCurrentFolder] = useState('');
+            const [showCreateFolder, setShowCreateFolder] = useState(false);
+            const [newFolderName, setNewFolderName] = useState('');
             
             // Firebase real-time listener for files
             useEffect(() => {
@@ -250,6 +254,44 @@
                     }
                 };
             }, [selectedEnquiry?.id]);
+            
+            // Firebase real-time listener for folders
+            useEffect(() => {
+                if (!selectedEnquiry) {
+                    return;
+                }
+                
+                let foldersRef;
+                let listener;
+                
+                try {
+                    foldersRef = database.ref(`folders/${selectedEnquiry.id}`);
+                    listener = foldersRef.on('value', (snapshot) => {
+                        try {
+                            const foldersData = snapshot.val() || {};
+                            setFolders(prev => ({
+                                ...prev,
+                                [selectedEnquiry.id]: foldersData
+                            }));
+                        } catch (error) {
+                            console.error('Error processing folders data:', error);
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error setting up folders listener:', error);
+                }
+                
+                return () => {
+                    if (foldersRef && listener) {
+                        try {
+                            foldersRef.off('value', listener);
+                        } catch (error) {
+                            console.error('Error cleaning up folders listener:', error);
+                        }
+                    }
+                };
+            }, [selectedEnquiry?.id]);
+            
             const [newTenderForm, setNewTenderForm] = useState({
                 vsNumber: '',
                 client: '',
@@ -528,6 +570,51 @@
                 }
             };
 
+            // Folder management functions
+            const createFolder = () => {
+                if (!newFolderName.trim() || !selectedEnquiry) return;
+                
+                const folderId = Date.now().toString();
+                const folderData = {
+                    id: folderId,
+                    name: newFolderName.trim(),
+                    tenderId: selectedEnquiry.id,
+                    createdAt: new Date().toLocaleString(),
+                    createdBy: 'Current User'
+                };
+                
+                // Save to Firebase
+                database.ref(`folders/${selectedEnquiry.id}/${folderId}`).set(folderData);
+                
+                // Update local state
+                setFolders(prev => ({
+                    ...prev,
+                    [selectedEnquiry.id]: {
+                        ...prev[selectedEnquiry.id],
+                        [folderId]: folderData
+                    }
+                }));
+                
+                setNewFolderName('');
+                setShowCreateFolder(false);
+            };
+            
+            const getFolderPath = (folderId) => {
+                if (!folderId || !folders[selectedEnquiry?.id]) return 'Root';
+                const folder = folders[selectedEnquiry.id][folderId];
+                return folder ? folder.name : 'Root';
+            };
+            
+            const getFilesInCurrentFolder = () => {
+                const tenderFiles = files[selectedEnquiry?.id] || [];
+                return tenderFiles.filter(file => (file.folderId || '') === currentFolder);
+            };
+            
+            const getFoldersInCurrentFolder = () => {
+                const tenderFolders = folders[selectedEnquiry?.id] || {};
+                return Object.values(tenderFolders);
+            };
+
             const handleFileUpload = async (event) => {
                 const uploadedFiles = Array.from(event.target.files);
                 if (!selectedEnquiry || uploadedFiles.length === 0) return;
@@ -551,7 +638,8 @@
                             timestamp: new Date().toLocaleString(),
                             timestampMs: Date.now(),
                             uploadedBy: 'GM',
-                            url: downloadURL
+                            url: downloadURL,
+                            folderId: currentFolder || null
                         };
                         
                         // Save file info to Firebase Database
@@ -2027,8 +2115,23 @@
                                         }`}
                                     >
                                         <i data-lucide="info" className="h-4 w-4 inline mr-2"></i>
-                                        Project Details
+                                        Tender Details
                                         {activeTab === 'details' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-400"></div>}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setActiveTab('notes');
+                                            setPreviewDocument(null);
+                                        }}
+                                        className={`px-4 py-3 text-sm font-medium transition-colors relative ${
+                                            activeTab === 'notes' 
+                                                ? 'text-blue-400 bg-white/5' 
+                                                : 'text-white/60 hover:text-white hover:bg-white/5'
+                                        }`}
+                                    >
+                                        <i data-lucide="sticky-note" className="h-4 w-4 inline mr-2"></i>
+                                        Tender Notes
+                                        {activeTab === 'notes' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-400"></div>}
                                     </button>
                                 </div>
 
@@ -2300,7 +2403,7 @@
                                         <div className="h-full flex">
                                             {/* Files List */}
                                             <div className="flex-1 overflow-y-auto p-4 bg-slate-900/50">
-                                                {(files[selectedEnquiry.id] || []).length === 0 ? (
+                                                {getFilesInCurrentFolder().length === 0 && getFoldersInCurrentFolder().length === 0 ? (
                                                     <div className="text-center text-white/60 py-8">
                                                         <i data-lucide="folder-open" className="h-12 w-12 mx-auto mb-3 opacity-50"></i>
                                                         <h3 className="text-lg font-medium mb-2">No documents yet</h3>
@@ -2320,22 +2423,76 @@
                                                     </div>
                                                 ) : (
                                                     <div className="space-y-3">
+                                                        {/* Header with navigation and actions */}
                                                         <div className="flex items-center justify-between mb-4">
-                                                            <h2 className="text-lg font-bold text-white">Project Documents</h2>
-                                                            <label className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer transition-colors font-medium text-sm">
-                                                                <span className="mr-2">+</span>
-                                                                <i data-lucide="plus" className="h-4 w-4 inline mr-2 hidden"></i>
-                                                                Add Files
-                                                                <input
-                                                                    type="file"
-                                                                    multiple
-                                                                    onChange={handleFileUpload}
-                                                                    className="hidden"
-                                                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.csv"
-                                                                />
-                                                            </label>
+                                                            <div className="flex items-center space-x-3">
+                                                                <h2 className="text-lg font-bold text-white">Project Documents</h2>
+                                                                <div className="text-sm text-white/60">
+                                                                    {currentFolder ? (
+                                                                        <div className="flex items-center space-x-2">
+                                                                            <button 
+                                                                                onClick={() => setCurrentFolder('')}
+                                                                                className="text-blue-400 hover:text-blue-300"
+                                                                            >
+                                                                                📁 Root
+                                                                            </button>
+                                                                            <span>/</span>
+                                                                            <span>{getFolderPath(currentFolder)}</span>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span>📁 Root</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex space-x-2">
+                                                                <button
+                                                                    onClick={() => setShowCreateFolder(true)}
+                                                                    className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium text-sm"
+                                                                >
+                                                                    📁 New Folder
+                                                                </button>
+                                                                <label className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer transition-colors font-medium text-sm">
+                                                                    <span className="mr-2">+</span>
+                                                                    Add Files
+                                                                    <input
+                                                                        type="file"
+                                                                        multiple
+                                                                        onChange={handleFileUpload}
+                                                                        className="hidden"
+                                                                        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.csv"
+                                                                    />
+                                                                </label>
+                                                            </div>
                                                         </div>
-                                                        {(files[selectedEnquiry.id] || []).map((file) => (
+                                                        
+                                                        {/* Folders */}
+                                                        {getFoldersInCurrentFolder().map((folder) => (
+                                                            <div 
+                                                                key={folder.id} 
+                                                                onClick={() => setCurrentFolder(folder.id)}
+                                                                className="bg-slate-800/50 rounded-lg p-3 hover:bg-slate-800/70 transition-colors border border-white/10 cursor-pointer"
+                                                            >
+                                                                <div className="flex items-center space-x-3">
+                                                                    <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                                        <i data-lucide="folder" className="h-5 w-5 text-white"></i>
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <h3 className="text-white font-medium text-sm truncate">📁 {folder.name}</h3>
+                                                                        <div className="flex items-center space-x-2 mt-1">
+                                                                            <span className="text-white/60 text-xs">Created {folder.createdAt}</span>
+                                                                            <span className="text-white/40 text-xs">•</span>
+                                                                            <span className="text-white/60 text-xs">by {folder.createdBy}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="text-white/40">
+                                                                        <i data-lucide="chevron-right" className="h-4 w-4"></i>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                        
+                                                        {/* Files */}
+                                                        {getFilesInCurrentFolder().map((file) => (
                                                             <div key={file.id} className="bg-slate-800/50 rounded-lg p-3 hover:bg-slate-800/70 transition-colors border border-white/10">
                                                                 <div className="flex items-center space-x-3">
                                                                     <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -2451,7 +2608,7 @@
                                             <div className="bg-slate-800/50 rounded-xl p-4 border border-white/10">
                                                 <h2 className="text-lg font-bold text-white mb-4 flex items-center">
                                                     <i data-lucide="info" className="h-5 w-5 mr-2 text-blue-400"></i>
-                                                    Project Details
+                                                    Tender Details
                                                 </h2>
                                                 <div className="grid grid-cols-3 gap-4">
                                     <div className="space-y-3">
@@ -2628,6 +2785,44 @@
                                                     <i data-lucide="download" className="h-5 w-5 inline mr-2"></i>
                                                     Export Report
                                                 </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'notes' && (
+                                        <div className="h-full flex flex-col p-4 bg-slate-900/50">
+                                            <div className="bg-slate-800/50 rounded-xl p-4 border border-white/10 flex-1">
+                                                <h2 className="text-lg font-bold text-white mb-4 flex items-center">
+                                                    <i data-lucide="sticky-note" className="h-5 w-5 mr-2 text-blue-400"></i>
+                                                    Tender Notes
+                                                </h2>
+                                                <div className="h-full">
+                                                    <textarea 
+                                                        placeholder="Add project notes, requirements, special considerations, meeting minutes, etc..."
+                                                        className="w-full h-96 bg-white/10 border border-white/20 rounded-lg p-4 text-white placeholder-white/40 resize-none focus:outline-none focus:border-blue-400"
+                                                        value={selectedEnquiry.notes || ''}
+                                                        onChange={(e) => {
+                                                            const updatedEnquiry = { ...selectedEnquiry, notes: e.target.value };
+                                                            setSelectedEnquiry(updatedEnquiry);
+                                                            
+                                                            // Update in Firebase
+                                                            database.ref(`tenders/${selectedEnquiry.id}`).update({
+                                                                notes: e.target.value
+                                                            });
+                                                            
+                                                            // Update local state
+                                                            setEnquiries(prev => prev.map(enquiry => 
+                                                                enquiry.id === selectedEnquiry.id 
+                                                                    ? updatedEnquiry
+                                                                    : enquiry
+                                                            ));
+                                                        }}
+                                                    />
+                                                    <div className="mt-3 text-xs text-white/60">
+                                                        <i data-lucide="save" className="h-3 w-3 inline mr-1"></i>
+                                                        Notes are automatically saved as you type
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     )}
@@ -2963,6 +3158,64 @@
                                             className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
                                         >
                                             Update Team
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Create Folder Modal */}
+                    {showCreateFolder && (
+                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                            <div className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-md border border-white/20">
+                                <div className="p-6">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h3 className="text-xl font-bold text-blue-400">📁 Create New Folder</h3>
+                                        <button
+                                            onClick={() => {
+                                                setShowCreateFolder(false);
+                                                setNewFolderName('');
+                                            }}
+                                            className="text-white/60 hover:text-white text-2xl font-bold"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-white/80 text-sm font-medium mb-2">Folder Name</label>
+                                            <input
+                                                type="text"
+                                                value={newFolderName}
+                                                onChange={(e) => setNewFolderName(e.target.value)}
+                                                placeholder="e.g., Estimate Sheets, Drawings, Specifications..."
+                                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:border-blue-400"
+                                                onKeyPress={(e) => e.key === 'Enter' && createFolder()}
+                                            />
+                                        </div>
+                                        <div className="text-xs text-white/60">
+                                            Current location: {currentFolder ? getFolderPath(currentFolder) : 'Root'}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex gap-3 mt-6">
+                                        <button
+                                            onClick={() => {
+                                                setShowCreateFolder(false);
+                                                setNewFolderName('');
+                                            }}
+                                            className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={createFolder}
+                                            disabled={!newFolderName.trim()}
+                                            className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
+                                        >
+                                            Create Folder
                                         </button>
                                     </div>
                                 </div>
