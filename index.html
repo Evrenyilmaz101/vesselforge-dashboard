@@ -603,28 +603,40 @@
             };
             
             const getFolderPath = (folderId) => {
-                if (!folderId || !folders[selectedEnquiry?.id]) return 'Root';
-                const folder = folders[selectedEnquiry.id][folderId];
-                return folder ? folder.name : 'Root';
+                try {
+                    if (!folderId || !folders[selectedEnquiry?.id]) return 'Root';
+                    const folder = folders[selectedEnquiry.id][folderId];
+                    return folder ? folder.name : 'Root';
+                } catch (error) {
+                    console.error('Error getting folder path:', error);
+                    return 'Root';
+                }
             };
             
             const getFilesInCurrentFolder = () => {
-                const tenderFiles = files[selectedEnquiry?.id] || [];
-                console.log('Current folder:', currentFolder);
-                console.log('All files:', tenderFiles);
-                const filtered = tenderFiles.filter(file => (file.folderId || '') === currentFolder);
-                console.log('Filtered files:', filtered);
-                return filtered;
+                try {
+                    const tenderFiles = files[selectedEnquiry?.id] || [];
+                    const filtered = tenderFiles.filter(file => (file.folderId || '') === currentFolder);
+                    return filtered;
+                } catch (error) {
+                    console.error('Error filtering files:', error);
+                    return [];
+                }
             };
             
             const getFoldersInCurrentFolder = () => {
-                const tenderFolders = folders[selectedEnquiry?.id] || {};
-                // For now, we'll keep folders flat (no subfolders)
-                // Only show folders when in root directory
-                if (currentFolder === '') {
-                    return Object.values(tenderFolders);
-                } else {
-                    // When inside a folder, don't show any folders (flat structure)
+                try {
+                    const tenderFolders = folders[selectedEnquiry?.id] || {};
+                    // For now, we'll keep folders flat (no subfolders)
+                    // Only show folders when in root directory
+                    if (currentFolder === '') {
+                        return Object.values(tenderFolders);
+                    } else {
+                        // When inside a folder, don't show any folders (flat structure)
+                        return [];
+                    }
+                } catch (error) {
+                    console.error('Error filtering folders:', error);
                     return [];
                 }
             };
@@ -632,12 +644,22 @@
             // Delete functions
             const deleteFile = async (file) => {
                 try {
-                    // Delete from Firebase Storage
-                    const storageRef = storage.ref(`tender-files/${selectedEnquiry.id}/${file.id}`);
-                    await storageRef.delete();
+                    console.log('Attempting to delete file:', file.name);
                     
-                    // Delete from Firebase Database
+                    // Delete from Firebase Database first
                     await database.ref(`tender-files/${selectedEnquiry.id}/${file.id}`).remove();
+                    console.log('Removed from database');
+                    
+                    // Try to delete from Firebase Storage (this might fail if file doesn't exist in storage)
+                    try {
+                        const fileName = `${selectedEnquiry.id}/${file.id}_${file.name}`;
+                        const storageRef = storage.ref(`tender-files/${fileName}`);
+                        await storageRef.delete();
+                        console.log('Removed from storage');
+                    } catch (storageError) {
+                        console.warn('Could not delete from storage (file may not exist):', storageError);
+                        // Don't throw error - database deletion is more important
+                    }
                     
                     console.log('File deleted successfully');
                 } catch (error) {
@@ -648,6 +670,8 @@
             
             const deleteFolder = async (folder) => {
                 try {
+                    console.log('Attempting to delete folder:', folder.name);
+                    
                     // Check if folder has files
                     const folderFiles = (files[selectedEnquiry.id] || []).filter(f => f.folderId === folder.id);
                     
@@ -658,8 +682,8 @@
                     
                     // Delete from Firebase
                     await database.ref(`folders/${selectedEnquiry.id}/${folder.id}`).remove();
+                    console.log('Folder deleted successfully from database');
                     
-                    console.log('Folder deleted successfully');
                 } catch (error) {
                     console.error('Error deleting folder:', error);
                     alert('Error deleting folder. Please try again.');
@@ -667,52 +691,85 @@
             };
             
             const confirmDelete = (item, type) => {
-                setItemToDelete({ item, type });
-                setShowDeleteConfirmation(true);
+                try {
+                    console.log('Confirming delete for:', type, item.name);
+                    setItemToDelete({ item, type });
+                    setShowDeleteConfirmation(true);
+                } catch (error) {
+                    console.error('Error showing delete confirmation:', error);
+                    alert('Error showing delete confirmation. Please try again.');
+                }
             };
             
             const handleDelete = async () => {
-                if (!itemToDelete) return;
-                
-                if (itemToDelete.type === 'file') {
-                    await deleteFile(itemToDelete.item);
-                } else if (itemToDelete.type === 'folder') {
-                    await deleteFolder(itemToDelete.item);
+                try {
+                    if (!itemToDelete) {
+                        console.warn('No item to delete');
+                        return;
+                    }
+                    
+                    console.log('Handling delete for:', itemToDelete.type, itemToDelete.item.name);
+                    
+                    if (itemToDelete.type === 'file') {
+                        await deleteFile(itemToDelete.item);
+                    } else if (itemToDelete.type === 'folder') {
+                        await deleteFolder(itemToDelete.item);
+                    }
+                    
+                } catch (error) {
+                    console.error('Error in handleDelete:', error);
+                    alert('An error occurred while deleting. Please try again.');
+                } finally {
+                    // Always close the modal
+                    setShowDeleteConfirmation(false);
+                    setItemToDelete(null);
                 }
-                
-                setShowDeleteConfirmation(false);
-                setItemToDelete(null);
             };
             
             // Drag and drop functions
             const handleFileDragStart = (e, file) => {
-                setDraggedFile(file);
-                e.dataTransfer.effectAllowed = 'move';
+                try {
+                    setDraggedFile(file);
+                    e.dataTransfer.effectAllowed = 'move';
+                    console.log('Started dragging file:', file.name);
+                } catch (error) {
+                    console.error('Error starting drag:', error);
+                }
             };
             
             const handleFolderDragOver = (e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
+                try {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                } catch (error) {
+                    console.error('Error in drag over:', error);
+                }
             };
             
             const handleFolderDrop = async (e, targetFolderId) => {
-                e.preventDefault();
-                
-                if (!draggedFile) return;
-                
                 try {
+                    e.preventDefault();
+                    
+                    if (!draggedFile || !selectedEnquiry) {
+                        console.warn('No file being dragged or no tender selected');
+                        setDraggedFile(null);
+                        return;
+                    }
+                    
                     // Update file's folder in Firebase
                     await database.ref(`tender-files/${selectedEnquiry.id}/${draggedFile.id}`).update({
                         folderId: targetFolderId || null
                     });
                     
-                    console.log('File moved successfully');
+                    console.log('File moved successfully to:', targetFolderId || 'Root');
+                    
                 } catch (error) {
                     console.error('Error moving file:', error);
                     alert('Error moving file. Please try again.');
+                } finally {
+                    // Always reset dragged file
+                    setDraggedFile(null);
                 }
-                
-                setDraggedFile(null);
             };
             
             const moveFileToFolder = async (file, targetFolderId) => {
