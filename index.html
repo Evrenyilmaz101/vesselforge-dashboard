@@ -277,10 +277,10 @@
             const [showActionAlert, setShowActionAlert] = useState(false);
             const [showEditTeam, setShowEditTeam] = useState(false);
             const [editTeamForm, setEditTeamForm] = useState({
-                assignedTo: '',
-                salesManager: '',
-                designer: '',
-                planner: ''
+                estimators: [],
+                salesManagers: [],
+                designers: [],
+                planners: []
             });
             const [actionAlertPeople, setActionAlertPeople] = useState([]);
             const [actionAlertMessage, setActionAlertMessage] = useState('');
@@ -652,38 +652,54 @@
 
             // Open edit team modal
             const openEditTeam = (tender) => {
-                setEditTeamForm({
-                    assignedTo: tender.assignedTo || '',
-                    salesManager: tender.salesManager || '',
-                    designer: tender.designer || '',
-                    planner: tender.planner || ''
-                });
+                console.log('Opening edit team for tender:', tender);
+                const formData = {
+                    estimators: Array.isArray(tender.estimators) ? tender.estimators : (tender.assignedTo ? [tender.assignedTo] : []),
+                    salesManagers: Array.isArray(tender.salesManagers) ? tender.salesManagers : (tender.salesManager ? [tender.salesManager] : []),
+                    designers: Array.isArray(tender.designers) ? tender.designers : (tender.designer ? [tender.designer] : []),
+                    planners: Array.isArray(tender.planners) ? tender.planners : (tender.planner ? [tender.planner] : [])
+                };
+                console.log('Edit team form data:', formData);
+                setEditTeamForm(formData);
                 setShowEditTeam(true);
             };
 
             // Update team members
             const updateTeamMembers = () => {
                 if (selectedEnquiry) {
-                    // Update in Firebase
-                    database.ref(`tenders/${selectedEnquiry.id}`).update({
-                        assignedTo: editTeamForm.assignedTo,
-                        salesManager: editTeamForm.salesManager,
-                        designer: editTeamForm.designer,
-                        planner: editTeamForm.planner
+                    console.log('Updating team members with form data:', editTeamForm);
+                    
+                    // Update in Firebase with arrays and backward compatibility
+                    const updateData = {
+                        estimators: editTeamForm.estimators,
+                        salesManagers: editTeamForm.salesManagers,
+                        designers: editTeamForm.designers,
+                        planners: editTeamForm.planners,
+                        // Keep backward compatibility
+                        assignedTo: editTeamForm.estimators.length > 0 ? editTeamForm.estimators[0] : null,
+                        salesManager: editTeamForm.salesManagers.length > 0 ? editTeamForm.salesManagers[0] : null,
+                        designer: editTeamForm.designers.length > 0 ? editTeamForm.designers[0] : null,
+                        planner: editTeamForm.planners.length > 0 ? editTeamForm.planners[0] : null
+                    };
+                    
+                    console.log('Update data to be saved:', updateData);
+                    
+                    database.ref(`tenders/${selectedEnquiry.id}`).update(updateData).then(() => {
+                        console.log('Team data updated successfully in Firebase');
+                    }).catch((error) => {
+                        console.error('Error updating team data:', error);
                     });
                     
-                    // Update local state
-                    setSelectedEnquiry(prev => ({
-                        ...prev,
-                        assignedTo: editTeamForm.assignedTo,
-                        salesManager: editTeamForm.salesManager,
-                        designer: editTeamForm.designer,
-                        planner: editTeamForm.planner
-                    }));
+                    // Update local state IMMEDIATELY for responsive UI
+                    setSelectedEnquiry(prev => {
+                        const updated = { ...prev, ...updateData };
+                        console.log('Updated selectedEnquiry:', updated);
+                        return updated;
+                    });
 
                     setEnquiries(prev => prev.map(enquiry => 
                         enquiry.id === selectedEnquiry.id 
-                            ? { ...enquiry, assignedTo: editTeamForm.assignedTo, salesManager: editTeamForm.salesManager, designer: editTeamForm.designer, planner: editTeamForm.planner }
+                            ? { ...enquiry, ...updateData }
                             : enquiry
                     ));
                     
@@ -694,10 +710,18 @@
             // Get team members involved with the specific tender
             const getTenderTeamMembers = (tender) => {
                 const teamMembers = [];
-                if (tender.assignedTo) teamMembers.push(tender.assignedTo);
-                if (tender.salesManager) teamMembers.push(tender.salesManager);
-                if (tender.designer) teamMembers.push(tender.designer);
-                if (tender.planner) teamMembers.push(tender.planner);
+                
+                // Add new array format members
+                if (tender.estimators) teamMembers.push(...tender.estimators);
+                if (tender.salesManagers) teamMembers.push(...tender.salesManagers);
+                if (tender.designers) teamMembers.push(...tender.designers);
+                if (tender.planners) teamMembers.push(...tender.planners);
+                
+                // Backward compatibility with old single-member format
+                if (tender.assignedTo && !tender.estimators) teamMembers.push(tender.assignedTo);
+                if (tender.salesManager && !tender.salesManagers) teamMembers.push(tender.salesManager);
+                if (tender.designer && !tender.designers) teamMembers.push(tender.designer);
+                if (tender.planner && !tender.planners) teamMembers.push(tender.planner);
                 
                 // Remove duplicates and return
                 return [...new Set(teamMembers)];
@@ -2462,63 +2486,129 @@
 
                                             {/* Team & Timeline */}
                                             <div className="bg-slate-800/50 rounded-xl p-6 border border-white/10">
-                                                <h2 className="text-xl font-bold text-white mb-4 flex items-center">
-                                                    <i data-lucide="users" className="h-5 w-5 mr-2 text-purple-400"></i>
-                                                    Team & Timeline
-                                                </h2>
+                                                <div className="flex items-center justify-between mb-6">
+                                                    <h2 className="text-xl font-bold text-white flex items-center">
+                                                        <i data-lucide="users" className="h-5 w-5 mr-2 text-purple-400"></i>
+                                                        Team & Timeline
+                                                    </h2>
+                                                    <button 
+                                                        onClick={() => openEditTeam(selectedEnquiry)}
+                                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors font-medium flex items-center"
+                                                    >
+                                                        <i data-lucide="edit" className="h-4 w-4 mr-2"></i>
+                                                        Edit Team Members
+                                                    </button>
+                                                </div>
+
+                                                                <div className="space-y-4">
+                    {/* Estimators */}
+                    <div className="bg-slate-700/30 rounded-lg p-3 border border-blue-500/20">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-white font-medium text-sm flex items-center">
+                                <i data-lucide="calculator" className="h-4 w-4 mr-2 text-blue-400"></i>
+                                Estimators
+                            </h3>
+                            <span className="text-blue-400 text-xs">
+                                {(selectedEnquiry.estimators || (selectedEnquiry.assignedTo ? [selectedEnquiry.assignedTo] : [])).length}
+                            </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                            {(selectedEnquiry.estimators || (selectedEnquiry.assignedTo ? [selectedEnquiry.assignedTo] : [])).map((estimator, index) => (
+                                <span key={index} className="inline-flex items-center px-2 py-1 bg-blue-500/20 border border-blue-500/30 rounded-md text-xs text-white">
+                                    <span className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center mr-1">
+                                        <span className="text-white text-xs font-bold">{estimator.charAt(0)}</span>
+                                    </span>
+                                    {estimator}
+                                </span>
+                            ))}
+                            {!(selectedEnquiry.estimators || selectedEnquiry.assignedTo) && (
+                                <span className="text-white/60 text-xs italic">No estimators assigned</span>
+                            )}
+                        </div>
+                    </div>
+
+                                                                        {/* Sales Managers */}
+                    <div className="bg-slate-700/30 rounded-lg p-3 border border-green-500/20">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-white font-medium text-sm flex items-center">
+                                <i data-lucide="briefcase" className="h-4 w-4 mr-2 text-green-400"></i>
+                                Sales Managers
+                            </h3>
+                            <span className="text-green-400 text-xs">
+                                {(selectedEnquiry.salesManagers || (selectedEnquiry.salesManager ? [selectedEnquiry.salesManager] : [])).length}
+                            </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                            {(selectedEnquiry.salesManagers || (selectedEnquiry.salesManager ? [selectedEnquiry.salesManager] : [])).map((salesManager, index) => (
+                                <span key={index} className="inline-flex items-center px-2 py-1 bg-green-500/20 border border-green-500/30 rounded-md text-xs text-white">
+                                    <span className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center mr-1">
+                                        <span className="text-white text-xs font-bold">{salesManager.charAt(0)}</span>
+                                    </span>
+                                    {salesManager}
+                                </span>
+                            ))}
+                            {!(selectedEnquiry.salesManagers || selectedEnquiry.salesManager) && (
+                                <span className="text-white/60 text-xs italic">No sales managers assigned</span>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Designers */}
+                    <div className="bg-slate-700/30 rounded-lg p-3 border border-orange-500/20">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-white font-medium text-sm flex items-center">
+                                <i data-lucide="palette" className="h-4 w-4 mr-2 text-orange-400"></i>
+                                Designers
+                            </h3>
+                            <span className="text-orange-400 text-xs">
+                                {(selectedEnquiry.designers || (selectedEnquiry.designer ? [selectedEnquiry.designer] : [])).length}
+                            </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                            {(selectedEnquiry.designers || (selectedEnquiry.designer ? [selectedEnquiry.designer] : [])).map((designer, index) => (
+                                <span key={index} className="inline-flex items-center px-2 py-1 bg-orange-500/20 border border-orange-500/30 rounded-md text-xs text-white">
+                                    <span className="w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center mr-1">
+                                        <span className="text-white text-xs font-bold">{designer.charAt(0)}</span>
+                                    </span>
+                                    {designer}
+                                </span>
+                            ))}
+                            {!(selectedEnquiry.designers || selectedEnquiry.designer) && (
+                                <span className="text-white/60 text-xs italic">No designers assigned</span>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Planners */}
+                    <div className="bg-slate-700/30 rounded-lg p-3 border border-purple-500/20">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-white font-medium text-sm flex items-center">
+                                <i data-lucide="clipboard-list" className="h-4 w-4 mr-2 text-purple-400"></i>
+                                Planners
+                            </h3>
+                            <span className="text-purple-400 text-xs">
+                                {(selectedEnquiry.planners || (selectedEnquiry.planner ? [selectedEnquiry.planner] : [])).length}
+                            </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                            {(selectedEnquiry.planners || (selectedEnquiry.planner ? [selectedEnquiry.planner] : [])).map((planner, index) => (
+                                <span key={index} className="inline-flex items-center px-2 py-1 bg-purple-500/20 border border-purple-500/30 rounded-md text-xs text-white">
+                                    <span className="w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center mr-1">
+                                        <span className="text-white text-xs font-bold">{planner.charAt(0)}</span>
+                                    </span>
+                                    {planner}
+                                </span>
+                            ))}
+                            {!(selectedEnquiry.planners || selectedEnquiry.planner) && (
+                                <span className="text-white/60 text-xs italic">No planners assigned</span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+                                            </div>
+
+                                            <div className="bg-slate-800/50 rounded-xl p-6 border border-white/10">
                                                 <div className="grid grid-cols-2 gap-6">
-                                                    <div className="space-y-3">
-                                                        <div className="flex items-center space-x-3">
-                                                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
-                                                                <i data-lucide="user" className="h-4 w-4 text-white"></i>
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-white/60 text-xs">Estimator</p>
-                                                                <p className="text-white font-medium text-sm">{selectedEnquiry.assignedTo}</p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center space-x-3">
-                                                            <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center">
-                                                                <i data-lucide="user" className="h-4 w-4 text-white"></i>
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-white/60 text-xs">Sales Manager</p>
-                                                                <p className="text-white font-medium text-sm">{selectedEnquiry.salesManager}</p>
-                                                            </div>
-                                                        </div>
-                                                        {selectedEnquiry.requiresDesign && (
-                                                            <div className="flex items-center space-x-3">
-                                                                <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center">
-                                                                    <i data-lucide="paintbrush" className="h-4 w-4 text-white"></i>
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-white/60 text-xs">Designer</p>
-                                                                    <p className="text-white font-medium text-sm">{selectedEnquiry.designer}</p>
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                        <div className="flex items-center space-x-3">
-                                                            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center">
-                                                                <i data-lucide="calendar" className="h-4 w-4 text-white"></i>
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-white/60 text-xs">Planner</p>
-                                                                <p className="text-white font-medium text-sm">{selectedEnquiry.planner}</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    {/* Edit Team Button */}
-                                                    <div className="mt-4">
-                                                        <button 
-                                                            onClick={() => openEditTeam(selectedEnquiry)}
-                                                            className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors font-medium"
-                                                        >
-                                                            <i data-lucide="edit" className="h-4 w-4 inline mr-2"></i>
-                                                            Edit Team Members
-                                                        </button>
-                                                    </div>
-                                                    
                                                     <div className="space-y-3">
                                                         <div>
                                                             <p className="text-white/60 text-xs font-medium mb-1">Date Received</p>
@@ -2529,39 +2619,61 @@
                                                             <p className="text-white font-medium text-sm">{selectedEnquiry.dueDate}</p>
                                                         </div>
                                                         <div>
-                                                            <p className="text-white/60 text-xs font-medium mb-1">Action Required</p>
-                                                            <div key={`action-status-details-${selectedEnquiry?.id}-${JSON.stringify(selectedEnquiry?.completedBy || [])}-${selectedEnquiry?.actionFrom}`} className={`${getActionStatusColor(selectedEnquiry)} rounded px-2 py-1 text-center inline-block`}>
-                                                                <div className="text-white font-bold text-xs">
-                                                                    {(() => {
-                                                                        const activePeople = getActivePeopleForTender(selectedEnquiry);
-                                                                        if (activePeople === 'awaiting') return '📝 NO ACTION';
-                                                                        if (Array.isArray(activePeople) && activePeople.length === 0) {
-                                                                            return selectedEnquiry.actionFrom === 'Awaiting Assignment' ? '📝 NO ACTION' : '✅ ACTION';
-                                                                        }
-                                                                        return '🚨 ACTION';
-                                                                    })()}
-                                                                </div>
-                                                                <div className="text-white font-bold text-xs">
-                                                                    {(() => {
-                                                                        const activePeople = getActivePeopleForTender(selectedEnquiry);
-                                                                        if (activePeople === 'awaiting') {
-                                                                            return <span>📝 NO ACTION ALERT</span>;
-                                                                        } else if (Array.isArray(activePeople) && activePeople.length === 0) {
-                                                                            return selectedEnquiry.actionFrom === 'Awaiting Assignment' ? <span>📝 NO ACTION ALERT</span> : <span>✅ COMPLETE</span>;
-                                                                        } else if (Array.isArray(activePeople) && activePeople.length === 1) {
-                                                                            return activePeople[0];
-                                                                        } else if (Array.isArray(activePeople)) {
-                                                                            return (
-                                                                                <div className="space-y-1">
-                                                                                    {activePeople.map((person, index) => (
-                                                                                        <div key={index}>{person}</div>
-                                                                                    ))}
-                                                                                </div>
-                                                                            );
-                                                                        }
+                                                            <p className="text-white/60 text-xs font-medium mb-1">Customer</p>
+                                                            <p className="text-white font-medium text-sm">{selectedEnquiry.customer}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-white/60 text-xs font-medium mb-1">Location</p>
+                                                            <p className="text-white font-medium text-sm">{selectedEnquiry.location}</p>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="space-y-3">
+                                                        <div>
+                                                            <p className="text-white/60 text-xs font-medium mb-1">Status</p>
+                                                            <span className={`px-2 py-1 rounded text-xs font-bold ${
+                                                                selectedEnquiry.status === 'Won' ? 'bg-green-500 text-white' :
+                                                                selectedEnquiry.status === 'Lost' ? 'bg-red-500 text-white' :
+                                                                selectedEnquiry.status === 'Active' ? 'bg-blue-500 text-white' :
+                                                                selectedEnquiry.status === 'Cancelled' ? 'bg-gray-500 text-white' :
+                                                                selectedEnquiry.status === 'Hold' ? 'bg-orange-500 text-white' :
+                                                                'bg-slate-500 text-white'
+                                                            }`}>
+                                                                {selectedEnquiry.status}
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-white/60 text-xs font-medium mb-1">Action Alert</p>
+                                                            <div className="text-white font-bold text-xs">
+                                                                {(() => {
+                                                                    const activePeople = getActivePeopleForTender(selectedEnquiry);
+                                                                    if (activePeople === 'awaiting') return '📝 NO ACTION';
+                                                                    if (Array.isArray(activePeople) && activePeople.length === 0) {
+                                                                        return selectedEnquiry.actionFrom === 'Awaiting Assignment' ? '📝 NO ACTION' : '✅ ACTION';
+                                                                    }
+                                                                    return '🚨 ACTION';
+                                                                })()}
+                                                            </div>
+                                                            <div className="text-white font-bold text-xs">
+                                                                {(() => {
+                                                                    const activePeople = getActivePeopleForTender(selectedEnquiry);
+                                                                    if (activePeople === 'awaiting') {
                                                                         return <span>📝 NO ACTION ALERT</span>;
-                                                                    })()}
-                                                                </div>
+                                                                    } else if (Array.isArray(activePeople) && activePeople.length === 0) {
+                                                                        return selectedEnquiry.actionFrom === 'Awaiting Assignment' ? <span>📝 NO ACTION ALERT</span> : <span>✅ COMPLETE</span>;
+                                                                    } else if (Array.isArray(activePeople) && activePeople.length === 1) {
+                                                                        return activePeople[0];
+                                                                    } else if (Array.isArray(activePeople)) {
+                                                                        return (
+                                                                            <div className="space-y-1">
+                                                                                {activePeople.map((person, index) => (
+                                                                                    <div key={index}>{person}</div>
+                                                                                ))}
+                                                                            </div>
+                                                                        );
+                                                                    }
+                                                                    return <span>📝 NO ACTION ALERT</span>;
+                                                                })()}
                                                             </div>
                                                         </div>
                                                         <div>
@@ -2573,8 +2685,6 @@
                                                     </div>
                                                 </div>
                                             </div>
-
-
 
                                             {/* Action Buttons */}
                                             <div className="flex justify-center">
@@ -2762,7 +2872,7 @@
                     {/* Edit Team Modal */}
                     {showEditTeam && (
                         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                            <div className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-md border border-white/20">
+                            <div className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl border border-white/20">
                                 <div className="p-6">
                                     <div className="flex items-center justify-between mb-6">
                                         <h3 className="text-xl font-bold text-blue-400">👥 Edit Team Members</h3>
@@ -2774,61 +2884,137 @@
                                         </button>
                                     </div>
                                     
-                                    <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-6">
+                                        {/* Estimators */}
                                         <div>
-                                            <label className="block text-white/80 text-sm font-medium mb-2">Estimator</label>
-                                            <select 
-                                                value={editTeamForm.assignedTo}
-                                                onChange={(e) => setEditTeamForm(prev => ({...prev, assignedTo: e.target.value}))}
-                                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-400"
-                                            >
-                                                <option value="">Select Estimator</option>
+                                            <label className="block text-white/80 text-sm font-medium mb-3 flex items-center">
+                                                <i data-lucide="calculator" className="h-4 w-4 mr-2 text-blue-400"></i>
+                                                Estimators
+                                            </label>
+                                            <div className="space-y-2 max-h-32 overflow-y-auto">
                                                 {['Scott Goodfellow', 'Peter Krempin', 'Dave Richards'].map(person => (
-                                                    <option key={person} value={person} className="bg-slate-800 text-white">{person}</option>
+                                                    <label key={person} className="flex items-center space-x-2 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={editTeamForm.estimators.includes(person)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setEditTeamForm(prev => ({
+                                                                        ...prev,
+                                                                        estimators: [...prev.estimators, person]
+                                                                    }));
+                                                                } else {
+                                                                    setEditTeamForm(prev => ({
+                                                                        ...prev,
+                                                                        estimators: prev.estimators.filter(p => p !== person)
+                                                                    }));
+                                                                }
+                                                            }}
+                                                            className="w-4 h-4 text-blue-600 bg-white/10 border-white/20 rounded focus:ring-blue-500"
+                                                        />
+                                                        <span className="text-white text-sm">{person}</span>
+                                                    </label>
                                                 ))}
-                                            </select>
+                                            </div>
                                         </div>
-                                        
+
+                                        {/* Sales Managers */}
                                         <div>
-                                            <label className="block text-white/80 text-sm font-medium mb-2">Sales Manager</label>
-                                            <select 
-                                                value={editTeamForm.salesManager}
-                                                onChange={(e) => setEditTeamForm(prev => ({...prev, salesManager: e.target.value}))}
-                                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-400"
-                                            >
-                                                <option value="">Select Sales Manager</option>
+                                            <label className="block text-white/80 text-sm font-medium mb-3 flex items-center">
+                                                <i data-lucide="briefcase" className="h-4 w-4 mr-2 text-green-400"></i>
+                                                Sales Managers
+                                            </label>
+                                            <div className="space-y-2 max-h-32 overflow-y-auto">
                                                 {['Craig Malt', 'Lewis McDonald', 'Sheryl'].map(person => (
-                                                    <option key={person} value={person} className="bg-slate-800 text-white">{person}</option>
+                                                    <label key={person} className="flex items-center space-x-2 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={editTeamForm.salesManagers.includes(person)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setEditTeamForm(prev => ({
+                                                                        ...prev,
+                                                                        salesManagers: [...prev.salesManagers, person]
+                                                                    }));
+                                                                } else {
+                                                                    setEditTeamForm(prev => ({
+                                                                        ...prev,
+                                                                        salesManagers: prev.salesManagers.filter(p => p !== person)
+                                                                    }));
+                                                                }
+                                                            }}
+                                                            className="w-4 h-4 text-green-600 bg-white/10 border-white/20 rounded focus:ring-green-500"
+                                                        />
+                                                        <span className="text-white text-sm">{person}</span>
+                                                    </label>
                                                 ))}
-                                            </select>
+                                            </div>
                                         </div>
-                                        
+
+                                        {/* Designers */}
                                         <div>
-                                            <label className="block text-white/80 text-sm font-medium mb-2">Designer</label>
-                                            <select 
-                                                value={editTeamForm.designer}
-                                                onChange={(e) => setEditTeamForm(prev => ({...prev, designer: e.target.value}))}
-                                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-400"
-                                            >
-                                                <option value="">Select Designer</option>
+                                            <label className="block text-white/80 text-sm font-medium mb-3 flex items-center">
+                                                <i data-lucide="palette" className="h-4 w-4 mr-2 text-orange-400"></i>
+                                                Designers
+                                            </label>
+                                            <div className="space-y-2 max-h-32 overflow-y-auto">
                                                 {['Brandon Gregg', 'Dave Richards'].map(person => (
-                                                    <option key={person} value={person} className="bg-slate-800 text-white">{person}</option>
+                                                    <label key={person} className="flex items-center space-x-2 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={editTeamForm.designers.includes(person)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setEditTeamForm(prev => ({
+                                                                        ...prev,
+                                                                        designers: [...prev.designers, person]
+                                                                    }));
+                                                                } else {
+                                                                    setEditTeamForm(prev => ({
+                                                                        ...prev,
+                                                                        designers: prev.designers.filter(p => p !== person)
+                                                                    }));
+                                                                }
+                                                            }}
+                                                            className="w-4 h-4 text-orange-600 bg-white/10 border-white/20 rounded focus:ring-orange-500"
+                                                        />
+                                                        <span className="text-white text-sm">{person}</span>
+                                                    </label>
                                                 ))}
-                                            </select>
+                                            </div>
                                         </div>
-                                        
+
+                                        {/* Planners */}
                                         <div>
-                                            <label className="block text-white/80 text-sm font-medium mb-2">Planner</label>
-                                            <select 
-                                                value={editTeamForm.planner}
-                                                onChange={(e) => setEditTeamForm(prev => ({...prev, planner: e.target.value}))}
-                                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-400"
-                                            >
-                                                <option value="">Select Planner</option>
+                                            <label className="block text-white/80 text-sm font-medium mb-3 flex items-center">
+                                                <i data-lucide="clipboard-list" className="h-4 w-4 mr-2 text-purple-400"></i>
+                                                Planners
+                                            </label>
+                                            <div className="space-y-2 max-h-32 overflow-y-auto">
                                                 {['Craig Malt', 'Lewis McDonald'].map(person => (
-                                                    <option key={person} value={person} className="bg-slate-800 text-white">{person}</option>
+                                                    <label key={person} className="flex items-center space-x-2 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={editTeamForm.planners.includes(person)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setEditTeamForm(prev => ({
+                                                                        ...prev,
+                                                                        planners: [...prev.planners, person]
+                                                                    }));
+                                                                } else {
+                                                                    setEditTeamForm(prev => ({
+                                                                        ...prev,
+                                                                        planners: prev.planners.filter(p => p !== person)
+                                                                    }));
+                                                                }
+                                                            }}
+                                                            className="w-4 h-4 text-purple-600 bg-white/10 border-white/20 rounded focus:ring-purple-500"
+                                                        />
+                                                        <span className="text-white text-sm">{person}</span>
+                                                    </label>
                                                 ))}
-                                            </select>
+                                            </div>
                                         </div>
                                     </div>
                                     

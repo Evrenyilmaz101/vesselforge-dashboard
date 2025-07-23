@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VesselForge - Pressure Vessel Estimation Platform</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob { animation: blob 7s infinite; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
+        .line-clamp-2 {
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState } = React;
+        const { Building, Calendar, Users, FileText, CheckCircle, AlertCircle, Clock, Send, MessageSquare, Plus, TrendingUp, DollarSign, BarChart3, User, ChevronRight, Bell, Search, Paperclip, Download, File, Image } = lucide;
+
+        const VesselForge = () => {
+            const [currentView, setCurrentView] = useState('dashboard');
+            const [enquiries, setEnquiries] = useState([
+                {
+                    id: 'VS1770',
+                    client: 'PetroTech Industries',
+                    project: 'High Pressure Storage Vessel',
+                    value: 125000,
+                    status: 'in_progress',
+                    priority: 'high',
+                    assignedTo: 'Scott Goodfellow',
+                    salesManager: 'Craig Malt',
+                    dateReceived: '2024-01-15',
+                    dueDate: '2024-01-22',
+                    progress: 65,
+                    requiresDesign: true,
+                    comments: []
+                },
+                {
+                    id: 'VS1771',
+                    client: 'Global Energy Corp',
+                    project: 'Separator Vessel Package',
+                    value: 280000,
+                    status: 'review',
+                    priority: 'medium',
+                    assignedTo: 'Peter Krempin',
+                    salesManager: 'Craig Malt',
+                    dateReceived: '2024-01-14',
+                    dueDate: '2024-01-21',
+                    progress: 90,
+                    requiresDesign: false,
+                    comments: []
+                },
+                {
+                    id: 'VS1772',
+                    client: 'ChemFlow Solutions',
+                    project: 'Reactor Vessel',
+                    value: 450000,
+                    status: 'pending',
+                    priority: 'high',
+                    assignedTo: 'Unassigned',
+                    salesManager: 'Craig Malt',
+                    dateReceived: '2024-01-16',
+                    dueDate: '2024-01-23',
+                    progress: 0,
+                    requiresDesign: true,
+                    comments: []
+                }
+            ]);
+
+            const [selectedEnquiry, setSelectedEnquiry] = useState(null);
+            const [showNewEnquiry, setShowNewEnquiry] = useState(false);
+            const [searchTerm, setSearchTerm] = useState('');
+
+            const statusColors = {
+                pending: 'bg-yellow-500',
+                in_progress: 'bg-blue-500',
+                review: 'bg-purple-500',
+                approved: 'bg-green-500',
+                submitted: 'bg-teal-500'
+            };
+
+            const stats = {
+                total: enquiries.length,
+                pending: enquiries.filter(e => e.status === 'pending').length,
+                inProgress: enquiries.filter(e => e.status === 'in_progress').length,
+                review: enquiries.filter(e => e.status === 'review').length,
+                totalValue: enquiries.reduce((sum, e) => sum + e.value, 0)
+            };
+
+            // Create Lucide icons
+            React.useEffect(() => {
+                lucide.createIcons();
+            }, [currentView, selectedEnquiry]);
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+                    {/* Background Animation */}
+                    <div className="fixed inset-0 overflow-hidden pointer-events-none">
+                        <div className="absolute w-96 h-96 -top-48 -left-48 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+                        <div className="absolute w-96 h-96 -bottom-48 -right-48 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+                    </div>
+
+                    {/* Header */}
+                    <header className="relative z-10 bg-white/10 backdrop-blur-lg border-b border-white/20">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div className="flex items-center justify-between h-16">
+                                <div className="flex items-center space-x-4">
+                                    <div 
+                                        className="flex items-center space-x-2 cursor-pointer" 
+                                        onClick={() => setCurrentView('dashboard')}
+                                    >
+                                        <i data-lucide="building" className="h-8 w-8 text-blue-400"></i>
+                                        <h1 className="text-2xl font-bold text-white">VesselForge</h1>
+                                    </div>
+                                    <nav className="hidden md:flex space-x-1">
+                                        <button
+                                            onClick={() => setCurrentView('dashboard')}
+                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                                currentView === 'dashboard' 
+                                                    ? 'bg-white/20 text-white' 
+                                                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                                            }`}
+                                        >
+                                            Dashboard
+                                        </button>
+                                        <button
+                                            onClick={() => setCurrentView('enquiries')}
+                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                                currentView === 'enquiries' 
+                                                    ? 'bg-white/20 text-white' 
+                                                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                                            }`}
+                                        >
+                                            Tenders
+                                        </button>
+                                    </nav>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center">
+                                        <i data-lucide="user" className="h-5 w-5 text-white"></i>
+                                    </div>
+                                    <span className="text-white text-sm font-medium">GM</span>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        {currentView === 'dashboard' ? (
+                            // Dashboard View
+                            <>
+                                <div className="mb-8">
+                                    <h2 className="text-3xl font-bold text-white mb-2">Tender Management Dashboard</h2>
+                                    <p className="text-white/70">Track and manage all pressure vessel enquiries in real-time</p>
+                                </div>
+
+                                {/* Stats Cards */}
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                                    <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-5 shadow-xl">
+                                        <i data-lucide="file-text" className="h-8 w-8 text-blue-200 mb-2"></i>
+                                        <p className="text-3xl font-bold text-white">{stats.total}</p>
+                                        <p className="text-blue-100 text-sm">Active Tenders</p>
+                                    </div>
+                                    <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl p-5 shadow-xl">
+                                        <i data-lucide="clock" className="h-8 w-8 text-amber-200 mb-2"></i>
+                                        <p className="text-3xl font-bold text-white">{stats.pending}</p>
+                                        <p className="text-amber-100 text-sm">Awaiting</p>
+                                    </div>
+                                    <div className="bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl p-5 shadow-xl">
+                                        <i data-lucide="users" className="h-8 w-8 text-purple-200 mb-2"></i>
+                                        <p className="text-3xl font-bold text-white">{stats.review}</p>
+                                        <p className="text-purple-100 text-sm">Under Review</p>
+                                    </div>
+                                    <div className="bg-gradient-to-br from-emerald-600 to-teal-600 rounded-xl p-5 shadow-xl">
+                                        <i data-lucide="trending-up" className="h-8 w-8 text-emerald-200 mb-2"></i>
+                                        <p className="text-2xl font-bold text-white">${(stats.totalValue / 1000).toFixed(0)}k</p>
+                                        <p className="text-emerald-100 text-sm">Pipeline Value</p>
+                                    </div>
+                                </div>
+
+                                {/* Active Tenders Table */}
+                                <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h2 className="text-xl font-bold text-white">Active Tenders</h2>
+                                        <button
+                                            onClick={() => setShowNewEnquiry(true)}
+                                            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all shadow-lg"
+                                        >
+                                            <i data-lucide="plus" className="h-4 w-4"></i>
+                                            <span>New Tender</span>
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="text-left border-b border-white/10">
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">VS #</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Client</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Project</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Estimator</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Value</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {enquiries.map((enquiry) => (
+                                                    <tr 
+                                                        key={enquiry.id}
+                                                        onClick={() => {
+                                                            setSelectedEnquiry(enquiry);
+                                                            setCurrentView('enquiries');
+                                                        }}
+                                                        className="border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors"
+                                                    >
+                                                        <td className="py-3 text-white font-medium text-sm">{enquiry.id}</td>
+                                                        <td className="py-3 text-white/80 text-sm">{enquiry.client}</td>
+                                                        <td className="py-3 text-white/80 text-sm max-w-[200px] truncate">{enquiry.project}</td>
+                                                        <td className="py-3 text-white/80 text-sm">{enquiry.assignedTo}</td>
+                                                        <td className="py-3 text-white font-medium text-sm">${(enquiry.value / 1000).toFixed(0)}k</td>
+                                                        <td className="py-3">
+                                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[enquiry.status]} bg-opacity-20 ${statusColors[enquiry.status].replace('bg-', 'text-')}`}>
+                                                                {enquiry.status.replace('_', ' ')}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            // Tenders View
+                            <div className="flex flex-col">
+                                {/* Search Bar */}
+                                <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20 mb-6">
+                                    <div className="flex items-center space-x-4">
+                                        <div className="flex-1 flex items-center space-x-2">
+                                            <i data-lucide="search" className="h-5 w-5 text-white/60"></i>
+                                            <input
+                                                type="text"
+                                                placeholder="Search tenders..."
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                                className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-white/40"
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={() => setShowNewEnquiry(true)}
+                                            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all shadow-lg"
+                                        >
+                                            <i data-lucide="plus" className="h-4 w-4"></i>
+                                            <span>New Tender</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                {/* Tender Cards Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {enquiries.filter(enq => 
+                                        enq.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                        enq.project.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                        enq.id.toLowerCase().includes(searchTerm.toLowerCase())
+                                    ).map((enquiry) => (
+                                        <div
+                                            key={enquiry.id}
+                                            onClick={() => setSelectedEnquiry(enquiry)}
+                                            className={`p-4 bg-white/10 backdrop-blur-lg rounded-lg border transition-all cursor-pointer hover:shadow-lg hover:transform hover:-translate-y-1 ${
+                                                selectedEnquiry?.id === enquiry.id 
+                                                    ? 'border-blue-400 bg-white/15 shadow-lg ring-2 ring-blue-400/50' 
+                                                    : 'border-white/20 hover:bg-white/15'
+                                            }`}
+                                        >
+                                            {/* Card Header */}
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div className="flex items-center space-x-2">
+                                                    <h3 className="text-white font-bold text-lg">{enquiry.id}</h3>
+                                                    <div className={`p-1 rounded ${statusColors[enquiry.status]} bg-opacity-20`}>
+                                                        <i data-lucide={
+                                                            enquiry.status === 'pending' ? 'clock' :
+                                                            enquiry.status === 'in_progress' ? 'alert-circle' :
+                                                            enquiry.status === 'review' ? 'file-text' :
+                                                            'check-circle'
+                                                        } className={`h-3.5 w-3.5 ${statusColors[enquiry.status].replace('bg-', 'text-')}`}></i>
+                                                    </div>
+                                                </div>
+                                                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                                    enquiry.priority === 'high' ? 'bg-red-500/20 text-red-300' :
+                                                    enquiry.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-300' :
+                                                    'bg-green-500/20 text-green-300'
+                                                }`}>
+                                                    {enquiry.priority}
+                                                </span>
+                                            </div>
+                                            
+                                            {/* Client Info */}
+                                            <p className="text-white/90 font-medium mb-1">{enquiry.client}</p>
+                                            <p className="text-white/60 text-sm mb-3 line-clamp-2">{enquiry.project}</p>
+                                            
+                                            {/* Card Footer */}
+                                            <div className="space-y-2">
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className="text-white/60">Value</span>
+                                                    <span className="text-white font-bold">${(enquiry.value / 1000).toFixed(0)}k</span>
+                                                </div>
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className="text-white/60">Estimator</span>
+                                                    <span className="text-white/80">{enquiry.assignedTo}</span>
+                                                </div>
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className="text-white/60">Due</span>
+                                                    <span className="text-white/80">{enquiry.dueDate}</span>
+                                                </div>
+                                                
+                                                {/* Progress Bar */}
+                                                {enquiry.progress > 0 && (
+                                                    <div className="pt-2">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <span className="text-white/60 text-xs">Progress</span>
+                                                            <span className="text-white/80 text-xs">{enquiry.progress}%</span>
+                                                        </div>
+                                                        <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                                            <div 
+                                                                className="h-full bg-gradient-to-r from-blue-400 to-purple-400"
+                                                                style={{ width: `${enquiry.progress}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* New Tender Modal */}
+                    {showNewEnquiry && (
+                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                            <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 border border-white/20">
+                                <h3 className="text-xl font-bold text-white mb-4">New Tender</h3>
+                                <button
+                                    onClick={() => setShowNewEnquiry(false)}
+                                    className="absolute top-6 right-6 text-white/60 hover:text-white"
+                                >
+                                    ×
+                                </button>
+                                <div className="space-y-4">
+                                    <p className="text-white/70">New tender form would go here...</p>
+                                    <button
+                                        onClick={() => setShowNewEnquiry(false)}
+                                        className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        ReactDOM.render(<VesselForge />, document.getElementById('root'));
+    </script>
+</body>
+</html>
