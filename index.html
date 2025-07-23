@@ -619,7 +619,14 @@
             
             const getFoldersInCurrentFolder = () => {
                 const tenderFolders = folders[selectedEnquiry?.id] || {};
-                return Object.values(tenderFolders);
+                // For now, we'll keep folders flat (no subfolders)
+                // Only show folders when in root directory
+                if (currentFolder === '') {
+                    return Object.values(tenderFolders);
+                } else {
+                    // When inside a folder, don't show any folders (flat structure)
+                    return [];
+                }
             };
             
             // Delete functions
@@ -720,8 +727,12 @@
             };
 
             const handleFileUpload = async (event) => {
-                const uploadedFiles = Array.from(event.target.files);
-                if (!selectedEnquiry || uploadedFiles.length === 0) return;
+                try {
+                    const uploadedFiles = Array.from(event.target.files);
+                    if (!selectedEnquiry || uploadedFiles.length === 0) {
+                        event.target.value = ''; // Reset file input
+                        return;
+                    }
                 
                 for (const file of uploadedFiles) {
                     try {
@@ -773,6 +784,11 @@
                 
                 // Reset file input
                 event.target.value = '';
+                } catch (error) {
+                    console.error('Error in file upload:', error);
+                    alert('An error occurred while uploading files. Please try again.');
+                    event.target.value = ''; // Reset file input on error
+                }
             };
 
             const getFileIcon = (fileType) => {
@@ -2507,67 +2523,57 @@
                                         <div className="h-full flex">
                                             {/* Files List */}
                                             <div className="flex-1 overflow-y-auto p-4 bg-slate-900/50">
-                                                {getFilesInCurrentFolder().length === 0 && getFoldersInCurrentFolder().length === 0 ? (
-                                                    <div className="text-center text-white/60 py-8">
-                                                        <i data-lucide="folder-open" className="h-12 w-12 mx-auto mb-3 opacity-50"></i>
-                                                        <h3 className="text-lg font-medium mb-2">No documents yet</h3>
-                                                        <p className="text-white/50 mb-4 text-sm">Upload project documents, specifications, drawings, and calculations.</p>
-                                                        <label className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer transition-colors font-medium text-sm">
-                                                            <span className="mr-2">⬆</span>
-                                                            <i data-lucide="upload" className="h-4 w-4 inline mr-2 hidden"></i>
-                                                            Upload Documents
-                                                            <input
-                                                                type="file"
-                                                                multiple
-                                                                onChange={handleFileUpload}
-                                                                className="hidden"
-                                                                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.csv"
-                                                            />
-                                                        </label>
-                                                    </div>
-                                                ) : (
-                                                    <div className="space-y-3">
-                                                        {/* Header with navigation and actions */}
-                                                        <div className="flex items-center justify-between mb-4">
-                                                            <div className="flex items-center space-x-3">
-                                                                <h2 className="text-lg font-bold text-white">Project Documents</h2>
-                                                                <div className="text-sm text-white/60">
-                                                                    {currentFolder ? (
-                                                                        <div className="flex items-center space-x-2">
-                                                                            <button 
-                                                                                onClick={() => setCurrentFolder('')}
-                                                                                className="text-blue-400 hover:text-blue-300"
-                                                                            >
-                                                                                📁 Root
-                                                                            </button>
-                                                                            <span>/</span>
-                                                                            <span>{getFolderPath(currentFolder)}</span>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <span>📁 Root</span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex space-x-2">
-                                                                <button
-                                                                    onClick={() => setShowCreateFolder(true)}
-                                                                    className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium text-sm"
-                                                                >
-                                                                    📁 New Folder
-                                                                </button>
-                                                                <label className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer transition-colors font-medium text-sm">
-                                                                    <span className="mr-2">+</span>
-                                                                    Add Files
-                                                                    <input
-                                                                        type="file"
-                                                                        multiple
-                                                                        onChange={handleFileUpload}
-                                                                        className="hidden"
-                                                                        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.csv"
-                                                                    />
-                                                                </label>
+                                                <div>
+                                                    {/* Always show header with navigation and actions */}
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <div className="flex items-center space-x-3">
+                                                            <h2 className="text-lg font-bold text-white">Project Documents</h2>
+                                                            <div className="text-sm text-white/60">
+                                                                {currentFolder ? (
+                                                                    <div className="flex items-center space-x-2">
+                                                                        <button 
+                                                                            onClick={() => setCurrentFolder('')}
+                                                                            className="text-blue-400 hover:text-blue-300"
+                                                                        >
+                                                                            📁 Root
+                                                                        </button>
+                                                                        <span>/</span>
+                                                                        <span>{getFolderPath(currentFolder)}</span>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span>📁 Root</span>
+                                                                )}
                                                             </div>
                                                         </div>
+                                                        <div className="flex space-x-2">
+                                                            <button
+                                                                onClick={() => setShowCreateFolder(true)}
+                                                                className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium text-sm"
+                                                            >
+                                                                📁 New Folder
+                                                            </button>
+                                                            <label className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer transition-colors font-medium text-sm">
+                                                                <span className="mr-2">+</span>
+                                                                Add Files
+                                                                <input
+                                                                    type="file"
+                                                                    multiple
+                                                                    onChange={handleFileUpload}
+                                                                    className="hidden"
+                                                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.csv"
+                                                                />
+                                                            </label>
+                                                        </div>
+                                                    </div>
+
+                                                    {getFilesInCurrentFolder().length === 0 && getFoldersInCurrentFolder().length === 0 ? (
+                                                        <div className="text-center text-white/60 py-8">
+                                                            <i data-lucide="folder-open" className="h-12 w-12 mx-auto mb-3 opacity-50"></i>
+                                                            <h3 className="text-lg font-medium mb-2">No documents yet</h3>
+                                                            <p className="text-white/50 mb-4 text-sm">Create folders to organize your documents or upload files directly.</p>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-3">
                                                         
                                                         {/* Root folder drop zone (when in a subfolder) */}
                                                         {currentFolder && (
@@ -2677,8 +2683,9 @@
                                                                 </div>
                                                             </div>
                                                         ))}
-                                                    </div>
-                                                )}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             {/* Document Preview Sidebar */}
