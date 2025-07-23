@@ -2299,15 +2299,15 @@
                                     {activeTab === 'files' && (
                                         <div className="h-full flex">
                                             {/* Files List */}
-                                            <div className="flex-1 overflow-y-auto p-8 bg-slate-900/50">
+                                            <div className="flex-1 overflow-y-auto p-4 bg-slate-900/50">
                                                 {(files[selectedEnquiry.id] || []).length === 0 ? (
-                                                    <div className="text-center text-white/60 py-16">
-                                                        <i data-lucide="folder-open" className="h-20 w-20 mx-auto mb-6 opacity-50"></i>
-                                                        <h3 className="text-2xl font-medium mb-4">No documents yet</h3>
-                                                        <p className="text-white/50 mb-8">Upload project documents, specifications, drawings, and calculations.</p>
-                                                        <label className="inline-block px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl cursor-pointer transition-colors font-medium">
-                                                            <span className="mr-3">⬆</span>
-                                                            <i data-lucide="upload" className="h-5 w-5 inline mr-3 hidden"></i>
+                                                    <div className="text-center text-white/60 py-8">
+                                                        <i data-lucide="folder-open" className="h-12 w-12 mx-auto mb-3 opacity-50"></i>
+                                                        <h3 className="text-lg font-medium mb-2">No documents yet</h3>
+                                                        <p className="text-white/50 mb-4 text-sm">Upload project documents, specifications, drawings, and calculations.</p>
+                                                        <label className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer transition-colors font-medium text-sm">
+                                                            <span className="mr-2">⬆</span>
+                                                            <i data-lucide="upload" className="h-4 w-4 inline mr-2 hidden"></i>
                                                             Upload Documents
                                                             <input
                                                                 type="file"
@@ -2319,10 +2319,10 @@
                                                         </label>
                                                     </div>
                                                 ) : (
-                                                    <div className="space-y-4">
-                                                        <div className="flex items-center justify-between mb-6">
-                                                            <h2 className="text-2xl font-bold text-white">Project Documents</h2>
-                                                            <label className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl cursor-pointer transition-colors font-medium">
+                                                    <div className="space-y-3">
+                                                        <div className="flex items-center justify-between mb-4">
+                                                            <h2 className="text-lg font-bold text-white">Project Documents</h2>
+                                                            <label className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer transition-colors font-medium text-sm">
                                                                 <span className="mr-2">+</span>
                                                                 <i data-lucide="plus" className="h-4 w-4 inline mr-2 hidden"></i>
                                                                 Add Files
@@ -2336,28 +2336,28 @@
                                                             </label>
                                                         </div>
                                                         {(files[selectedEnquiry.id] || []).map((file) => (
-                                                            <div key={file.id} className="bg-slate-800/50 rounded-xl p-6 hover:bg-slate-800/70 transition-colors border border-white/10">
-                                                                <div className="flex items-center space-x-4">
-                                                                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                                                                        <i data-lucide={getFileIcon(file.type)} className="h-8 w-8 text-white"></i>
+                                                            <div key={file.id} className="bg-slate-800/50 rounded-lg p-3 hover:bg-slate-800/70 transition-colors border border-white/10">
+                                                                <div className="flex items-center space-x-3">
+                                                                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                                        <i data-lucide={getFileIcon(file.type)} className="h-5 w-5 text-white"></i>
                                                                     </div>
                                                                     <div className="flex-1 min-w-0">
-                                                                        <h3 className="text-white font-semibold text-lg truncate">{file.name}</h3>
-                                                                        <div className="flex items-center space-x-4 mt-1">
-                                                                            <span className="text-white/60">{formatFileSize(file.size)}</span>
-                                                                            <span className="text-white/40">•</span>
-                                                                            <span className="text-white/60">{file.timestamp}</span>
-                                                                            <span className="text-white/40">•</span>
-                                                                            <span className="text-white/60">by {file.uploadedBy}</span>
+                                                                        <h3 className="text-white font-medium text-sm truncate">{file.name}</h3>
+                                                                        <div className="flex items-center space-x-2 mt-1">
+                                                                            <span className="text-white/60 text-xs">{formatFileSize(file.size)}</span>
+                                                                            <span className="text-white/40 text-xs">•</span>
+                                                                            <span className="text-white/60 text-xs">{file.timestamp}</span>
+                                                                            <span className="text-white/40 text-xs">•</span>
+                                                                            <span className="text-white/60 text-xs">by {file.uploadedBy}</span>
                                                                         </div>
                                                                     </div>
-                                                                    <div className="flex space-x-3">
+                                                                    <div className="flex space-x-2">
                                                                         <button
                                                                             onClick={() => setPreviewDocument(file)}
-                                                                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                                                                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors font-medium text-sm"
                                                                             title="Preview Document"
                                                                         >
-                                                                            <span className="mr-2">👁</span>
+                                                                            <span className="mr-1">👁</span>
                                                                             <i data-lucide="eye" className="h-4 w-4 inline mr-2 hidden"></i>
                                                                             View
                                                                         </button>
@@ -2446,15 +2446,15 @@
                                     )}
 
                                     {activeTab === 'details' && (
-                                        <div className="h-full overflow-y-auto p-8 bg-slate-900/50 space-y-8">
+                                        <div className="h-full overflow-y-auto p-4 bg-slate-900/50 space-y-4">
                                             {/* Project Info */}
-                                            <div className="bg-slate-800/50 rounded-xl p-8 border border-white/10">
-                                                <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
-                                                    <i data-lucide="info" className="h-6 w-6 mr-3 text-blue-400"></i>
+                                            <div className="bg-slate-800/50 rounded-xl p-4 border border-white/10">
+                                                <h2 className="text-lg font-bold text-white mb-4 flex items-center">
+                                                    <i data-lucide="info" className="h-5 w-5 mr-2 text-blue-400"></i>
                                                     Project Details
                                                 </h2>
-                                                                                <div className="grid grid-cols-3 gap-6">
-                                    <div className="space-y-4">
+                                                <div className="grid grid-cols-3 gap-4">
+                                    <div className="space-y-3">
                                         <div>
                                             <p className="text-white/60 text-sm font-medium mb-1">Client Company</p>
                                             <p className="text-white font-semibold text-lg">{selectedEnquiry.client}</p>
@@ -2464,7 +2464,7 @@
                                             <p className="text-white font-medium">{selectedEnquiry.project}</p>
                                         </div>
                                     </div>
-                                    <div className="space-y-4">
+                                    <div className="space-y-3">
                                         <div>
                                             <p className="text-white/60 text-sm font-medium mb-1">Date Received</p>
                                             <p className="text-white font-semibold">{selectedEnquiry.dateReceived}</p>
@@ -2474,7 +2474,7 @@
                                             <p className="text-white font-semibold">{selectedEnquiry.dueDate}</p>
                                         </div>
                                     </div>
-                                    <div className="space-y-4">
+                                    <div className="space-y-3">
                                         <div>
                                             <p className="text-white/60 text-sm font-medium mb-1">Estimated Value</p>
                                             <p className="text-white font-bold text-2xl">
@@ -2494,10 +2494,10 @@
                                 </div>
                                             </div>
 
-                                            {/* Team & Timeline */}
-                                            <div className="bg-slate-800/50 rounded-xl p-6 border border-white/10">
-                                                                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-xl font-bold text-white flex items-center">
+                                                                                        {/* Team & Timeline */}
+                                            <div className="bg-slate-800/50 rounded-xl p-4 border border-white/10">
+                                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-bold text-white flex items-center">
                             <i data-lucide="users" className="h-5 w-5 mr-2 text-purple-400"></i>
                             Team & Timeline
                         </h2>
@@ -2510,7 +2510,7 @@
                         </button>
                     </div>
 
-                                                                <div className="space-y-4">
+                                                                <div className="space-y-3">
                     {/* Estimators */}
                     <div className="bg-slate-700/30 rounded-lg p-3 border border-blue-500/20">
                         <div className="flex items-center justify-between mb-2">
