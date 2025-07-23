@@ -751,8 +751,8 @@
 
                     {/* Header */}
                     <header className="relative z-10 bg-white/10 backdrop-blur-lg border-b border-white/20">
-                        <div className="px-2 sm:px-4 lg:px-6">
-                            <div className="flex items-center justify-between h-16">
+                        <div className="px-2 sm:px-3 lg:px-4">
+                            <div className="flex items-center justify-between h-12">
                                 <div className="flex items-center space-x-2">
                                     <button
                                         onClick={() => setShowSidebar(!showSidebar)}
@@ -765,13 +765,13 @@
                                         className="flex items-center space-x-2 cursor-pointer" 
                                         onClick={() => setCurrentView('dashboard')}
                                     >
-                                        <i data-lucide="building" className="h-8 w-8 text-blue-400"></i>
-                                        <h1 className="text-2xl font-bold text-white">VesselForge</h1>
+                                        <i data-lucide="building" className="h-6 w-6 text-blue-400"></i>
+                                        <h1 className="text-xl font-bold text-white">VesselForge</h1>
                                     </div>
                                     <nav className="hidden md:flex space-x-1">
                                         <button
                                             onClick={() => setCurrentView('dashboard')}
-                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                            className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
                                                 currentView === 'dashboard' 
                                                     ? 'bg-white/20 text-white' 
                                                     : 'text-white/70 hover:text-white hover:bg-white/10'
@@ -781,7 +781,7 @@
                                         </button>
                                         <button
                                             onClick={() => setCurrentView('enquiries')}
-                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                            className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
                                                 currentView === 'enquiries' 
                                                     ? 'bg-white/20 text-white' 
                                                     : 'text-white/70 hover:text-white hover:bg-white/10'
@@ -917,25 +917,25 @@
                     )}
 
                     {/* Main Content */}
-                    <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                         {currentView === 'dashboard' ? (
                             // Dashboard View
                             <>
-                                <div className="mb-8">
-                                    <h2 className="text-3xl font-bold text-white mb-2">Tender Management Dashboard</h2>
-                                    <p className="text-white/70">Track and manage all pressure vessel enquiries in real-time</p>
+                                <div className="mb-4">
+                                    <h2 className="text-2xl font-bold text-white mb-1">Tender Management Dashboard</h2>
+                                    <p className="text-white/70 text-sm">Track and manage all pressure vessel enquiries in real-time</p>
                                 </div>
 
                                 {/* ACTION REQUIRED Stats Cards */}
-                                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
-                                    <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg p-4 shadow-lg">
-                                        <i data-lucide="file-text" className="h-6 w-6 text-blue-200 mb-2"></i>
-                                        <p className="text-2xl font-bold text-white">{stats.total}</p>
+                                <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 mb-4">
+                                    <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg p-3 shadow-lg">
+                                        <i data-lucide="file-text" className="h-5 w-5 text-blue-200 mb-1"></i>
+                                        <p className="text-xl font-bold text-white">{stats.total}</p>
                                         <p className="text-blue-100 text-xs">Total Active</p>
                                     </div>
-                                    <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-lg p-4 shadow-lg border-2 border-white/30">
+                                    <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-lg p-3 shadow-lg border-2 border-white/30">
                                         <div className="text-white text-xs font-bold mb-1">🚨 ACTION</div>
-                                        <p className="text-2xl font-bold text-white">{stats.actionDesigners}</p>
+                                        <p className="text-xl font-bold text-white">{stats.actionDesigners}</p>
                                         <p className="text-orange-100 text-xs">Designers</p>
                                     </div>
                                     <div className="bg-gradient-to-br from-red-600 to-red-700 rounded-lg p-4 shadow-lg border-2 border-white/30">
@@ -956,10 +956,10 @@
                                 </div>
 
                                 {/* New Tender Button */}
-                                <div className="flex justify-end mb-6">
+                                <div className="flex justify-end mb-4">
                                     <button
                                         onClick={() => setShowNewEnquiry(true)}
-                                        className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all shadow-lg text-lg font-medium"
+                                        className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all shadow-lg text-base font-medium"
                                     >
                                         <i data-lucide="plus" className="h-5 w-5"></i>
                                         <span>New Tender</span>
@@ -967,10 +967,10 @@
                                 </div>
 
                                 {/* Top 5 Priority Tenders */}
-                                <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
-                                    <div className="flex items-center justify-between mb-6">
+                                <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20">
+                                    <div className="flex items-center justify-between mb-4">
                                         <div>
-                                            <h2 className="text-xl font-bold text-white">Top 5 Priority Tenders</h2>
+                                            <h2 className="text-lg font-bold text-white">Top 5 Priority Tenders</h2>
                                             <p className="text-white/60 text-sm">Showing highest priority items only</p>
                                         </div>
                                         <div className="flex items-center space-x-2">
@@ -988,12 +988,12 @@
                                         <table className="w-full">
                                             <thead>
                                                 <tr className="text-left border-b border-white/10">
-                                                    <th className="pb-3 text-white/60 font-medium text-sm">Priority</th>
-                                                    <th className="pb-3 text-white/60 font-medium text-sm">VS #</th>
-                                                    <th className="pb-3 text-white/60 font-medium text-sm">Client</th>
-                                                    <th className="pb-3 text-white/60 font-medium text-sm">Project</th>
-                                                    <th className="pb-3 text-white/60 font-medium text-sm">Action Required</th>
-                                                    <th className="pb-3 text-white/60 font-medium text-sm">Manage</th>
+                                                    <th className="pb-2 text-white/60 font-medium text-xs">Priority</th>
+                                                    <th className="pb-2 text-white/60 font-medium text-xs">VS #</th>
+                                                    <th className="pb-2 text-white/60 font-medium text-xs">Client</th>
+                                                    <th className="pb-2 text-white/60 font-medium text-xs">Project</th>
+                                                    <th className="pb-2 text-white/60 font-medium text-xs">Action Required</th>
+                                                    <th className="pb-2 text-white/60 font-medium text-xs">Manage</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1002,13 +1002,13 @@
                                                         key={enquiry.id}
                                                         className="border-b border-white/5 hover:bg-white/5 transition-colors"
                                                     >
-                                                        <td className="py-3">
-                                                            <span className={`text-xs px-2 py-1 rounded-full font-bold ${getPriorityColor(enquiry.priorityNumber)}`}>
+                                                        <td className="py-2">
+                                                            <span className={`text-xs px-1 py-0.5 rounded-full font-bold ${getPriorityColor(enquiry.priorityNumber)}`}>
                                                                 P{enquiry.priorityNumber}
                                                             </span>
                                                         </td>
                                                         <td 
-                                                            className="py-3 text-white font-medium text-sm cursor-pointer hover:text-blue-400"
+                                                            className="py-2 text-white font-medium text-xs cursor-pointer hover:text-blue-400"
                                                             onClick={() => {
                                                                 setSelectedEnquiry(enquiry);
                                                                 setShowEnquiryDetails(true);
@@ -1016,10 +1016,10 @@
                                                         >
                                                             {enquiry.id}
                                                         </td>
-                                                        <td className="py-3 text-white/80 text-sm">{enquiry.client}</td>
-                                                        <td className="py-3 text-white/80 text-sm max-w-[200px] truncate">{enquiry.project}</td>
-                                                        <td className="py-3">
-                                                            <div className={`${getActionStatusColor(enquiry)} rounded px-2 py-1 text-center text-xs`}>
+                                                        <td className="py-2 text-white/80 text-xs">{enquiry.client}</td>
+                                                        <td className="py-2 text-white/80 text-xs max-w-[200px] truncate">{enquiry.project}</td>
+                                                        <td className="py-2">
+                                                            <div className={`${getActionStatusColor(enquiry)} rounded px-1 py-0.5 text-center text-xs`}>
                                                                 <div className="text-white font-bold">
                                                                     {(() => {
                                                                         const activePeople = getActivePeopleForTender(enquiry);
@@ -1048,18 +1048,18 @@
                                                                 </div>
                                                             </div>
                                                         </td>
-                                                        <td className="py-3">
-                                                            <div className="flex items-center gap-4 ml-3">
+                                                        <td className="py-2">
+                                                            <div className="flex items-center gap-2 ml-2">
                                                                 <button
                                                                     onClick={() => openStatusUpdate(enquiry)}
-                                                                    className={`text-xs px-3 py-1 rounded-full font-bold cursor-pointer hover:opacity-80 transition-opacity ${getTenderStatusColor(enquiry.tenderStatus)}`}
+                                                                    className={`text-xs px-2 py-0.5 rounded-full font-bold cursor-pointer hover:opacity-80 transition-opacity ${getTenderStatusColor(enquiry.tenderStatus)}`}
                                                                     title="Click to change status"
                                                                 >
                                                                     {enquiry.tenderStatus}
                                                                 </button>
                                                                 <button
                                                                     onClick={() => openDeleteConfirm(enquiry)}
-                                                                    className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
+                                                                    className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
                                                                     title="Delete Tender"
                                                                 >
                                                                     🗑️ Delete
