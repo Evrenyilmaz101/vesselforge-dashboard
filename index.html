@@ -2640,16 +2640,17 @@
                                                         }
                                                         
                                                         const message = {
-                                                            id: Math.floor(Math.random() * 1000000),
+                                                            id: Date.now() + Math.floor(Math.random() * 1000),
                                                             text: alertText,
                                                             sender: currentUser, // Current user - will be dynamic when user accounts are added
                                                             timestamp: new Date().toLocaleString(),
+                                                            timestampMs: Date.now(), // For sorting
                                                             type: 'action-alert',
                                                             createdBy: currentUser // Track who created this action alert
                                                         };
                                                         
-                                                        const messagesRef = firebase.database().ref(`tender-messages/${selectedEnquiry.id}`);
-                                                        messagesRef.push(message);
+                                                        const messagesRef = firebase.database().ref(`tender-messages/${selectedEnquiry.id}/${message.id}`);
+                                                        messagesRef.set(message);
                                                         
                                                         setShowActionAlert(false);
                                                         setActionAlertPeople([]);
