@@ -80,20 +80,43 @@
             
             // Firebase real-time listener for tenders
             useEffect(() => {
-                const tendersRef = database.ref('tenders');
-                const unsubscribe = tendersRef.on('value', (snapshot) => {
-                    const data = snapshot.val();
-                    if (data) {
-                        const tendersList = Object.values(data);
-                        setEnquiries(tendersList);
-                    } else {
-                        // Database is empty - show empty state
+                let tendersRef;
+                let listener;
+                
+                try {
+                    tendersRef = database.ref('tenders');
+                    listener = tendersRef.on('value', (snapshot) => {
+                        try {
+                            const data = snapshot.val();
+                            if (data) {
+                                const tendersList = Object.values(data);
+                                setEnquiries(tendersList);
+                            } else {
+                                // Database is empty - show empty state
+                                setEnquiries([]);
+                            }
+                        } catch (error) {
+                            console.error('Error processing tenders:', error);
+                            setEnquiries([]);
+                        }
+                    }, (error) => {
+                        console.error('Firebase tenders listener error:', error);
                         setEnquiries([]);
-                    }
-                });
+                    });
+                } catch (error) {
+                    console.error('Error setting up tenders listener:', error);
+                }
 
                 // Cleanup listener
-                return () => tendersRef.off('value', unsubscribe);
+                return () => {
+                    if (tendersRef && listener) {
+                        try {
+                            tendersRef.off('value', listener);
+                        } catch (error) {
+                            console.error('Error cleaning up tenders listener:', error);
+                        }
+                    }
+                };
             }, []);
 
 
@@ -109,65 +132,123 @@
             
             // Firebase real-time listener for messages
             useEffect(() => {
-                if (!selectedEnquiry) return;
+                if (!selectedEnquiry) {
+                    return;
+                }
                 
-                const messagesRef = database.ref(`tender-messages/${selectedEnquiry.id}`);
-                const unsubscribe = messagesRef.on('value', (snapshot) => {
-                    try {
-                        const data = snapshot.val();
-                        if (data) {
-                            const messagesList = Object.values(data).sort((a, b) => {
-                                const aTime = a.timestampMs || 0;
-                                const bTime = b.timestampMs || 0;
-                                return aTime - bTime;
-                            });
-                            setMessages(prev => ({
-                                ...prev,
-                                [selectedEnquiry.id]: messagesList
-                            }));
-                        } else {
+                let messagesRef;
+                let listener;
+                
+                try {
+                    messagesRef = database.ref(`tender-messages/${selectedEnquiry.id}`);
+                    listener = messagesRef.on('value', (snapshot) => {
+                        try {
+                            const data = snapshot.val();
+                            if (data) {
+                                const messagesList = Object.values(data).sort((a, b) => {
+                                    const aTime = a.timestampMs || 0;
+                                    const bTime = b.timestampMs || 0;
+                                    return aTime - bTime;
+                                });
+                                setMessages(prev => ({
+                                    ...prev,
+                                    [selectedEnquiry.id]: messagesList
+                                }));
+                            } else {
+                                setMessages(prev => ({
+                                    ...prev,
+                                    [selectedEnquiry.id]: []
+                                }));
+                            }
+                        } catch (error) {
+                            console.error('Error processing messages:', error);
                             setMessages(prev => ({
                                 ...prev,
                                 [selectedEnquiry.id]: []
                             }));
                         }
-                    } catch (error) {
-                        console.error('Error loading messages:', error);
+                    }, (error) => {
+                        console.error('Firebase messages listener error:', error);
                         setMessages(prev => ({
                             ...prev,
                             [selectedEnquiry.id]: []
                         }));
-                    }
-                });
+                    });
+                } catch (error) {
+                    console.error('Error setting up messages listener:', error);
+                }
 
-                // Cleanup listener on unmount
-                return () => messagesRef.off('value', unsubscribe);
+                // Cleanup listener on unmount or tender change
+                return () => {
+                    if (messagesRef && listener) {
+                        try {
+                            messagesRef.off('value', listener);
+                        } catch (error) {
+                            console.error('Error cleaning up messages listener:', error);
+                        }
+                    }
+                };
             }, [selectedEnquiry?.id]);
             const [files, setFiles] = useState({});
             
             // Firebase real-time listener for files
             useEffect(() => {
-                if (!selectedEnquiry) return;
+                if (!selectedEnquiry) {
+                    return;
+                }
                 
-                const filesRef = database.ref(`tender-files/${selectedEnquiry.id}`);
-                const unsubscribe = filesRef.on('value', (snapshot) => {
-                    const data = snapshot.val();
-                    if (data) {
-                        const filesList = Object.values(data).sort((a, b) => a.timestampMs - b.timestampMs);
-                        setFiles(prev => ({
-                            ...prev,
-                            [selectedEnquiry.id]: filesList
-                        }));
-                    } else {
+                let filesRef;
+                let listener;
+                
+                try {
+                    filesRef = database.ref(`tender-files/${selectedEnquiry.id}`);
+                    listener = filesRef.on('value', (snapshot) => {
+                        try {
+                            const data = snapshot.val();
+                            if (data) {
+                                const filesList = Object.values(data).sort((a, b) => {
+                                    const aTime = a.timestampMs || 0;
+                                    const bTime = b.timestampMs || 0;
+                                    return aTime - bTime;
+                                });
+                                setFiles(prev => ({
+                                    ...prev,
+                                    [selectedEnquiry.id]: filesList
+                                }));
+                            } else {
+                                setFiles(prev => ({
+                                    ...prev,
+                                    [selectedEnquiry.id]: []
+                                }));
+                            }
+                        } catch (error) {
+                            console.error('Error processing files:', error);
+                            setFiles(prev => ({
+                                ...prev,
+                                [selectedEnquiry.id]: []
+                            }));
+                        }
+                    }, (error) => {
+                        console.error('Firebase files listener error:', error);
                         setFiles(prev => ({
                             ...prev,
                             [selectedEnquiry.id]: []
                         }));
-                    }
-                });
+                    });
+                } catch (error) {
+                    console.error('Error setting up files listener:', error);
+                }
 
-                // Cleanup listener on unmount
-                return () => filesRef.off('value', unsubscribe);
+                // Cleanup listener on unmount or tender change
+                return () => {
+                    if (filesRef && listener) {
+                        try {
+                            filesRef.off('value', listener);
+                        } catch (error) {
+                            console.error('Error cleaning up files listener:', error);
+                        }
+                    }
+                };
             }, [selectedEnquiry?.id]);
             const [newTenderForm, setNewTenderForm] = useState({
                 vsNumber: '',
