@@ -694,6 +694,25 @@
                 }
             };
 
+            // Reactivate tender (bring back to Active status)
+            const reactivateTender = (tender) => {
+                if (window.confirm(`Are you sure you want to reactivate "${tender.project}" for ${tender.client}?\n\nThis will move it back to Active status.`)) {
+                    // Update in Firebase
+                    database.ref(`tenders/${tender.id}`).update({
+                        tenderStatus: 'Active',
+                        actionFrom: 'Awaiting Assignment', // Reset action status
+                        completedBy: [] // Reset completions
+                    });
+                    
+                    // Update local state immediately
+                    setEnquiries(prev => prev.map(enquiry => 
+                        enquiry.id === tender.id 
+                            ? { ...enquiry, tenderStatus: 'Active', actionFrom: 'Awaiting Assignment', completedBy: [] }
+                            : enquiry
+                    ));
+                }
+            };
+
             // Get status color
             const getTenderStatusColor = (status) => {
                 switch (status) {
@@ -1188,6 +1207,7 @@
                                                     <th className="pb-3 text-white/60 font-medium text-sm">Value</th>
                                                     <th className="pb-3 text-white/60 font-medium text-sm">Estimator</th>
                                                     <th className="pb-3 text-white/60 font-medium text-sm">Date Won</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1201,11 +1221,20 @@
                                                         </td>
                                                         <td className="py-3 text-white/80 text-sm">{enquiry.assignedTo}</td>
                                                         <td className="py-3 text-white/60 text-sm">{enquiry.dateReceived}</td>
+                                                        <td className="py-3">
+                                                            <button
+                                                                onClick={() => reactivateTender(enquiry)}
+                                                                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors font-medium"
+                                                                title="Move back to Active status"
+                                                            >
+                                                                ↩️ Reactivate
+                                                            </button>
+                                                        </td>
                                                     </tr>
                                                 ))}
                                                 {getWonTenders().length === 0 && (
                                                     <tr>
-                                                        <td colSpan="6" className="text-center text-white/60 py-12">
+                                                        <td colSpan="7" className="text-center text-white/60 py-12">
                                                             No won tenders yet. Keep up the great work! 🎯
                                                         </td>
                                                     </tr>
@@ -1234,6 +1263,7 @@
                                                     <th className="pb-3 text-white/60 font-medium text-sm">Est. Value</th>
                                                     <th className="pb-3 text-white/60 font-medium text-sm">Estimator</th>
                                                     <th className="pb-3 text-white/60 font-medium text-sm">Date Lost</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1247,11 +1277,20 @@
                                                         </td>
                                                         <td className="py-3 text-white/80 text-sm">{enquiry.assignedTo}</td>
                                                         <td className="py-3 text-white/60 text-sm">{enquiry.dateReceived}</td>
+                                                        <td className="py-3">
+                                                            <button
+                                                                onClick={() => reactivateTender(enquiry)}
+                                                                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors font-medium"
+                                                                title="Move back to Active status"
+                                                            >
+                                                                ↩️ Reactivate
+                                                            </button>
+                                                        </td>
                                                     </tr>
                                                 ))}
                                                 {getLostTenders().length === 0 && (
                                                     <tr>
-                                                        <td colSpan="6" className="text-center text-white/60 py-12">
+                                                        <td colSpan="7" className="text-center text-white/60 py-12">
                                                             No lost tenders yet. Great track record! 💪
                                                         </td>
                                                     </tr>
@@ -1329,6 +1368,7 @@
                                                     <th className="pb-3 text-white/60 font-medium text-sm">Project</th>
                                                     <th className="pb-3 text-white/60 font-medium text-sm">Value</th>
                                                     <th className="pb-3 text-white/60 font-medium text-sm">Date Cancelled</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1341,11 +1381,20 @@
                                                             {enquiry.value > 0 ? `$${(enquiry.value / 1000).toFixed(0)}k` : 'TBD'}
                                                         </td>
                                                         <td className="py-3 text-white/60 text-sm">{enquiry.dateReceived}</td>
+                                                        <td className="py-3">
+                                                            <button
+                                                                onClick={() => reactivateTender(enquiry)}
+                                                                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors font-medium"
+                                                                title="Move back to Active status"
+                                                            >
+                                                                ↩️ Reactivate
+                                                            </button>
+                                                        </td>
                                                     </tr>
                                                 ))}
                                                 {getCancelledTenders().length === 0 && (
                                                     <tr>
-                                                        <td colSpan="5" className="text-center text-white/60 py-12">
+                                                        <td colSpan="6" className="text-center text-white/60 py-12">
                                                             No cancelled tenders. Great project management! 👍
                                                         </td>
                                                     </tr>
@@ -1373,6 +1422,7 @@
                                                     <th className="pb-3 text-white/60 font-medium text-sm">Project</th>
                                                     <th className="pb-3 text-white/60 font-medium text-sm">Value</th>
                                                     <th className="pb-3 text-white/60 font-medium text-sm">Date Put on Hold</th>
+                                                    <th className="pb-3 text-white/60 font-medium text-sm">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1385,11 +1435,20 @@
                                                             {enquiry.value > 0 ? `$${(enquiry.value / 1000).toFixed(0)}k` : 'TBD'}
                                                         </td>
                                                         <td className="py-3 text-white/60 text-sm">{enquiry.dateReceived}</td>
+                                                        <td className="py-3">
+                                                            <button
+                                                                onClick={() => reactivateTender(enquiry)}
+                                                                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors font-medium"
+                                                                title="Move back to Active status"
+                                                            >
+                                                                ↩️ Reactivate
+                                                            </button>
+                                                        </td>
                                                     </tr>
                                                 ))}
                                                 {getHoldTenders().length === 0 && (
                                                     <tr>
-                                                        <td colSpan="5" className="text-center text-white/60 py-12">
+                                                        <td colSpan="6" className="text-center text-white/60 py-12">
                                                             No tenders on hold. Keep the momentum! 🚀
                                                         </td>
                                                     </tr>
