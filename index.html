@@ -113,14 +113,26 @@
                 
                 const messagesRef = database.ref(`tender-messages/${selectedEnquiry.id}`);
                 const unsubscribe = messagesRef.on('value', (snapshot) => {
-                    const data = snapshot.val();
-                    if (data) {
-                        const messagesList = Object.values(data).sort((a, b) => a.timestampMs - b.timestampMs);
-                        setMessages(prev => ({
-                            ...prev,
-                            [selectedEnquiry.id]: messagesList
-                        }));
-                    } else {
+                    try {
+                        const data = snapshot.val();
+                        if (data) {
+                            const messagesList = Object.values(data).sort((a, b) => {
+                                const aTime = a.timestampMs || 0;
+                                const bTime = b.timestampMs || 0;
+                                return aTime - bTime;
+                            });
+                            setMessages(prev => ({
+                                ...prev,
+                                [selectedEnquiry.id]: messagesList
+                            }));
+                        } else {
+                            setMessages(prev => ({
+                                ...prev,
+                                [selectedEnquiry.id]: []
+                            }));
+                        }
+                    } catch (error) {
+                        console.error('Error loading messages:', error);
                         setMessages(prev => ({
                             ...prev,
                             [selectedEnquiry.id]: []
@@ -231,7 +243,8 @@
                     // Find the specific message to update
                     if (!selectedEnquiry || !messages[selectedEnquiry.id]) return;
                     const currentMessages = messages[selectedEnquiry.id];
-                    const message = currentMessages.find(msg => msg.id === messageId);
+                    if (!Array.isArray(currentMessages)) return;
+                    const message = currentMessages.find(msg => msg && msg.id === messageId);
                     if (!message) return;
                     
                     // Update the specific message with completion data
@@ -300,11 +313,17 @@
             };
 
             const isActionCompleted = (messageId, person) => {
-                // Check if this person has completed their action for this specific message
-                if (!selectedEnquiry || !messages[selectedEnquiry.id]) return false;
-                const currentMessages = messages[selectedEnquiry.id];
-                const message = currentMessages.find(msg => msg.id === messageId);
-                return message && message.completedBy && message.completedBy.includes(person);
+                try {
+                    // Check if this person has completed their action for this specific message
+                    if (!selectedEnquiry || !messages[selectedEnquiry.id]) return false;
+                    const currentMessages = messages[selectedEnquiry.id];
+                    if (!Array.isArray(currentMessages)) return false;
+                    const message = currentMessages.find(msg => msg && msg.id === messageId);
+                    return message && message.completedBy && Array.isArray(message.completedBy) && message.completedBy.includes(person);
+                } catch (error) {
+                    console.error('Error in isActionCompleted:', error);
+                    return false;
+                }
             };
 
             const isPersonActionCompleted = (tender, person) => {
@@ -1802,16 +1821,17 @@
                                                                             </div>
                                                                         ) : message.type === 'action-alert' ? (
                                                                             (() => {
-                                                                                // Extract assigned people from message text
-                                                                                const peopleRegex = /👤 ([^:]+)/g;
-                                                                                const assignedPeople = [];
-                                                                                let match;
-                                                                                while ((match = peopleRegex.exec(message.text)) !== null) {
-                                                                                    assignedPeople.push(match[1].trim());
-                                                                                }
-                                                                                
-                                                                                // Check if all actions are completed
-                                                                                const allCompleted = assignedPeople.length > 0 && assignedPeople.every(person => isActionCompleted(message.id, person));
+                                                                                try {
+                                                                                    // Extract assigned people from message text
+                                                                                    const peopleRegex = /👤 ([^:]+)/g;
+                                                                                    const assignedPeople = [];
+                                                                                    let match;
+                                                                                    while ((match = peopleRegex.exec(message.text || '')) !== null) {
+                                                                                        assignedPeople.push(match[1].trim());
+                                                                                    }
+                                                                                    
+                                                                                    // Check if all actions are completed
+                                                                                    const allCompleted = assignedPeople.length > 0 && assignedPeople.every(person => isActionCompleted(message.id, person));
                                                                                 
                                                                                 return (
                                                                                     <div className={`border-2 rounded-lg p-4 shadow-xl ${allCompleted ? 'bg-gradient-to-r from-green-600 to-emerald-600 border-green-400' : 'bg-gradient-to-r from-red-600 to-orange-600 border-red-400'}`}>
@@ -1860,7 +1880,17 @@
                                                                                             </div>
                                                                                         )}
                                                                                     </div>
-                                                                                                                                                                 );
+                                                                                );
+                                                                                } catch (error) {
+                                                                                    console.error('Error rendering action alert:', error);
+                                                                                    return (
+                                                                                        <div className="border-2 rounded-lg p-4 shadow-xl bg-red-600 border-red-400">
+                                                                                            <div className="text-white font-medium text-sm">
+                                                                                                Error displaying action alert
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    );
+                                                                                }
                                                                              })()
 
                                                                         ) : (
