@@ -480,8 +480,26 @@
                 // Update in Firebase
                 database.ref(`tenders/${tenderId}`).update({
                     status: `Action Required: ${assignee}`,
-                    actionFrom: assignee
+                    actionFrom: assignee,
+                    completedBy: [] // Reset completions when new action is assigned
                 });
+                
+                // IMMEDIATELY update local state for instant UI response
+                setEnquiries(prev => prev.map(enquiry => 
+                    enquiry.id === tenderId 
+                        ? { ...enquiry, actionFrom: assignee, completedBy: [] }
+                        : enquiry
+                ));
+                
+                // Update selectedEnquiry if it's the same tender
+                if (selectedEnquiry && selectedEnquiry.id === tenderId) {
+                    setSelectedEnquiry(prev => ({
+                        ...prev,
+                        actionFrom: assignee,
+                        completedBy: []
+                    }));
+                }
+                
                 setShowAssignAction(false);
                 setSelectedTenderForAssign(null);
                 setNewActionAssignee('');
@@ -2558,6 +2576,20 @@
                                                             actionFrom: actionAlertPeople,
                                                             completedBy: [] // Reset completions for new action
                                                         });
+                                                        
+                                                        // IMMEDIATELY update local state for instant UI response
+                                                        setSelectedEnquiry(prev => ({
+                                                            ...prev,
+                                                            actionFrom: actionAlertPeople,
+                                                            completedBy: []
+                                                        }));
+                                                        
+                                                        // Also update the enquiries list so dashboard stays in sync
+                                                        setEnquiries(prev => prev.map(enquiry => 
+                                                            enquiry.id === selectedEnquiry.id 
+                                                                ? { ...enquiry, actionFrom: actionAlertPeople, completedBy: [] }
+                                                                : enquiry
+                                                        ));
                                                         
                                                         // Send message about the action assignment
                                                         let alertText = '';
