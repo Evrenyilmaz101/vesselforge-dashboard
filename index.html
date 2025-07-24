@@ -2828,19 +2828,19 @@
                                                             <p className="text-sm">No messages yet for this tender. Begin collaborating with your team!</p>
                                                         </div>
                                                     ) : (
-                                                        (messages[selectedEnquiry.id] || []).map((message) => (
-                                                            <div key={message.id} className="flex items-start space-x-3">
+                                                        (messages[selectedEnquiry.id] || []).filter(message => message && message.id).map((message, messageIndex) => (
+                                                            <div key={message.id || `message-${messageIndex}`} className="flex items-start space-x-3">
                                                                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
                                                                     <span className="text-white text-xs font-bold">
-                                                                        {message.type === 'action-alert' ? (message.createdBy || currentUser) : message.sender}
+                                                                        {message.type === 'action-alert' ? (message.createdBy || currentUser || 'U') : (message.sender || 'U')}
                                                                     </span>
                                                                 </div>
                                                                 <div className="flex-1 max-w-3xl">
                                                                     <div className="flex items-center space-x-2 mb-1">
                                                                         <span className="text-white font-medium text-sm">
-                                                                            {message.type === 'action-alert' ? (message.createdBy || currentUser) : message.sender}
+                                                                            {message.type === 'action-alert' ? (message.createdBy || currentUser || 'Unknown') : (message.sender || 'Unknown')}
                                                                         </span>
-                                                                        <span className="text-white/40 text-xs">{message.timestamp}</span>
+                                                                        <span className="text-white/40 text-xs">{message.timestamp || 'N/A'}</span>
                                                                     </div>
                                                                     <div className="py-1">
                                                                         {message.type === 'file' ? (
@@ -2933,7 +2933,7 @@
                                                                             })()
 
                                                                         ) : (
-                                                                            <p className="text-white leading-relaxed text-sm">{message.text}</p>
+                                                                            <p className="text-white leading-relaxed text-sm">{message.text || 'No message content'}</p>
                                                                         )}
                                                                     </div>
                                                                 </div>
