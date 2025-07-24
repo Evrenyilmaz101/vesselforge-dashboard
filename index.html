@@ -529,6 +529,17 @@
                 return () => unsubscribe();
             }, []);
             
+            // TEMPORARY: Skip auth for testing - REMOVE THIS AFTER DEBUGGING
+            // if (true) {
+            //     console.log('TEMPORARY: Bypassing auth for testing...');
+            //     return (
+            //         <div className="min-h-screen bg-slate-900 p-8">
+            //             <h1 className="text-white text-2xl">Auth Bypass Test - App Working!</h1>
+            //             <p className="text-white">If you see this, the issue is with authentication flow.</p>
+            //         </div>
+            //     );
+            // }
+
             // Show loading screen while checking authentication
             console.log('Render check - loading:', loading, 'user:', user ? user.email : 'none', 'userRole:', userRole);
             if (loading) {
@@ -2861,54 +2872,54 @@
                                                                                     // Check if all actions are completed
                                                                                     const allCompleted = assignedPeople.length > 0 && assignedPeople.every(person => isActionCompleted(message.id, person));
                                                                                 
-                                                                                return (
-                                                                                    <div className={`border-2 rounded-lg p-3 shadow-lg ${allCompleted ? 'bg-gradient-to-r from-green-600 to-emerald-600 border-green-400' : 'bg-gradient-to-r from-red-600 to-orange-600 border-red-400'}`}>
-                                                                                        <div className="flex items-center justify-between mb-1">
-                                                                                            <div className="flex items-center space-x-2">
-                                                                                                <span className="text-yellow-300 text-base">{allCompleted ? '✅' : '⚠️'}</span>
-                                                                                                <span className="text-white font-bold text-xs uppercase tracking-wider">
-                                                                                                    {allCompleted ? 'ACTION COMPLETED' : 'ACTION ALERT'}
-                                                                                                </span>
-                                                                                                <span className="text-yellow-300 text-base">{allCompleted ? '✅' : '⚠️'}</span>
-                                                                                            </div>
-                                                                                            <div className="flex items-center space-x-1">
-                                                                                                <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center">
-                                                                                                    <span className="text-white text-xs font-bold">{message.createdBy || message.sender}</span>
+                                                                                    return (
+                                                                                        <div className={`border-2 rounded-lg p-3 shadow-lg ${allCompleted ? 'bg-gradient-to-r from-green-600 to-emerald-600 border-green-400' : 'bg-gradient-to-r from-red-600 to-orange-600 border-red-400'}`}>
+                                                                                            <div className="flex items-center justify-between mb-1">
+                                                                                                <div className="flex items-center space-x-2">
+                                                                                                    <span className="text-yellow-300 text-base">{allCompleted ? '✅' : '⚠️'}</span>
+                                                                                                    <span className="text-white font-bold text-xs uppercase tracking-wider">
+                                                                                                        {allCompleted ? 'ACTION COMPLETED' : 'ACTION ALERT'}
+                                                                                                    </span>
+                                                                                                    <span className="text-yellow-300 text-base">{allCompleted ? '✅' : '⚠️'}</span>
                                                                                                 </div>
-                                                                                                <span className="text-white/80 text-xs">Created by {message.createdBy || message.sender}</span>
+                                                                                                <div className="flex items-center space-x-1">
+                                                                                                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center">
+                                                                                                        <span className="text-white text-xs font-bold">{message.createdBy || message.sender}</span>
+                                                                                                    </div>
+                                                                                                    <span className="text-white/80 text-xs">Created by {message.createdBy || message.sender}</span>
+                                                                                                </div>
                                                                                             </div>
-                                                                                        </div>
-                                                                                        <div className="text-white font-medium text-xs whitespace-pre-line leading-relaxed mb-2">
-                                                                                            {message.text}
-                                                                                        </div>
-                                                                                        
-                                                                                        {assignedPeople.length > 0 && (
-                                                                                            <div className="space-y-1">
-                                                                                                {assignedPeople.map(person => {
-                                                                                                    const isCompleted = isActionCompleted(message.id, person);
-                                                                                                    return (
-                                                                                                        <div key={person} className="flex items-center justify-between bg-black/20 rounded-lg p-1.5">
-                                                                                                            <div className="flex items-center space-x-2">
-                                                                                                                <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${isCompleted ? 'bg-green-500 text-white' : 'bg-yellow-500 text-black'}`}>
-                                                                                                                    {isCompleted ? '✅ DONE' : '⏳ PENDING'}
-                                                                                                                </span>
-                                                                                                                <span className="text-white text-xs font-medium">{person}</span>
+                                                                                            <div className="text-white font-medium text-xs whitespace-pre-line leading-relaxed mb-2">
+                                                                                                {message.text}
+                                                                                            </div>
+                                                                                            
+                                                                                            {assignedPeople.length > 0 && (
+                                                                                                <div className="space-y-1">
+                                                                                                    {assignedPeople.map(person => {
+                                                                                                        const isCompleted = isActionCompleted(message.id, person);
+                                                                                                        return (
+                                                                                                            <div key={person} className="flex items-center justify-between bg-black/20 rounded-lg p-1.5">
+                                                                                                                <div className="flex items-center space-x-2">
+                                                                                                                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${isCompleted ? 'bg-green-500 text-white' : 'bg-yellow-500 text-black'}`}>
+                                                                                                                        {isCompleted ? '✅ DONE' : '⏳ PENDING'}
+                                                                                                                    </span>
+                                                                                                                    <span className="text-white text-xs font-medium">{person}</span>
+                                                                                                                </div>
+                                                                                                                {!isCompleted && (
+                                                                                                                    <button
+                                                                                                                        onClick={() => completeAction(message.id, person)}
+                                                                                                                        className="px-2 py-0.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded-full font-medium transition-colors"
+                                                                                                                    >
+                                                                                                                        Mark Complete
+                                                                                                                    </button>
+                                                                                                                )}
                                                                                                             </div>
-                                                                                                            {!isCompleted && (
-                                                                                                                <button
-                                                                                                                    onClick={() => completeAction(message.id, person)}
-                                                                                                                    className="px-2 py-0.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded-full font-medium transition-colors"
-                                                                                                                >
-                                                                                                                    Mark Complete
-                                                                                                                </button>
-                                                                                                            )}
-                                                                                                        </div>
-                                                                                                    );
-                                                                                                })}
-                                                                                            </div>
-                                                                                        )}
-                                                                                    </div>
-                                                                                );
+                                                                                                        );
+                                                                                                    })}
+                                                                                                </div>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    );
                                                                                 } catch (error) {
                                                                                     console.error('Error rendering action alert:', error);
                                                                                     return (
@@ -2919,7 +2930,7 @@
                                                                                         </div>
                                                                                     );
                                                                                 }
-                                                                             })()
+                                                                            })()
 
                                                                         ) : (
                                                                             <p className="text-white leading-relaxed text-sm">{message.text}</p>
