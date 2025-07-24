@@ -2830,111 +2830,16 @@
                                                     ) : (
                                                         (messages[selectedEnquiry.id] || []).filter(message => message && message.id).map((message, messageIndex) => (
                                                             <div key={message.id || `message-${messageIndex}`} className="flex items-start space-x-3">
-                                                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
-                                                                    <span className="text-white text-xs font-bold">
-                                                                        {message.type === 'action-alert' ? (message.createdBy || currentUser || 'U') : (message.sender || 'U')}
-                                                                    </span>
+                                                                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                                                                    <span className="text-white text-xs font-bold">U</span>
                                                                 </div>
-                                                                <div className="flex-1 max-w-3xl">
+                                                                <div className="flex-1">
                                                                     <div className="flex items-center space-x-2 mb-1">
-                                                                        <span className="text-white font-medium text-sm">
-                                                                            {message.type === 'action-alert' ? (message.createdBy || currentUser || 'Unknown') : (message.sender || 'Unknown')}
-                                                                        </span>
-                                                                        <span className="text-white/40 text-xs">{message.timestamp || 'N/A'}</span>
+                                                                        <span className="text-white font-medium text-sm">User</span>
+                                                                        <span className="text-white/40 text-xs">Now</span>
                                                                     </div>
                                                                     <div className="py-1">
-                                                                        {message.type === 'file' ? (
-                                                                            <div className="flex items-center space-x-2">
-                                                                                <i data-lucide={getFileIcon((files[selectedEnquiry.id] || []).find(f => f.id === message.fileId)?.type || '')} className="h-4 w-4 text-blue-400"></i>
-                                                                                <span className="text-white text-sm">{message.text}</span>
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        const file = (files[selectedEnquiry.id] || []).find(f => f.id === message.fileId);
-                                                                                        if (file) setPreviewDocument(file);
-                                                                                    }}
-                                                                                    className="ml-auto px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded transition-colors"
-                                                                                    title="Preview Document"
-                                                                                >
-                                                                                    👁 View
-                                                                                </button>
-                                                                            </div>
-                                                                        ) : message.type === 'action-alert' ? (
-                                                                            (() => {
-                                                                                try {
-                                                                                    // Extract assigned people from message text
-                                                                                    const peopleRegex = /👤 ([^:]+)/g;
-                                                                                    const assignedPeople = [];
-                                                                                    let match;
-                                                                                    while ((match = peopleRegex.exec(message.text || '')) !== null) {
-                                                                                        assignedPeople.push(match[1].trim());
-                                                                                    }
-                                                                                    
-                                                                                    // Check if all actions are completed
-                                                                                    const allCompleted = assignedPeople.length > 0 && assignedPeople.every(person => isActionCompleted(message.id, person));
-                                                                                
-                                                                                    return (
-                                                                                        <div className={`border-2 rounded-lg p-3 shadow-lg ${allCompleted ? 'bg-gradient-to-r from-green-600 to-emerald-600 border-green-400' : 'bg-gradient-to-r from-red-600 to-orange-600 border-red-400'}`}>
-                                                                                            <div className="flex items-center justify-between mb-1">
-                                                                                                <div className="flex items-center space-x-2">
-                                                                                                    <span className="text-yellow-300 text-base">{allCompleted ? '✅' : '⚠️'}</span>
-                                                                                                    <span className="text-white font-bold text-xs uppercase tracking-wider">
-                                                                                                        {allCompleted ? 'ACTION COMPLETED' : 'ACTION ALERT'}
-                                                                                                    </span>
-                                                                                                    <span className="text-yellow-300 text-base">{allCompleted ? '✅' : '⚠️'}</span>
-                                                                                                </div>
-                                                                                                <div className="flex items-center space-x-1">
-                                                                                                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center">
-                                                                                                        <span className="text-white text-xs font-bold">{message.createdBy || message.sender}</span>
-                                                                                                    </div>
-                                                                                                    <span className="text-white/80 text-xs">Created by {message.createdBy || message.sender}</span>
-                                                                                                </div>
-                                                                                            </div>
-                                                                                            <div className="text-white font-medium text-xs whitespace-pre-line leading-relaxed mb-2">
-                                                                                                {message.text}
-                                                                                            </div>
-                                                                                            
-                                                                                            {assignedPeople.length > 0 && (
-                                                                                                <div className="space-y-1">
-                                                                                                    {assignedPeople.map(person => {
-                                                                                                        const isCompleted = isActionCompleted(message.id, person);
-                                                                                                        return (
-                                                                                                            <div key={person} className="flex items-center justify-between bg-black/20 rounded-lg p-1.5">
-                                                                                                                <div className="flex items-center space-x-2">
-                                                                                                                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${isCompleted ? 'bg-green-500 text-white' : 'bg-yellow-500 text-black'}`}>
-                                                                                                                        {isCompleted ? '✅ DONE' : '⏳ PENDING'}
-                                                                                                                    </span>
-                                                                                                                    <span className="text-white text-xs font-medium">{person}</span>
-                                                                                                                </div>
-                                                                                                                {!isCompleted && (
-                                                                                                                    <button
-                                                                                                                        onClick={() => completeAction(message.id, person)}
-                                                                                                                        className="px-2 py-0.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded-full font-medium transition-colors"
-                                                                                                                    >
-                                                                                                                        Mark Complete
-                                                                                                                    </button>
-                                                                                                                )}
-                                                                                                            </div>
-                                                                                                        );
-                                                                                                    })}
-                                                                                                </div>
-                                                                                            )}
-                                                                                        </div>
-                                                                                    );
-                                                                                } catch (error) {
-                                                                                    console.error('Error rendering action alert:', error);
-                                                                                    return (
-                                                                                        <div className="border-2 rounded-lg p-3 shadow-lg bg-red-600 border-red-400">
-                                                                                            <div className="text-white font-medium text-xs">
-                                                                                                Error displaying action alert
-                                                                                            </div>
-                                                                                        </div>
-                                                                                    );
-                                                                                }
-                                                                            })()
-
-                                                                        ) : (
-                                                                            <p className="text-white leading-relaxed text-sm">{message.text || 'No message content'}</p>
-                                                                        )}
+                                                                        <p className="text-white text-sm">{message.text || 'No message'}</p>
                                                                     </div>
                                                                 </div>
                                                             </div>
