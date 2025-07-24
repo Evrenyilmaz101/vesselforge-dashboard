@@ -270,11 +270,13 @@
                 
                 let filesRef;
                 let listener;
+                let isMounted = true;
                 
                 try {
                     filesRef = database.ref(`tender-files/${selectedEnquiry.id}`);
                     listener = filesRef.on('value', (snapshot) => {
                         try {
+                            if (!isMounted) return;
                             const data = snapshot.val();
                             if (data) {
                                 const filesList = Object.values(data).sort((a, b) => {
@@ -294,6 +296,7 @@
                             }
                         } catch (error) {
                             console.error('Error processing files:', error);
+                            if (!isMounted) return;
                             setFiles(prev => ({
                                 ...prev,
                                 [selectedEnquiry.id]: []
@@ -301,6 +304,7 @@
                         }
                     }, (error) => {
                         console.error('Firebase files listener error:', error);
+                        if (!isMounted) return;
                         setFiles(prev => ({
                             ...prev,
                             [selectedEnquiry.id]: []
@@ -312,6 +316,7 @@
 
                 // Cleanup listener on unmount or tender change
                 return () => {
+                    isMounted = false;
                     if (filesRef && listener) {
                         try {
                             filesRef.off('value', listener);
@@ -330,11 +335,13 @@
                 
                 let foldersRef;
                 let listener;
+                let isMounted = true;
                 
                 try {
                     foldersRef = database.ref(`folders/${selectedEnquiry.id}`);
                     listener = foldersRef.on('value', (snapshot) => {
                         try {
+                            if (!isMounted) return;
                             const foldersData = snapshot.val() || {};
                             setFolders(prev => ({
                                 ...prev,
@@ -349,6 +356,7 @@
                 }
                 
                 return () => {
+                    isMounted = false;
                     if (foldersRef && listener) {
                         try {
                             foldersRef.off('value', listener);
@@ -1507,10 +1515,12 @@
             // Create Lucide icons - render after any state change
             React.useEffect(() => {
                 const timer = setTimeout(() => {
-                    lucide.createIcons();
-                }, 50);
+                    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                        lucide.createIcons();
+                    }
+                }, 100);
                 return () => clearTimeout(timer);
-            }, [currentView, selectedEnquiry?.id, activeTab, showEnquiryDetails, showNewEnquiry, previewDocument?.id]);
+            }, []);
 
             console.log('Rendering main authenticated UI...');
             return (
