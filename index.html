@@ -95,7 +95,24 @@
             };
         }
 
+        // Global error handler
+        window.addEventListener('error', (event) => {
+            console.error('Global JavaScript error:', event.error);
+            console.error('Error details:', {
+                message: event.message,
+                filename: event.filename,
+                lineno: event.lineno,
+                colno: event.colno,
+                stack: event.error?.stack
+            });
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+        });
+
         const VesselForge = () => {
+            console.log('VesselForge component rendering...');
             // Authentication state
             const [user, setUser] = useState(null);
             const [userRole, setUserRole] = useState(null);
@@ -472,16 +489,21 @@
             
             // Authentication state listener
             useEffect(() => {
+                console.log('Setting up auth state listener...');
                 const unsubscribe = auth.onAuthStateChanged(async (user) => {
+                    console.log('Auth state changed:', user ? user.email : 'no user');
                     if (user) {
                         setUser(user);
+                        console.log('User authenticated, fetching role...');
                         // Get user role from database
                         try {
                             const snapshot = await database.ref(`users/${user.uid}`).once('value');
                             const userData = snapshot.val();
                             if (userData) {
+                                console.log('User role found:', userData.role);
                                 setUserRole(userData.role);
                             } else {
+                                console.log('No user data found, creating default...');
                                 // If user data doesn't exist, create it (for existing users)
                                 await database.ref(`users/${user.uid}`).set({
                                     email: user.email,
@@ -500,6 +522,7 @@
                         setUser(null);
                         setUserRole(null);
                     }
+                    console.log('Auth setup complete, loading:', false);
                     setLoading(false);
                 });
                 
@@ -507,7 +530,9 @@
             }, []);
             
             // Show loading screen while checking authentication
+            console.log('Render check - loading:', loading, 'user:', user ? user.email : 'none', 'userRole:', userRole);
             if (loading) {
+                console.log('Showing loading screen...');
                 return (
                     <div className="min-h-screen bg-slate-900 flex items-center justify-center">
                         <div className="text-center">
@@ -520,6 +545,7 @@
             
             // Show login screen if not authenticated
             if (!user) {
+                console.log('Showing login screen...');
                 return (
                     <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
                         <div className="bg-slate-800 p-8 rounded-xl border border-white/20 w-full max-w-md">
@@ -1453,6 +1479,7 @@
                 return () => clearTimeout(timer);
             }, [currentView, selectedEnquiry, activeTab, showEnquiryDetails, showNewEnquiry, previewDocument, messages, files]);
 
+            console.log('Rendering main authenticated UI...');
             return (
                 <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
                     {/* Background Animation */}
