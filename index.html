@@ -136,11 +136,13 @@
             useEffect(() => {
                 let tendersRef;
                 let listener;
+                let isMounted = true;
                 
                 try {
                     tendersRef = database.ref('tenders');
                     listener = tendersRef.on('value', (snapshot) => {
                         try {
+                            if (!isMounted) return;
                             const data = snapshot.val();
                             if (data) {
                                 const tendersList = Object.values(data);
@@ -151,10 +153,12 @@
                             }
                         } catch (error) {
                             console.error('Error processing tenders:', error);
+                            if (!isMounted) return;
                             setEnquiries([]);
                         }
                     }, (error) => {
                         console.error('Firebase tenders listener error:', error);
+                        if (!isMounted) return;
                         setEnquiries([]);
                     });
                 } catch (error) {
@@ -163,6 +167,7 @@
 
                 // Cleanup listener
                 return () => {
+                    isMounted = false;
                     if (tendersRef && listener) {
                         try {
                             tendersRef.off('value', listener);
@@ -192,11 +197,13 @@
                 
                 let messagesRef;
                 let listener;
+                let isMounted = true;
                 
                 try {
                     messagesRef = database.ref(`tender-messages/${selectedEnquiry.id}`);
                     listener = messagesRef.on('value', (snapshot) => {
                         try {
+                            if (!isMounted) return;
                             const data = snapshot.val();
                             if (data) {
                                 const messagesList = Object.values(data).sort((a, b) => {
@@ -216,6 +223,7 @@
                             }
                         } catch (error) {
                             console.error('Error processing messages:', error);
+                            if (!isMounted) return;
                             setMessages(prev => ({
                                 ...prev,
                                 [selectedEnquiry.id]: []
@@ -223,6 +231,7 @@
                         }
                     }, (error) => {
                         console.error('Firebase messages listener error:', error);
+                        if (!isMounted) return;
                         setMessages(prev => ({
                             ...prev,
                             [selectedEnquiry.id]: []
@@ -234,6 +243,7 @@
 
                 // Cleanup listener on unmount or tender change
                 return () => {
+                    isMounted = false;
                     if (messagesRef && listener) {
                         try {
                             messagesRef.off('value', listener);
@@ -490,14 +500,20 @@
             // Authentication state listener
             useEffect(() => {
                 console.log('Setting up auth state listener...');
+                let isMounted = true;
+                
                 const unsubscribe = auth.onAuthStateChanged(async (user) => {
                     console.log('Auth state changed:', user ? user.email : 'no user');
+                    if (!isMounted) return;
+                    
                     if (user) {
                         setUser(user);
                         console.log('User authenticated, fetching role...');
                         // Get user role from database
                         try {
                             const snapshot = await database.ref(`users/${user.uid}`).once('value');
+                            if (!isMounted) return;
+                            
                             const userData = snapshot.val();
                             if (userData) {
                                 console.log('User role found:', userData.role);
@@ -512,10 +528,12 @@
                                     createdAt: new Date().toISOString(),
                                     isActive: true
                                 });
+                                if (!isMounted) return;
                                 setUserRole('Estimator');
                             }
                         } catch (error) {
                             console.error('Error fetching user data:', error);
+                            if (!isMounted) return;
                             setUserRole('Estimator'); // Default role
                         }
                     } else {
@@ -523,10 +541,14 @@
                         setUserRole(null);
                     }
                     console.log('Auth setup complete, loading:', false);
+                    if (!isMounted) return;
                     setLoading(false);
                 });
                 
-                return () => unsubscribe();
+                return () => {
+                    isMounted = false;
+                    unsubscribe();
+                };
             }, []);
             
             // TEMPORARY: Skip auth for testing - REMOVE THIS AFTER DEBUGGING
