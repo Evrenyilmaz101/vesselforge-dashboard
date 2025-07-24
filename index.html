@@ -74,7 +74,26 @@
         
         const database = firebase.database();
         const storage = firebase.storage();
-        const auth = firebase.auth();
+        
+        // Initialize Auth with error handling
+        let auth;
+        try {
+            auth = firebase.auth();
+            console.log('Firebase Auth initialized successfully');
+        } catch (error) {
+            console.error('Firebase Auth initialization error:', error);
+            // Create a mock auth object to prevent crashes
+            auth = {
+                createUserWithEmailAndPassword: () => Promise.reject(new Error('Firebase Auth not configured')),
+                signInWithEmailAndPassword: () => Promise.reject(new Error('Firebase Auth not configured')),
+                signOut: () => Promise.resolve(),
+                onAuthStateChanged: (callback) => {
+                    // Call with null user to show login screen
+                    setTimeout(() => callback(null), 100);
+                    return () => {}; // Return unsubscribe function
+                }
+            };
+        }
 
         const VesselForge = () => {
             // Authentication state
@@ -89,7 +108,7 @@
                 password: '', 
                 confirmPassword: '', 
                 fullName: '', 
-                role: 'Estimator' 
+                role: 'General Manager' 
             });
             
             // App state
@@ -356,6 +375,10 @@
                     name: 'Administrator',
                     permissions: ['all']
                 },
+                'General Manager': {
+                    name: 'General Manager',
+                    permissions: ['all']
+                },
                 'Manager': {
                     name: 'Project Manager',
                     permissions: ['view_all', 'edit_all', 'assign_actions', 'manage_team', 'export_reports', 'create_tenders']
@@ -430,7 +453,11 @@
                     setSignupForm({ email: '', password: '', confirmPassword: '', fullName: '', role: 'Estimator' });
                 } catch (error) {
                     console.error('Signup error:', error);
-                    alert('Signup failed: ' + error.message);
+                    if (error.code === 'auth/configuration-not-found') {
+                        alert('Firebase Authentication is not configured. Please:\n\n1. Go to Firebase Console\n2. Select your project\n3. Go to Authentication > Sign-in method\n4. Enable Email/Password authentication');
+                    } else {
+                        alert('Signup failed: ' + error.message);
+                    }
                 }
             };
             
