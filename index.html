@@ -790,12 +790,18 @@
                     return tender.actionFrom === 'Awaiting Assignment' ? 'bg-gray-500' : 'bg-green-500';
                 }
                 
-                // Determine color based on active people
-                const actionString = Array.isArray(activePeople) ? activePeople.join(' ') : '';
-                if (actionString.includes('Scott') || actionString.includes('Peter')) return 'bg-red-500'; // Estimators - urgent
-                if (actionString.includes('Dave') || actionString.includes('Brandon') || actionString.includes('Sheryl')) return 'bg-orange-500'; // Design Engineers
-                if (actionString.includes('Craig')) return 'bg-purple-500'; // Sales
-                if (actionString.includes('Lewis')) return 'bg-blue-500'; // Planning
+                // Determine color based on role types (not specific names)
+                // Look at tender team composition to determine color
+                const hasEstimators = (tender.estimators && tender.estimators.length > 0) || tender.assignedTo;
+                const hasDesigners = (tender.designers && tender.designers.length > 0) || tender.designer;
+                const hasSales = (tender.salesManagers && tender.salesManagers.length > 0) || tender.salesManager;
+                const hasPlanners = (tender.planners && tender.planners.length > 0) || tender.planner;
+                
+                // Priority-based coloring: Estimators (urgent), Design, Sales, Planning
+                if (hasEstimators) return 'bg-red-500'; // Estimators - most urgent
+                if (hasDesigners) return 'bg-orange-500'; // Design Engineers
+                if (hasSales) return 'bg-purple-500'; // Sales
+                if (hasPlanners) return 'bg-blue-500'; // Planning
                 return 'bg-yellow-500'; // Default/mixed
             };
 
@@ -917,10 +923,30 @@
 
             const stats = {
                 total: enquiries.length,
-                actionDesigners: enquiries.filter(e => e.actionFrom && (e.actionFrom.includes('Dave') || e.actionFrom.includes('Brandon') || e.actionFrom.includes('Sheryl'))).length,
-                actionEstimators: enquiries.filter(e => e.actionFrom && (e.actionFrom.includes('Scott') || e.actionFrom.includes('Peter'))).length,
-                actionSales: enquiries.filter(e => e.actionFrom && e.actionFrom.includes('Craig')).length,
-                actionPlanning: enquiries.filter(e => e.actionFrom && e.actionFrom.includes('Lewis')).length,
+                actionDesigners: enquiries.filter(e => {
+                    const designerUsers = getUsersByRole('Design Engineer');
+                    return e.actionFrom && (Array.isArray(e.actionFrom) 
+                        ? e.actionFrom.some(person => designerUsers.includes(person))
+                        : designerUsers.includes(e.actionFrom));
+                }).length,
+                actionEstimators: enquiries.filter(e => {
+                    const estimatorUsers = getUsersByRole('Estimator');
+                    return e.actionFrom && (Array.isArray(e.actionFrom) 
+                        ? e.actionFrom.some(person => estimatorUsers.includes(person))
+                        : estimatorUsers.includes(e.actionFrom));
+                }).length,
+                actionSales: enquiries.filter(e => {
+                    const salesUsers = getUsersByRole('Sales Manager');
+                    return e.actionFrom && (Array.isArray(e.actionFrom) 
+                        ? e.actionFrom.some(person => salesUsers.includes(person))
+                        : salesUsers.includes(e.actionFrom));
+                }).length,
+                actionPlanning: enquiries.filter(e => {
+                    const plannerUsers = getUsersByRole('Planner');
+                    return e.actionFrom && (Array.isArray(e.actionFrom) 
+                        ? e.actionFrom.some(person => plannerUsers.includes(person))
+                        : plannerUsers.includes(e.actionFrom));
+                }).length,
                 totalValue: enquiries.reduce((sum, e) => sum + (e.value > 0 ? e.value : 0), 0)
             };
 
@@ -2373,8 +2399,11 @@
                                     <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
                                         <h3 className="text-xl font-bold text-white mb-4">Estimator Performance</h3>
                                         <div className="space-y-3">
-                                            {['Peter Krempin', 'Scott Goodfellow'].map(estimator => {
-                                                const estimatorTenders = enquiries.filter(t => t.assignedTo === estimator);
+                                            {getUsersByRole('Estimator').map(estimator => {
+                                                const estimatorTenders = enquiries.filter(t => 
+                                                    t.assignedTo === estimator || 
+                                                    (t.estimators && t.estimators.includes(estimator))
+                                                );
                                                 const estimatorWon = estimatorTenders.filter(t => t.tenderStatus === 'Won').length;
                                                 const estimatorLost = estimatorTenders.filter(t => t.tenderStatus === 'Lost').length;
                                                 const estimatorWinRate = (estimatorWon + estimatorLost) > 0 ? ((estimatorWon / (estimatorWon + estimatorLost)) * 100).toFixed(1) : '0';
@@ -2627,8 +2656,9 @@
                                                 className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-400"
                                             >
                                                 <option value="Unassigned">Unassigned</option>
-                                                <option value="Scott Goodfellow">Scott Goodfellow</option>
-                                                <option value="Peter Krempin">Peter Krempin</option>
+                                                {getUsersByRole('Estimator').map(estimator => (
+                                                    <option key={estimator} value={estimator}>{estimator}</option>
+                                                ))}
                                             </select>
                                         </div>
                                         <div>
@@ -3644,13 +3674,18 @@
                                             className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-400"
                                         >
                                             <option value="">Select Person...</option>
-                                            <option value="Scott Goodfellow">Scott Goodfellow (Estimator)</option>
-                                            <option value="Peter Krempin">Peter Krempin (Estimator)</option>
-                                            <option value="Dave Richards">Dave Richards (Design Engineer)</option>
-                                            <option value="Brandon Gregg">Brandon Gregg (Design Engineer)</option>
-                                            <option value="Sheryl Mirambil">Sheryl Mirambil (Design Engineer)</option>
-                                            <option value="Craig Malt">Craig Malt (Sales Manager)</option>
-                                            <option value="Lewis MacDonald">Lewis MacDonald (Planner)</option>
+                                            {getUsersByRole('Estimator').map(person => (
+                                                <option key={person} value={person}>{person} (Estimator)</option>
+                                            ))}
+                                            {getUsersByRole('Sales Manager').map(person => (
+                                                <option key={person} value={person}>{person} (Sales Manager)</option>
+                                            ))}
+                                            {getUsersByRole('Design Engineer').map(person => (
+                                                <option key={person} value={person}>{person} (Design Engineer)</option>
+                                            ))}
+                                            {getUsersByRole('Planner').map(person => (
+                                                <option key={person} value={person}>{person} (Planner)</option>
+                                            ))}
                                         </select>
                                     </div>
 
