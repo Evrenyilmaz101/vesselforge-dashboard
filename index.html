@@ -2190,7 +2190,23 @@
                                                         <td className="py-2 text-white/80 text-xs">{enquiry.client}</td>
                                                         <td className="py-2 text-white/80 text-xs max-w-[200px] truncate">{enquiry.project}</td>
                                                         <td className="py-2">
-                                                            <div className={`${getActionStatusColor(enquiry)} rounded px-1 py-0.5 text-center text-xs`}>
+                                                            <div className={`${(() => {
+                                                                // Check if all actions are completed
+                                                                const completedBy = enquiry.completedBy || [];
+                                                                let allCompleted = false;
+                                                                
+                                                                if (Array.isArray(enquiry.actionFrom)) {
+                                                                    allCompleted = enquiry.actionFrom.length > 0 && enquiry.actionFrom.every(person => 
+                                                                        completedBy.includes(person)
+                                                                    );
+                                                                } else if (enquiry.actionFrom && enquiry.actionFrom !== 'Awaiting Assignment') {
+                                                                    allCompleted = completedBy.includes(enquiry.actionFrom);
+                                                                }
+                                                                
+                                                                return allCompleted 
+                                                                    ? 'bg-gradient-to-r from-green-500 to-emerald-500' 
+                                                                    : getActionStatusColor(enquiry);
+                                                            })()} rounded px-1 py-0.5 text-center text-xs`}>
                                                                 <div className="text-white font-bold">
                                                                     {(() => {
                                                                         const activePeople = getActivePeopleForTender(enquiry);
@@ -2309,8 +2325,39 @@
                                                 }`}
                                             >
                                                 {/* ACTION REQUIRED - BIG AND OBVIOUS */}
-                                                <div className={`${getActionStatusColor(enquiry.actionFrom)} rounded-lg p-3 mb-3 text-center border-2 border-white/30 relative`}>
-                                                    <div className="text-white font-bold text-sm mb-1">🚨 ACTION REQUIRED</div>
+                                                <div className={`${(() => {
+                                                    // Check if all actions are completed
+                                                    const completedBy = enquiry.completedBy || [];
+                                                    let allCompleted = false;
+                                                    
+                                                    if (Array.isArray(enquiry.actionFrom)) {
+                                                        allCompleted = enquiry.actionFrom.length > 0 && enquiry.actionFrom.every(person => 
+                                                            completedBy.includes(person)
+                                                        );
+                                                    } else if (enquiry.actionFrom && enquiry.actionFrom !== 'Awaiting Assignment') {
+                                                        allCompleted = completedBy.includes(enquiry.actionFrom);
+                                                    }
+                                                    
+                                                    return allCompleted 
+                                                        ? 'bg-gradient-to-r from-green-500 to-emerald-500' 
+                                                        : getActionStatusColor(enquiry.actionFrom);
+                                                })()} rounded-lg p-3 mb-3 text-center border-2 border-white/30 relative`}>
+                                                    <div className="text-white font-bold text-sm mb-1">
+                                                        {(() => {
+                                                            const completedBy = enquiry.completedBy || [];
+                                                            let allCompleted = false;
+                                                            
+                                                            if (Array.isArray(enquiry.actionFrom)) {
+                                                                allCompleted = enquiry.actionFrom.length > 0 && enquiry.actionFrom.every(person => 
+                                                                    completedBy.includes(person)
+                                                                );
+                                                            } else if (enquiry.actionFrom && enquiry.actionFrom !== 'Awaiting Assignment') {
+                                                                allCompleted = completedBy.includes(enquiry.actionFrom);
+                                                            }
+                                                            
+                                                            return allCompleted ? '✅ ACTION COMPLETE' : '🚨 ACTION REQUIRED';
+                                                        })()}
+                                                    </div>
                                                     <div className="text-white font-bold text-lg mb-2">{enquiry.actionFrom}</div>
                                                     {(() => {
                                                         // Check if current user is assigned to this action
@@ -3493,7 +3540,23 @@
                                                 <div className="flex items-center justify-between mb-2">
                                                     <h3 className="text-white font-medium text-sm truncate flex-1 mr-4">{selectedEnquiry.project}</h3>
                                                     <div className="flex items-center space-x-2">
-                                                        <div key={`action-status-${selectedEnquiry?.id}-${JSON.stringify(selectedEnquiry?.completedBy || [])}-${selectedEnquiry?.actionFrom}`} className={`${getActionStatusColor(selectedEnquiry)} rounded px-2 py-1 text-center`}>
+                                                        <div key={`action-status-${selectedEnquiry?.id}-${JSON.stringify(selectedEnquiry?.completedBy || [])}-${selectedEnquiry?.actionFrom}`} className={`${(() => {
+                                                            // Check if all actions are completed
+                                                            const completedBy = selectedEnquiry.completedBy || [];
+                                                            let allCompleted = false;
+                                                            
+                                                            if (Array.isArray(selectedEnquiry.actionFrom)) {
+                                                                allCompleted = selectedEnquiry.actionFrom.length > 0 && selectedEnquiry.actionFrom.every(person => 
+                                                                    completedBy.includes(person)
+                                                                );
+                                                            } else if (selectedEnquiry.actionFrom && selectedEnquiry.actionFrom !== 'Awaiting Assignment') {
+                                                                allCompleted = completedBy.includes(selectedEnquiry.actionFrom);
+                                                            }
+                                                            
+                                                            return allCompleted 
+                                                                ? 'bg-gradient-to-r from-green-500 to-emerald-500' 
+                                                                : getActionStatusColor(selectedEnquiry);
+                                                        })()} rounded px-2 py-1 text-center`}>
                                                             <div className="text-white font-bold text-xs">
                                                                 {(() => {
                                                                     const activePeople = getActivePeopleForTender(selectedEnquiry);
