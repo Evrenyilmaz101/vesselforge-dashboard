@@ -132,13 +132,8 @@
             const [currentView, setCurrentView] = useState('dashboard');
             const [enquiries, setEnquiries] = useState([]);
             
-            // Firebase real-time listener for tenders - TEMPORARILY DISABLED
+            // Firebase real-time listener for tenders
             useEffect(() => {
-                console.log('Tenders listener temporarily disabled');
-                return () => {}; // Empty cleanup
-                
-                // ORIGINAL CODE:
-                /*
                 let tendersRef;
                 let listener;
                 let isMounted = true;
@@ -181,7 +176,6 @@
                         }
                     }
                 };
-                */
             }, []);
 
 
@@ -238,12 +232,8 @@
             const [actionAlertMessage, setActionAlertMessage] = useState('');
             const [individualActionMessages, setIndividualActionMessages] = useState({});
             
-            // Firebase real-time listener for messages - TEMPORARILY DISABLED
+            // Firebase real-time listener for messages
             useEffect(() => {
-                console.log('Messages listener temporarily disabled');
-                return () => {}; // Empty cleanup
-                
-                /*
                 if (!selectedEnquiry) {
                     return;
                 }
@@ -305,14 +295,10 @@
                         }
                     }
                 };
-                */
             }, [selectedEnquiry?.id]);
             
-            // Firebase real-time listener for files - TEMPORARILY DISABLED
+            // Firebase real-time listener for files
             useEffect(() => {
-                console.log('Files listener temporarily disabled');
-                return () => {}; // Empty cleanup
-                /*
                 if (!selectedEnquiry) {
                     return;
                 }
@@ -374,14 +360,10 @@
                         }
                     }
                 };
-                */
             }, [selectedEnquiry?.id]);
             
-            // Firebase real-time listener for folders - TEMPORARILY DISABLED
+            // Firebase real-time listener for folders
             useEffect(() => {
-                console.log('Folders listener temporarily disabled');
-                return () => {}; // Empty cleanup
-                /*
                 if (!selectedEnquiry) {
                     return;
                 }
@@ -418,7 +400,6 @@
                         }
                     }
                 };
-                */
             }, [selectedEnquiry?.id]);
             
             // User roles and permissions system
