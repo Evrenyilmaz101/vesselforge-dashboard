@@ -1536,10 +1536,48 @@
             };
 
             const completeMyTask = (tenderId) => {
+                // Find the tender
+                const tender = enquiries.find(e => e.id === tenderId);
+                if (!tender) return;
+                
+                // Check if current user is assigned to this action
+                const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
+                const currentUserShortName = user?.email?.split('@')[0] || 'User';
+                
+                let isAssigned = false;
+                if (Array.isArray(tender.actionFrom)) {
+                    isAssigned = tender.actionFrom.includes(currentUserName) || 
+                                tender.actionFrom.includes(currentUserShortName);
+                } else {
+                    isAssigned = tender.actionFrom === currentUserName || 
+                                tender.actionFrom === currentUserShortName;
+                }
+                
+                if (!isAssigned) {
+                    alert('You can only mark actions complete that are assigned to you.');
+                    return;
+                }
+                
+                // Mark the current user as completed
+                const currentCompletions = tender.completedBy || [];
+                const updatedCompletions = [...new Set([...currentCompletions, currentUserName])];
+                
+                // Calculate remaining actions
+                let finalActionFrom = tender.actionFrom;
+                if (Array.isArray(tender.actionFrom)) {
+                    const remainingActions = tender.actionFrom.filter(person => 
+                        !updatedCompletions.includes(person) && 
+                        !updatedCompletions.includes(user?.email?.split('@')[0])
+                    );
+                    finalActionFrom = remainingActions.length === 0 ? 'Awaiting Assignment' : remainingActions;
+                } else {
+                    finalActionFrom = 'Awaiting Assignment';
+                }
+                
                 // Update in Firebase
                 database.ref(`tenders/${tenderId}`).update({
-                    status: 'Awaiting Assignment',
-                    actionFrom: 'Awaiting Assignment'
+                    completedBy: updatedCompletions,
+                    actionFrom: finalActionFrom
                 });
                 setShowStatusChange(false);
             };
@@ -2250,7 +2288,24 @@
                                                 <div className={`${getActionStatusColor(enquiry.actionFrom)} rounded-lg p-3 mb-3 text-center border-2 border-white/30 relative`}>
                                                     <div className="text-white font-bold text-sm mb-1">🚨 ACTION REQUIRED</div>
                                                     <div className="text-white font-bold text-lg mb-2">{enquiry.actionFrom}</div>
-                                                    {enquiry.actionFrom !== 'Awaiting Assignment' && (
+                                                    {(() => {
+                                                        // Check if current user is assigned to this action
+                                                        const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
+                                                        const currentUserShortName = user?.email?.split('@')[0] || 'User';
+                                                        
+                                                        let isAssigned = false;
+                                                        if (enquiry.actionFrom !== 'Awaiting Assignment') {
+                                                            if (Array.isArray(enquiry.actionFrom)) {
+                                                                isAssigned = enquiry.actionFrom.includes(currentUserName) || 
+                                                                            enquiry.actionFrom.includes(currentUserShortName);
+                                                            } else {
+                                                                isAssigned = enquiry.actionFrom === currentUserName || 
+                                                                            enquiry.actionFrom === currentUserShortName;
+                                                            }
+                                                        }
+                                                        
+                                                        return isAssigned;
+                                                    })() && (
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation(); // Prevent card click
@@ -3678,9 +3733,14 @@
                                                                                                                 {isCompleted ? '✅' : '⏳'} {assignee}
                                                                                                             </span>
                                                                                                             
-                                                                                                            {isCurrentUser && !isCompleted && hasPermission('complete_actions') && (
+                                                                                                            {/* Check if current user is assigned to this action (by name or email) */}
+                                                                                                            {(() => {
+                                                                                                                const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
+                                                                                                                const isAssignedToCurrentUser = assignee === currentUserName || assignee === currentUser;
+                                                                                                                return isAssignedToCurrentUser && !isCompleted && hasPermission('complete_actions');
+                                                                                                            })() && (
                                                                                                                 <button
-                                                                                                                    onClick={() => completeAction(message.id, currentUser)}
+                                                                                                                    onClick={() => completeAction(message.id, assignee)}
                                                                                                                     className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-colors font-medium"
                                                                                                                 >
                                                                                                                     ✅ Mark Complete
