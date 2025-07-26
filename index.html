@@ -1535,20 +1535,20 @@
             const getHoldTenders = () => enquiries.filter(t => t.tenderStatus === 'On Hold');
             const getAllArchiveTenders = () => enquiries.filter(t => ['Won', 'Lost', 'Cancelled', 'On Hold'].includes(t.tenderStatus));
 
-            // Create Lucide icons - one time initialization
-            React.useEffect(() => {
-                // Only run once when component mounts
-                if (typeof lucide !== 'undefined' && lucide.createIcons) {
-                    lucide.createIcons();
-                }
-            }, []);
+            // Create Lucide icons - DISABLED to fix React error #310
+            // React.useEffect(() => {
+            //     // Only run once when component mounts
+            //     if (typeof lucide !== 'undefined' && lucide.createIcons) {
+            //         lucide.createIcons();
+            //     }
+            // }, []);
             
-            // Re-create icons when needed (without causing infinite loops)
-            const createIconsOnce = React.useCallback(() => {
-                if (typeof lucide !== 'undefined' && lucide.createIcons) {
-                    lucide.createIcons();
-                }
-            }, []);
+            // Re-create icons when needed (without causing infinite loops) - DISABLED
+            // const createIconsOnce = React.useCallback(() => {
+            //     if (typeof lucide !== 'undefined' && lucide.createIcons) {
+            //         lucide.createIcons();
+            //     }
+            // }, []);
 
             console.log('Rendering main authenticated UI...');
             return (
