@@ -1607,10 +1607,11 @@
                                     )}
                                     <button
                                         onClick={handleLogout}
-                                        className="p-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 hover:text-red-300 rounded-lg transition-colors"
+                                        className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
                                         title="Logout"
                                     >
                                         <i data-lucide="log-out" className="h-4 w-4"></i>
+                                        <span className="hidden sm:inline text-sm font-medium">Logout</span>
                                     </button>
                                 </div>
                             </div>
