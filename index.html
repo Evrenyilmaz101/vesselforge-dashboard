@@ -125,7 +125,8 @@
                 password: '', 
                 confirmPassword: '', 
                 fullName: '', 
-                role: 'General Manager' 
+                role: 'General Manager',
+                profilePicture: null
             });
             
             // App state
@@ -442,6 +443,31 @@
                 return allUsers.filter(user => user.role === role).map(user => user.fullName || user.email.split('@')[0]);
             };
             
+            // Helper function to get user avatar
+            const getUserAvatar = (userName) => {
+                const userData = allUsers.find(user => (user.fullName || user.email.split('@')[0]) === userName);
+                if (userData && userData.profilePictureUrl) {
+                    return userData.profilePictureUrl;
+                }
+                return null; // Will fall back to initials
+            };
+            
+            // Helper function to get user initials
+            const getUserInitials = (userName) => {
+                if (!userName) return 'U';
+                const names = userName.split(' ');
+                if (names.length >= 2) {
+                    return names[0].charAt(0).toUpperCase() + names[1].charAt(0).toUpperCase();
+                }
+                return userName.charAt(0).toUpperCase();
+            };
+            
+            // Helper function to get current user data
+            const getCurrentUserData = () => {
+                if (!user) return null;
+                return allUsers.find(userData => userData.email === user.email);
+            };
+            
             // User roles and permissions system
             const userRoles = {
                 'Admin': {
@@ -512,18 +538,32 @@
                     const userCredential = await auth.createUserWithEmailAndPassword(signupForm.email, signupForm.password);
                     const user = userCredential.user;
                     
+                    let profilePictureUrl = null;
+                    
+                    // Upload profile picture if provided
+                    if (signupForm.profilePicture) {
+                        try {
+                            const storageRef = storage.ref(`profile-pictures/${user.uid}`);
+                            const uploadTask = await storageRef.put(signupForm.profilePicture);
+                            profilePictureUrl = await uploadTask.ref.getDownloadURL();
+                        } catch (error) {
+                            console.error('Error uploading profile picture:', error);
+                        }
+                    }
+                    
                     // Create user profile in database
                     await database.ref(`users/${user.uid}`).set({
                         email: signupForm.email,
                         fullName: signupForm.fullName,
                         role: signupForm.role,
+                        profilePictureUrl: profilePictureUrl,
                         createdAt: new Date().toISOString(),
                         isActive: true
                     });
                     
                     console.log('User created:', user.email);
                     setShowSignup(false);
-                    setSignupForm({ email: '', password: '', confirmPassword: '', fullName: '', role: 'General Manager' });
+                    setSignupForm({ email: '', password: '', confirmPassword: '', fullName: '', role: 'General Manager', profilePicture: null });
                 } catch (error) {
                     console.error('Signup error:', error);
                     if (error.code === 'auth/configuration-not-found') {
@@ -723,6 +763,27 @@
                                                 <option key={role} value={role} className="bg-slate-800">{userRoles[role].name}</option>
                                             ))}
                                         </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-white/80 text-sm font-medium mb-2">Profile Picture (Optional)</label>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => {
+                                                const file = e.target.files[0];
+                                                if (file) {
+                                                    // Check file size (max 5MB)
+                                                    if (file.size > 5 * 1024 * 1024) {
+                                                        alert('Profile picture must be less than 5MB');
+                                                        e.target.value = '';
+                                                        return;
+                                                    }
+                                                    setSignupForm(prev => ({...prev, profilePicture: file}));
+                                                }
+                                            }}
+                                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-400 file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                                        />
+                                        <p className="text-white/50 text-xs mt-1">Upload a headshot (JPG, PNG, max 5MB)</p>
                                     </div>
                                     <div>
                                         <label className="block text-white/80 text-sm font-medium mb-2">Password</label>
@@ -925,26 +986,26 @@
                 total: enquiries.length,
                 actionDesigners: enquiries.filter(e => {
                     const designerUsers = getUsersByRole('Design Engineer');
-                    return e.actionFrom && (Array.isArray(e.actionFrom) 
-                        ? e.actionFrom.some(person => designerUsers.includes(person))
+                    return e.actionFrom && e.actionFrom !== 'Awaiting Assignment' && e.actionFrom !== 'Unassigned' && (Array.isArray(e.actionFrom) 
+                        ? e.actionFrom.some(person => designerUsers.includes(person) && person !== 'Unassigned')
                         : designerUsers.includes(e.actionFrom));
                 }).length,
                 actionEstimators: enquiries.filter(e => {
                     const estimatorUsers = getUsersByRole('Estimator');
-                    return e.actionFrom && (Array.isArray(e.actionFrom) 
-                        ? e.actionFrom.some(person => estimatorUsers.includes(person))
+                    return e.actionFrom && e.actionFrom !== 'Awaiting Assignment' && e.actionFrom !== 'Unassigned' && (Array.isArray(e.actionFrom) 
+                        ? e.actionFrom.some(person => estimatorUsers.includes(person) && person !== 'Unassigned')
                         : estimatorUsers.includes(e.actionFrom));
                 }).length,
                 actionSales: enquiries.filter(e => {
                     const salesUsers = getUsersByRole('Sales Manager');
-                    return e.actionFrom && (Array.isArray(e.actionFrom) 
-                        ? e.actionFrom.some(person => salesUsers.includes(person))
+                    return e.actionFrom && e.actionFrom !== 'Awaiting Assignment' && e.actionFrom !== 'Unassigned' && (Array.isArray(e.actionFrom) 
+                        ? e.actionFrom.some(person => salesUsers.includes(person) && person !== 'Unassigned')
                         : salesUsers.includes(e.actionFrom));
                 }).length,
                 actionPlanning: enquiries.filter(e => {
                     const plannerUsers = getUsersByRole('Planner');
-                    return e.actionFrom && (Array.isArray(e.actionFrom) 
-                        ? e.actionFrom.some(person => plannerUsers.includes(person))
+                    return e.actionFrom && e.actionFrom !== 'Awaiting Assignment' && e.actionFrom !== 'Unassigned' && (Array.isArray(e.actionFrom) 
+                        ? e.actionFrom.some(person => plannerUsers.includes(person) && person !== 'Unassigned')
                         : plannerUsers.includes(e.actionFrom));
                 }).length,
                 totalValue: enquiries.reduce((sum, e) => sum + (e.value > 0 ? e.value : 0), 0)
@@ -1660,13 +1721,21 @@
                                 </div>
                                 <div className="flex items-center space-x-3">
                                     <div className="hidden sm:block text-right">
-                                        <p className="text-white text-sm font-medium">{user?.email?.split('@')[0] || 'User'}</p>
+                                        <p className="text-white text-sm font-medium">{getCurrentUserData()?.fullName || user?.email?.split('@')[0] || 'User'}</p>
                                         <p className="text-white/60 text-xs">{userRoles[userRole]?.name || userRole}</p>
                                     </div>
-                                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center">
-                                        <span className="text-white text-sm font-bold">
-                                            {user?.email?.charAt(0).toUpperCase() || 'U'}
-                                        </span>
+                                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center overflow-hidden">
+                                        {getCurrentUserData()?.profilePictureUrl ? (
+                                            <img 
+                                                src={getCurrentUserData().profilePictureUrl} 
+                                                alt={getCurrentUserData()?.fullName || 'User'}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <span className="text-white text-sm font-bold">
+                                                {getUserInitials(getCurrentUserData()?.fullName || user?.email?.split('@')[0] || 'U')}
+                                            </span>
+                                        )}
                                     </div>
                                     {hasPermission('all') && (
                                         <button
@@ -2958,19 +3027,29 @@
                                                     ) : (
                                                         (messages[selectedEnquiry.id] || []).filter(message => message && message.id).map((message, messageIndex) => (
                                                             <div key={message.id || `message-${messageIndex}`} className="flex items-start space-x-3">
-                                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center overflow-hidden ${
                                                                     message.type === 'action-alert' 
                                                                         ? 'bg-gradient-to-r from-orange-500 to-red-500' 
                                                                         : 'bg-blue-500'
                                                                 }`}>
-                                                                    <span className="text-white text-xs font-bold">
-                                                                        {message.type === 'action-alert' ? '🚨' : 'U'}
-                                                                    </span>
+                                                                    {message.type === 'action-alert' ? (
+                                                                        <span className="text-white text-xs font-bold">🚨</span>
+                                                                    ) : getUserAvatar(message.sender || 'User') ? (
+                                                                        <img 
+                                                                            src={getUserAvatar(message.sender || 'User')} 
+                                                                            alt={message.sender || 'User'}
+                                                                            className="w-full h-full object-cover"
+                                                                        />
+                                                                    ) : (
+                                                                        <span className="text-white text-xs font-bold">
+                                                                            {getUserInitials(message.sender || 'User')}
+                                                                        </span>
+                                                                    )}
                                                                 </div>
                                                                 <div className="flex-1">
                                                                     <div className="flex items-center space-x-2 mb-1">
                                                                         <span className="text-white font-medium text-sm">
-                                                                            {message.type === 'action-alert' ? 'Action Alert' : 'User'}
+                                                                            {message.type === 'action-alert' ? 'Action Alert' : (message.sender || 'User')}
                                                                         </span>
                                                                         <span className="text-white/40 text-xs">{message.timestamp || 'Now'}</span>
                                                                     </div>
