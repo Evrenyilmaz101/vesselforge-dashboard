@@ -1738,16 +1738,7 @@
                                         >
                                             Tenders
                                         </button>
-                                        <button
-                                            onClick={() => setCurrentView('profile')}
-                                            className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
-                                                currentView === 'profile' 
-                                                    ? 'bg-white/20 text-white' 
-                                                    : 'text-white/70 hover:text-white hover:bg-white/10'
-                                            }`}
-                                        >
-                                            Profile
-                                        </button>
+
                                     </nav>
                                 </div>
                                 <div className="flex items-center space-x-3">
@@ -1755,7 +1746,11 @@
                                         <p className="text-white text-sm font-medium">{currentUserData?.fullName || user?.email?.split('@')[0] || 'User'}</p>
                                         <p className="text-white/60 text-xs">{userRoles[userRole]?.name || userRole}</p>
                                     </div>
-                                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center overflow-hidden">
+                                    <button
+                                        onClick={() => setCurrentView('profile')}
+                                        className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-white/30 transition-all duration-200 transform hover:scale-105"
+                                        title="Profile Settings"
+                                    >
                                         {currentUserData?.profilePictureUrl ? (
                                             <img 
                                                 src={currentUserData.profilePictureUrl} 
@@ -1767,7 +1762,7 @@
                                                 {getUserInitials(currentUserData?.fullName || user?.email?.split('@')[0] || 'U')}
                                             </span>
                                         )}
-                                    </div>
+                                    </button>
                                     {hasPermission('all') && (
                                         <button
                                             onClick={() => setCurrentView('users')}
