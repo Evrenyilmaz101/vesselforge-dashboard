@@ -113,10 +113,10 @@
 
         const VesselForge = () => {
             console.log('VesselForge component rendering...');
-            // EMERGENCY BYPASS - Skip authentication to get app working
-            const [user, setUser] = useState({ email: 'bestjobsaddy@gmail.com' });
-            const [userRole, setUserRole] = useState('General Manager');
-            const [loading, setLoading] = useState(false);
+            // Authentication state
+            const [user, setUser] = useState(null);
+            const [userRole, setUserRole] = useState(null);
+            const [loading, setLoading] = useState(true);
             const [showLogin, setShowLogin] = useState(false);
             const [showSignup, setShowSignup] = useState(false);
             const [loginForm, setLoginForm] = useState({ email: '', password: '' });
@@ -503,13 +503,8 @@
                 }
             };
             
-            // Authentication state listener - DISABLED FOR EMERGENCY BYPASS
+            // Authentication state listener
             useEffect(() => {
-                console.log('Auth listener BYPASSED - using emergency mode');
-                return () => {}; // Empty cleanup
-                
-                // ORIGINAL CODE DISABLED:
-                /*
                 console.log('Setting up auth state listener...');
                 let isMounted = true;
                 
@@ -560,7 +555,6 @@
                     isMounted = false;
                     unsubscribe();
                 };
-                */
             }, []);
             
             // TEMPORARY: Skip auth for testing - REMOVE THIS AFTER DEBUGGING
