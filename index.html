@@ -233,6 +233,7 @@
             const [actionAlertMessage, setActionAlertMessage] = useState('');
             const [individualActionMessages, setIndividualActionMessages] = useState({});
             const [allUsers, setAllUsers] = useState([]);
+            const [currentUserData, setCurrentUserData] = useState(null);
             
             // Firebase real-time listener for messages
             useEffect(() => {
@@ -465,7 +466,20 @@
             // Helper function to get current user data
             const getCurrentUserData = () => {
                 if (!user) return null;
-                return allUsers.find(userData => userData.email === user.email);
+                // First try to find in allUsers
+                const userInAllUsers = allUsers.find(userData => userData.email === user.email);
+                if (userInAllUsers) return userInAllUsers;
+                
+                // Fallback: if we have user and userRole, create a temporary user object
+                if (user && userRole) {
+                    return {
+                        email: user.email,
+                        fullName: null, // Will fall back to email
+                        role: userRole,
+                        profilePictureUrl: null
+                    };
+                }
+                return null;
             };
             
             // User roles and permissions system
@@ -612,21 +626,25 @@
                                         role: 'General Manager'
                                     });
                                     setUserRole('General Manager');
+                                    setCurrentUserData({ ...userData, role: 'General Manager' });
                                 } else {
                                     setUserRole(userData.role);
+                                    setCurrentUserData(userData);
                                 }
                             } else {
                                 console.log('No user data found, creating default...');
                                 // If user data doesn't exist, create it (for existing users)
-                                await database.ref(`users/${user.uid}`).set({
+                                const newUserData = {
                                     email: user.email,
                                     fullName: user.email.split('@')[0],
                                     role: 'General Manager',
                                     createdAt: new Date().toISOString(),
                                     isActive: true
-                                });
+                                };
+                                await database.ref(`users/${user.uid}`).set(newUserData);
                                 if (!isMounted) return;
                                 setUserRole('General Manager');
+                                setCurrentUserData(newUserData);
                             }
                         } catch (error) {
                             console.error('Error fetching user data:', error);
@@ -1720,23 +1738,33 @@
                                         >
                                             Tenders
                                         </button>
+                                        <button
+                                            onClick={() => setCurrentView('profile')}
+                                            className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                                                currentView === 'profile' 
+                                                    ? 'bg-white/20 text-white' 
+                                                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                                            }`}
+                                        >
+                                            Profile
+                                        </button>
                                     </nav>
                                 </div>
                                 <div className="flex items-center space-x-3">
                                     <div className="hidden sm:block text-right">
-                                        <p className="text-white text-sm font-medium">{getCurrentUserData()?.fullName || user?.email?.split('@')[0] || 'User'}</p>
+                                        <p className="text-white text-sm font-medium">{currentUserData?.fullName || user?.email?.split('@')[0] || 'User'}</p>
                                         <p className="text-white/60 text-xs">{userRoles[userRole]?.name || userRole}</p>
                                     </div>
                                     <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center overflow-hidden">
-                                        {getCurrentUserData()?.profilePictureUrl ? (
+                                        {currentUserData?.profilePictureUrl ? (
                                             <img 
-                                                src={getCurrentUserData().profilePictureUrl} 
-                                                alt={getCurrentUserData()?.fullName || 'User'}
+                                                src={currentUserData.profilePictureUrl} 
+                                                alt={currentUserData?.fullName || 'User'}
                                                 className="w-full h-full object-cover"
                                             />
                                         ) : (
                                             <span className="text-white text-sm font-bold">
-                                                {getUserInitials(getCurrentUserData()?.fullName || user?.email?.split('@')[0] || 'U')}
+                                                {getUserInitials(currentUserData?.fullName || user?.email?.split('@')[0] || 'U')}
                                             </span>
                                         )}
                                     </div>
@@ -2622,6 +2650,164 @@
                                     <p className="text-white/60">You don't have permission to access user management.</p>
                                 </div>
                             )
+                        ) : currentView === 'profile' ? (
+                            // Profile Settings View
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-2xl font-bold text-white">Profile Settings</h2>
+                                    <div className="text-sm text-white/60">
+                                        Manage your account details and preferences
+                                    </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    {/* Profile Picture & Basic Info */}
+                                    <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+                                        <h3 className="text-xl font-bold text-white mb-4">Profile Information</h3>
+                                        
+                                        <div className="flex flex-col items-center space-y-4 mb-6">
+                                            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center overflow-hidden">
+                                                {currentUserData?.profilePictureUrl ? (
+                                                    <img 
+                                                        src={currentUserData.profilePictureUrl} 
+                                                        alt={currentUserData?.fullName || 'User'}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <span className="text-white text-2xl font-bold">
+                                                        {getUserInitials(currentUserData?.fullName || user?.email?.split('@')[0] || 'U')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-white font-medium text-lg">{currentUserData?.fullName || user?.email?.split('@')[0] || 'User'}</p>
+                                                <p className="text-white/60 text-sm">{userRoles[userRole]?.name || userRole}</p>
+                                                <p className="text-white/40 text-xs">{user?.email}</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-white/80 text-sm font-medium mb-2">Full Name</label>
+                                                <input
+                                                    type="text"
+                                                    value={currentUserData?.fullName || ''}
+                                                    onChange={(e) => {
+                                                        const newValue = e.target.value;
+                                                        setCurrentUserData(prev => ({ ...prev, fullName: newValue }));
+                                                    }}
+                                                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-400"
+                                                    placeholder="Enter your full name"
+                                                />
+                                            </div>
+                                            
+                                            <div>
+                                                <label className="block text-white/80 text-sm font-medium mb-2">Profile Picture</label>
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files[0];
+                                                        if (file) {
+                                                            if (file.size > 5 * 1024 * 1024) {
+                                                                alert('Profile picture must be less than 5MB');
+                                                                return;
+                                                            }
+                                                            
+                                                            try {
+                                                                const storageRef = storage.ref(`profile-pictures/${user.uid}`);
+                                                                const uploadTask = await storageRef.put(file);
+                                                                const profilePictureUrl = await uploadTask.ref.getDownloadURL();
+                                                                
+                                                                // Update in database
+                                                                await database.ref(`users/${user.uid}`).update({ profilePictureUrl });
+                                                                
+                                                                // Update local state
+                                                                setCurrentUserData(prev => ({ ...prev, profilePictureUrl }));
+                                                                
+                                                                alert('Profile picture updated successfully!');
+                                                            } catch (error) {
+                                                                console.error('Error uploading profile picture:', error);
+                                                                alert('Failed to upload profile picture');
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-400 file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                                                />
+                                                <p className="text-white/50 text-xs mt-1">Upload a new headshot (JPG, PNG, max 5MB)</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    await database.ref(`users/${user.uid}`).update({
+                                                        fullName: currentUserData?.fullName || user?.email?.split('@')[0]
+                                                    });
+                                                    alert('Profile updated successfully!');
+                                                } catch (error) {
+                                                    console.error('Error updating profile:', error);
+                                                    alert('Failed to update profile');
+                                                }
+                                            }}
+                                            className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors font-medium"
+                                        >
+                                            Save Changes
+                                        </button>
+                                    </div>
+                                    
+                                    {/* Account Details */}
+                                    <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+                                        <h3 className="text-xl font-bold text-white mb-4">Account Details</h3>
+                                        
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-white/80 text-sm font-medium mb-2">Email Address</label>
+                                                <input
+                                                    type="email"
+                                                    value={user?.email || ''}
+                                                    disabled
+                                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/60 cursor-not-allowed"
+                                                />
+                                                <p className="text-white/50 text-xs mt-1">Email cannot be changed</p>
+                                            </div>
+                                            
+                                            <div>
+                                                <label className="block text-white/80 text-sm font-medium mb-2">Role</label>
+                                                <input
+                                                    type="text"
+                                                    value={userRoles[userRole]?.name || userRole}
+                                                    disabled
+                                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/60 cursor-not-allowed"
+                                                />
+                                                <p className="text-white/50 text-xs mt-1">Role is assigned by administrators</p>
+                                            </div>
+                                            
+                                            <div>
+                                                <label className="block text-white/80 text-sm font-medium mb-2">Account Created</label>
+                                                <input
+                                                    type="text"
+                                                    value={currentUserData?.createdAt ? new Date(currentUserData.createdAt).toLocaleDateString() : 'Unknown'}
+                                                    disabled
+                                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/60 cursor-not-allowed"
+                                                />
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="mt-6 pt-6 border-t border-white/10">
+                                            <h4 className="text-white font-medium mb-3">Permissions</h4>
+                                            <div className="space-y-2">
+                                                {Object.entries(userRoles[userRole]?.permissions || {}).map(([permission, hasPermission]) => (
+                                                    <div key={permission} className="flex items-center justify-between">
+                                                        <span className="text-white/70 text-sm capitalize">{permission.replace(/([A-Z])/g, ' $1').trim()}</span>
+                                                        <div className={`w-3 h-3 rounded-full ${hasPermission ? 'bg-green-400' : 'bg-red-400'}`}></div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         ) : null}
                     </main>
 
