@@ -204,10 +204,10 @@
                 value: '',
                 tenderStatus: 'Active',
                 priorityNumber: 1,
-                assignedTo: 'Unassigned',
-                salesManager: 'Unassigned',
-                planner: 'Unassigned',
-                designer: 'Unassigned',
+                assignedTo: '',
+                salesManager: '',
+                planner: '',
+                designer: '',
                 dueDate: '',
                 requiresDesign: false
             });
@@ -986,26 +986,26 @@
                 total: enquiries.length,
                 actionDesigners: enquiries.filter(e => {
                     const designerUsers = getUsersByRole('Design Engineer');
-                    return e.actionFrom && e.actionFrom !== 'Awaiting Assignment' && e.actionFrom !== 'Unassigned' && (Array.isArray(e.actionFrom) 
-                        ? e.actionFrom.some(person => designerUsers.includes(person) && person !== 'Unassigned')
+                    return e.actionFrom && e.actionFrom !== 'Awaiting Assignment' && e.actionFrom !== 'Unassigned' && e.actionFrom !== '' && (Array.isArray(e.actionFrom) 
+                        ? e.actionFrom.some(person => person && person !== 'Unassigned' && person !== '' && designerUsers.includes(person))
                         : designerUsers.includes(e.actionFrom));
                 }).length,
                 actionEstimators: enquiries.filter(e => {
                     const estimatorUsers = getUsersByRole('Estimator');
-                    return e.actionFrom && e.actionFrom !== 'Awaiting Assignment' && e.actionFrom !== 'Unassigned' && (Array.isArray(e.actionFrom) 
-                        ? e.actionFrom.some(person => estimatorUsers.includes(person) && person !== 'Unassigned')
+                    return e.actionFrom && e.actionFrom !== 'Awaiting Assignment' && e.actionFrom !== 'Unassigned' && e.actionFrom !== '' && (Array.isArray(e.actionFrom) 
+                        ? e.actionFrom.some(person => person && person !== 'Unassigned' && person !== '' && estimatorUsers.includes(person))
                         : estimatorUsers.includes(e.actionFrom));
                 }).length,
                 actionSales: enquiries.filter(e => {
                     const salesUsers = getUsersByRole('Sales Manager');
-                    return e.actionFrom && e.actionFrom !== 'Awaiting Assignment' && e.actionFrom !== 'Unassigned' && (Array.isArray(e.actionFrom) 
-                        ? e.actionFrom.some(person => salesUsers.includes(person) && person !== 'Unassigned')
+                    return e.actionFrom && e.actionFrom !== 'Awaiting Assignment' && e.actionFrom !== 'Unassigned' && e.actionFrom !== '' && (Array.isArray(e.actionFrom) 
+                        ? e.actionFrom.some(person => person && person !== 'Unassigned' && person !== '' && salesUsers.includes(person))
                         : salesUsers.includes(e.actionFrom));
                 }).length,
                 actionPlanning: enquiries.filter(e => {
                     const plannerUsers = getUsersByRole('Planner');
-                    return e.actionFrom && e.actionFrom !== 'Awaiting Assignment' && e.actionFrom !== 'Unassigned' && (Array.isArray(e.actionFrom) 
-                        ? e.actionFrom.some(person => plannerUsers.includes(person) && person !== 'Unassigned')
+                    return e.actionFrom && e.actionFrom !== 'Awaiting Assignment' && e.actionFrom !== 'Unassigned' && e.actionFrom !== '' && (Array.isArray(e.actionFrom) 
+                        ? e.actionFrom.some(person => person && person !== 'Unassigned' && person !== '' && plannerUsers.includes(person))
                         : plannerUsers.includes(e.actionFrom));
                 }).length,
                 totalValue: enquiries.reduce((sum, e) => sum + (e.value > 0 ? e.value : 0), 0)
@@ -1055,10 +1055,10 @@
                     project: '',
                     value: '',
                     priorityNumber: 1,
-                    assignedTo: 'Unassigned',
-                    salesManager: 'Craig Malt',
-                    planner: 'Lewis MacDonald',
-                    designer: 'Unassigned',
+                                    assignedTo: '',
+                salesManager: '',
+                planner: '',
+                designer: '',
                     dueDate: '',
                     requiresDesign: false
                 });
@@ -1565,9 +1565,12 @@
                 setShowAssignAction(true);
             };
 
-            const canManageActions = (currentUser = 'GM') => {
-                // Craig and estimators can manage actions
-                return currentUser === 'Craig Malt' || currentUser === 'Scott Goodfellow' || currentUser === 'Peter Krempin' || currentUser === 'GM';
+            const canManageActions = (currentUser) => {
+                // General Managers and users assigned to tenders can manage actions
+                const currentUserData = getCurrentUserData();
+                return currentUserData?.role === 'General Manager' || 
+                       currentUserData?.role === 'Estimator' ||
+                       currentUserData?.role === 'Sales Manager';
             };
 
             // Get top 5 priority tenders for home page
@@ -2724,7 +2727,7 @@
                                                 onChange={(e) => handleFormChange('assignedTo', e.target.value)}
                                                 className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-400"
                                             >
-                                                <option value="Unassigned">Unassigned</option>
+                                                <option value="">Select Estimator</option>
                                                 {getUsersByRole('Estimator').map(estimator => (
                                                     <option key={estimator} value={estimator}>{estimator}</option>
                                                 ))}
@@ -2739,7 +2742,7 @@
                                                 onChange={(e) => handleFormChange('salesManager', e.target.value)}
                                                 className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-400"
                                             >
-                                                <option value="Unassigned">Unassigned</option>
+                                                <option value="">Select Sales Manager</option>
                                                 {getUsersByRole('Sales Manager').map(salesManager => (
                                                     <option key={salesManager} value={salesManager}>{salesManager}</option>
                                                 ))}
@@ -2758,7 +2761,7 @@
                                                 onChange={(e) => handleFormChange('planner', e.target.value)}
                                                 className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-400"
                                             >
-                                                <option value="Unassigned">Unassigned</option>
+                                                <option value="">Select Planner</option>
                                                 {getUsersByRole('Planner').map(planner => (
                                                     <option key={planner} value={planner}>{planner}</option>
                                                 ))}
@@ -2773,7 +2776,7 @@
                                                 onChange={(e) => handleFormChange('designer', e.target.value)}
                                                 className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-400"
                                             >
-                                                <option value="Unassigned">Unassigned</option>
+                                                <option value="">Select Designer (Optional)</option>
                                                 {getUsersByRole('Design Engineer').map(designer => (
                                                     <option key={designer} value={designer}>{designer}</option>
                                                 ))}
@@ -2912,24 +2915,36 @@
                                             <div className="bg-slate-800/50 rounded-lg p-3 border border-white/10">
                                                 <p className="text-white/50 text-xs mb-2">Team</p>
                                                 <div className="space-y-1 text-xs">
-                                                    <div className="flex items-center space-x-2">
-                                                        <span className="w-2 h-2 bg-blue-400 rounded-full"></span>
-                                                        <span className="text-white/80">Est: {selectedEnquiry.assignedTo}</span>
-                                                    </div>
-                                                    <div className="flex items-center space-x-2">
-                                                        <span className="w-2 h-2 bg-green-400 rounded-full"></span>
-                                                        <span className="text-white/80">Sales: {selectedEnquiry.salesManager}</span>
-                                                    </div>
-                                                    {selectedEnquiry.requiresDesign && (
+                                                    {selectedEnquiry.assignedTo && (
+                                                        <div className="flex items-center space-x-2">
+                                                            <span className="w-2 h-2 bg-blue-400 rounded-full"></span>
+                                                            <span className="text-white/80">Est: {selectedEnquiry.assignedTo}</span>
+                                                        </div>
+                                                    )}
+                                                    {selectedEnquiry.salesManager && (
+                                                        <div className="flex items-center space-x-2">
+                                                            <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+                                                            <span className="text-white/80">Sales: {selectedEnquiry.salesManager}</span>
+                                                        </div>
+                                                    )}
+                                                    {selectedEnquiry.requiresDesign && selectedEnquiry.designer && (
                                                         <div className="flex items-center space-x-2">
                                                             <span className="w-2 h-2 bg-orange-400 rounded-full"></span>
                                                             <span className="text-white/80">Design: {selectedEnquiry.designer}</span>
                                                         </div>
                                                     )}
-                                                    <div className="flex items-center space-x-2">
-                                                        <span className="w-2 h-2 bg-purple-400 rounded-full"></span>
-                                                        <span className="text-white/80">Plan: {selectedEnquiry.planner}</span>
-                                                    </div>
+                                                    {selectedEnquiry.planner && (
+                                                        <div className="flex items-center space-x-2">
+                                                            <span className="w-2 h-2 bg-purple-400 rounded-full"></span>
+                                                            <span className="text-white/80">Plan: {selectedEnquiry.planner}</span>
+                                                        </div>
+                                                    )}
+                                                    {!selectedEnquiry.assignedTo && !selectedEnquiry.salesManager && !selectedEnquiry.planner && (!selectedEnquiry.requiresDesign || !selectedEnquiry.designer) && (
+                                                        <div className="flex items-center space-x-2">
+                                                            <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                                                            <span className="text-white/60 italic">No team assigned</span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                             <button
