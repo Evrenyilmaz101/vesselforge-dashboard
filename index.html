@@ -488,25 +488,61 @@
             
             // Image processing functions
             const removeBackground = async (imageFile) => {
-                // For demo purposes, we'll just process the image (in production, you'd use an API like remove.bg)
-                return new Promise((resolve) => {
+                return new Promise((resolve, reject) => {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     const img = new Image();
                     
                     img.onload = () => {
-                        canvas.width = 200;
-                        canvas.height = 200;
-                        
-                        // Make it circular by clipping
-                        ctx.beginPath();
-                        ctx.arc(100, 100, 100, 0, Math.PI * 2);
-                        ctx.clip();
-                        
-                        // Draw the image
-                        ctx.drawImage(img, 0, 0, 200, 200);
-                        
-                        canvas.toBlob(resolve, 'image/png');
+                        try {
+                            canvas.width = 200;
+                            canvas.height = 200;
+                            
+                            // Clear canvas with transparent background
+                            ctx.clearRect(0, 0, 200, 200);
+                            
+                            // Create circular clipping path
+                            ctx.save();
+                            ctx.beginPath();
+                            ctx.arc(100, 100, 100, 0, Math.PI * 2);
+                            ctx.clip();
+                            
+                            // Calculate aspect ratio and positioning
+                            const aspectRatio = img.width / img.height;
+                            let drawWidth, drawHeight, offsetX, offsetY;
+                            
+                            if (aspectRatio > 1) {
+                                // Image is wider than tall
+                                drawHeight = 200;
+                                drawWidth = 200 * aspectRatio;
+                                offsetX = -(drawWidth - 200) / 2;
+                                offsetY = 0;
+                            } else {
+                                // Image is taller than wide
+                                drawWidth = 200;
+                                drawHeight = 200 / aspectRatio;
+                                offsetX = 0;
+                                offsetY = -(drawHeight - 200) / 2;
+                            }
+                            
+                            // Draw the image
+                            ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+                            ctx.restore();
+                            
+                            canvas.toBlob((blob) => {
+                                if (blob) {
+                                    resolve(blob);
+                                } else {
+                                    reject(new Error('Failed to create blob'));
+                                }
+                            }, 'image/png', 0.9);
+                        } catch (error) {
+                            reject(error);
+                        }
+                    };
+                    
+                    img.onerror = () => {
+                        reject(new Error('Failed to load image'));
                     };
                     
                     img.src = URL.createObjectURL(imageFile);
@@ -514,40 +550,62 @@
             };
             
             const processImage = async (imageFile, position, bgColor) => {
-                return new Promise((resolve) => {
+                return new Promise((resolve, reject) => {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     const img = new Image();
                     
                     img.onload = () => {
-                        canvas.width = 200;
-                        canvas.height = 200;
-                        
-                        // Fill background color
-                        ctx.fillStyle = bgColor;
-                        ctx.beginPath();
-                        ctx.arc(100, 100, 100, 0, Math.PI * 2);
-                        ctx.fill();
-                        
-                        // Clip to circle
-                        ctx.beginPath();
-                        ctx.arc(100, 100, 100, 0, Math.PI * 2);
-                        ctx.clip();
-                        
-                        // Calculate scaled dimensions
-                        const scaledWidth = img.width * position.scale;
-                        const scaledHeight = img.height * position.scale;
-                        
-                        // Draw the positioned and scaled image
-                        ctx.drawImage(
-                            img, 
-                            position.x, 
-                            position.y, 
-                            scaledWidth, 
-                            scaledHeight
-                        );
-                        
-                        canvas.toBlob(resolve, 'image/png');
+                        try {
+                            canvas.width = 200;
+                            canvas.height = 200;
+                            
+                            // Fill background color
+                            ctx.fillStyle = bgColor;
+                            ctx.beginPath();
+                            ctx.arc(100, 100, 100, 0, Math.PI * 2);
+                            ctx.fill();
+                            
+                            // Create circular clipping path
+                            ctx.save();
+                            ctx.beginPath();
+                            ctx.arc(100, 100, 100, 0, Math.PI * 2);
+                            ctx.clip();
+                            
+                            // Calculate scaled dimensions with bounds checking
+                            const scaledWidth = Math.max(img.width * position.scale, 50);
+                            const scaledHeight = Math.max(img.height * position.scale, 50);
+                            
+                            // Calculate centered position with offset
+                            const centerX = 100 + position.x;
+                            const centerY = 100 + position.y;
+                            const drawX = centerX - scaledWidth / 2;
+                            const drawY = centerY - scaledHeight / 2;
+                            
+                            // Draw the positioned and scaled image
+                            ctx.drawImage(
+                                img, 
+                                drawX, 
+                                drawY, 
+                                scaledWidth, 
+                                scaledHeight
+                            );
+                            ctx.restore();
+                            
+                            canvas.toBlob((blob) => {
+                                if (blob) {
+                                    resolve(blob);
+                                } else {
+                                    reject(new Error('Failed to create blob'));
+                                }
+                            }, 'image/png', 0.9);
+                        } catch (error) {
+                            reject(error);
+                        }
+                    };
+                    
+                    img.onerror = () => {
+                        reject(new Error('Failed to load image'));
                     };
                     
                     img.src = URL.createObjectURL(imageFile);
@@ -3034,14 +3092,27 @@
                                     <div className="flex space-x-3 mt-6">
                                         <button
                                             onClick={async () => {
+                                                const button = event.target;
+                                                const originalText = button.textContent;
+                                                
                                                 try {
+                                                    button.textContent = 'Processing...';
+                                                    button.disabled = true;
+                                                    
+                                                    console.log('Starting image processing...');
+                                                    
                                                     // Process the image with current settings
                                                     const processedBlob = await processImage(selectedImage, imagePosition, selectedBgColor);
+                                                    console.log('Image processed successfully');
+                                                    
+                                                    button.textContent = 'Uploading...';
                                                     
                                                     // Upload to Firebase
                                                     const storageRef = storage.ref(`profile-pictures/${user.uid}`);
                                                     const uploadTask = await storageRef.put(processedBlob);
                                                     const profilePictureUrl = await uploadTask.ref.getDownloadURL();
+                                                    
+                                                    console.log('Upload successful');
                                                     
                                                     // Update in database
                                                     await database.ref(`users/${user.uid}`).update({ 
@@ -3061,24 +3132,40 @@
                                                     alert('Profile picture updated successfully!');
                                                 } catch (error) {
                                                     console.error('Error uploading profile picture:', error);
-                                                    alert('Failed to upload profile picture');
+                                                    alert(`Failed to upload profile picture: ${error.message}`);
+                                                } finally {
+                                                    button.textContent = originalText;
+                                                    button.disabled = false;
                                                 }
                                             }}
-                                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg transition-colors font-medium"
+                                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg transition-colors font-medium disabled:bg-blue-400 disabled:cursor-not-allowed"
                                         >
                                             Save Avatar
                                         </button>
                                         
                                         <button
                                             onClick={async () => {
+                                                const button = event.target;
+                                                const originalText = button.textContent;
+                                                
                                                 try {
+                                                    button.textContent = 'Processing...';
+                                                    button.disabled = true;
+                                                    
+                                                    console.log('Starting background removal...');
+                                                    
                                                     // Remove background and process
                                                     const processedBlob = await removeBackground(selectedImage);
+                                                    console.log('Background removed successfully');
+                                                    
+                                                    button.textContent = 'Uploading...';
                                                     
                                                     // Upload to Firebase
                                                     const storageRef = storage.ref(`profile-pictures/${user.uid}`);
                                                     const uploadTask = await storageRef.put(processedBlob);
                                                     const profilePictureUrl = await uploadTask.ref.getDownloadURL();
+                                                    
+                                                    console.log('Upload successful');
                                                     
                                                     // Update in database
                                                     await database.ref(`users/${user.uid}`).update({ 
@@ -3095,13 +3182,16 @@
                                                     
                                                     setShowImageEditor(false);
                                                     setSelectedImage(null);
-                                                    alert('Background removed and avatar updated!');
+                                                    alert('Background removed and avatar updated successfully!');
                                                 } catch (error) {
                                                     console.error('Error processing image:', error);
-                                                    alert('Failed to process image');
+                                                    alert(`Failed to process image: ${error.message}`);
+                                                } finally {
+                                                    button.textContent = originalText;
+                                                    button.disabled = false;
                                                 }
                                             }}
-                                            className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg transition-colors font-medium"
+                                            className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg transition-colors font-medium disabled:bg-purple-400 disabled:cursor-not-allowed"
                                         >
                                             Remove Background
                                         </button>
