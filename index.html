@@ -2670,7 +2670,10 @@
                                                 onChange={(e) => handleFormChange('salesManager', e.target.value)}
                                                 className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-400"
                                             >
-                                                <option value="Craig Malt">Craig Malt</option>
+                                                <option value="Unassigned">Unassigned</option>
+                                                {getUsersByRole('Sales Manager').map(salesManager => (
+                                                    <option key={salesManager} value={salesManager}>{salesManager}</option>
+                                                ))}
                                             </select>
                                         </div>
                                     </div>
@@ -2686,7 +2689,10 @@
                                                 onChange={(e) => handleFormChange('planner', e.target.value)}
                                                 className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-400"
                                             >
-                                                <option value="Lewis MacDonald">Lewis MacDonald</option>
+                                                <option value="Unassigned">Unassigned</option>
+                                                {getUsersByRole('Planner').map(planner => (
+                                                    <option key={planner} value={planner}>{planner}</option>
+                                                ))}
                                             </select>
                                         </div>
                                         <div>
@@ -2699,9 +2705,9 @@
                                                 className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-400"
                                             >
                                                 <option value="Unassigned">Unassigned</option>
-                                                                                <option value="Dave Richards">Dave Richards</option>
-                                <option value="Brandon Gregg">Brandon Gregg</option>
-                                <option value="Sheryl Mirambil">Sheryl Mirambil</option>
+                                                {getUsersByRole('Design Engineer').map(designer => (
+                                                    <option key={designer} value={designer}>{designer}</option>
+                                                ))}
                                             </select>
                                         </div>
                                     </div>
