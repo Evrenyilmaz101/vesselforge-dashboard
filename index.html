@@ -523,7 +523,7 @@
                     
                     console.log('User created:', user.email);
                     setShowSignup(false);
-                    setSignupForm({ email: '', password: '', confirmPassword: '', fullName: '', role: 'Estimator' });
+                    setSignupForm({ email: '', password: '', confirmPassword: '', fullName: '', role: 'General Manager' });
                 } catch (error) {
                     console.error('Signup error:', error);
                     if (error.code === 'auth/configuration-not-found') {
@@ -564,24 +564,34 @@
                             const userData = snapshot.val();
                             if (userData) {
                                 console.log('User role found:', userData.role);
-                                setUserRole(userData.role);
+                                
+                                // One-time fix: Update bestjobsaddy@gmail.com to General Manager
+                                if (user.email === 'bestjobsaddy@gmail.com' && userData.role === 'Estimator') {
+                                    console.log('Updating bestjobsaddy@gmail.com role to General Manager');
+                                    await database.ref(`users/${user.uid}`).update({
+                                        role: 'General Manager'
+                                    });
+                                    setUserRole('General Manager');
+                                } else {
+                                    setUserRole(userData.role);
+                                }
                             } else {
                                 console.log('No user data found, creating default...');
                                 // If user data doesn't exist, create it (for existing users)
                                 await database.ref(`users/${user.uid}`).set({
                                     email: user.email,
                                     fullName: user.email.split('@')[0],
-                                    role: 'Estimator',
+                                    role: 'General Manager',
                                     createdAt: new Date().toISOString(),
                                     isActive: true
                                 });
                                 if (!isMounted) return;
-                                setUserRole('Estimator');
+                                setUserRole('General Manager');
                             }
                         } catch (error) {
                             console.error('Error fetching user data:', error);
                             if (!isMounted) return;
-                            setUserRole('Estimator'); // Default role
+                            setUserRole('General Manager'); // Default role
                         }
                     } else {
                         setUser(null);
