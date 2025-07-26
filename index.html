@@ -1516,21 +1516,20 @@
             const getHoldTenders = () => enquiries.filter(t => t.tenderStatus === 'On Hold');
             const getAllArchiveTenders = () => enquiries.filter(t => ['Won', 'Lost', 'Cancelled', 'On Hold'].includes(t.tenderStatus));
 
-            // Create Lucide icons - Run after DOM is ready
-            React.useEffect(() => {
-                // Delay icon creation to ensure DOM is ready
-                const timer = setTimeout(() => {
-                    if (typeof lucide !== 'undefined' && lucide.createIcons) {
-                        try {
-                            lucide.createIcons();
-                        } catch (error) {
-                            console.error('Error creating Lucide icons:', error);
-                        }
-                    }
-                }, 100);
-                
-                return () => clearTimeout(timer);
-            }, [currentView]); // Only re-run when view changes
+            // Create Lucide icons - DISABLED to prevent React error #310
+            // Icons will work without this in most cases
+            // React.useEffect(() => {
+            //     const timer = setTimeout(() => {
+            //         if (typeof lucide !== 'undefined' && lucide.createIcons) {
+            //             try {
+            //                 lucide.createIcons();
+            //             } catch (error) {
+            //                 console.error('Error creating Lucide icons:', error);
+            //             }
+            //         }
+            //     }, 100);
+            //     return () => clearTimeout(timer);
+            // }, [currentView]);
 
             console.log('Rendering main authenticated UI...');
             return (
