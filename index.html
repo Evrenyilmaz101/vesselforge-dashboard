@@ -450,12 +450,37 @@
             };
             
             // Helper function to get user avatar
-            const getUserAvatar = (userName) => {
+            const getUserAvatar = (userName, userEmail = null) => {
+                // Try to find by email first (more reliable)
+                if (userEmail) {
+                    const userData = allUsers.find(user => user.email === userEmail);
+                    if (userData && userData.profilePictureUrl) {
+                        return userData.profilePictureUrl;
+                    }
+                }
+                // Fallback to name lookup
                 const userData = allUsers.find(user => (user.fullName || user.email.split('@')[0]) === userName);
                 if (userData && userData.profilePictureUrl) {
                     return userData.profilePictureUrl;
                 }
                 return null; // Will fall back to initials
+            };
+            
+            // Helper function to get user background color
+            const getUserBgColor = (userName, userEmail = null) => {
+                // Try to find by email first (more reliable)
+                if (userEmail) {
+                    const userData = allUsers.find(user => user.email === userEmail);
+                    if (userData && userData.avatarBgColor) {
+                        return userData.avatarBgColor;
+                    }
+                }
+                // Fallback to name lookup
+                const userData = allUsers.find(user => (user.fullName || user.email.split('@')[0]) === userName);
+                if (userData && userData.avatarBgColor) {
+                    return userData.avatarBgColor;
+                }
+                return '#3B82F6'; // Default blue
             };
             
             // Helper function to get user initials
@@ -1189,7 +1214,8 @@
                     text: newMessage,
                     timestamp: new Date().toLocaleString(),
                     timestampMs: Date.now(), // For sorting
-                    sender: 'GM', // Current user
+                    sender: currentUserData?.fullName || user?.email?.split('@')[0] || 'User', // Use full name
+                    senderEmail: user?.email, // Store email for avatar lookup
                     type: 'text'
                 };
                 
@@ -3573,16 +3599,23 @@
                                                     ) : (
                                                         (messages[selectedEnquiry.id] || []).filter(message => message && message.id).map((message, messageIndex) => (
                                                             <div key={message.id || `message-${messageIndex}`} className="flex items-start space-x-3">
-                                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center overflow-hidden ${
-                                                                    message.type === 'action-alert' 
-                                                                        ? 'bg-gradient-to-r from-orange-500 to-red-500' 
-                                                                        : 'bg-blue-500'
-                                                                }`}>
+                                                                <div 
+                                                                    className={`w-8 h-8 rounded-full flex items-center justify-center overflow-hidden ${
+                                                                        message.type === 'action-alert' 
+                                                                            ? 'bg-gradient-to-r from-orange-500 to-red-500' 
+                                                                            : ''
+                                                                    }`}
+                                                                    style={{
+                                                                        backgroundColor: message.type === 'action-alert' 
+                                                                            ? undefined 
+                                                                            : getUserBgColor(message.sender || 'User', message.senderEmail)
+                                                                    }}
+                                                                >
                                                                     {message.type === 'action-alert' ? (
                                                                         <span className="text-white text-xs font-bold">🚨</span>
-                                                                    ) : getUserAvatar(message.sender || 'User') ? (
+                                                                    ) : getUserAvatar(message.sender || 'User', message.senderEmail) ? (
                                                                         <img 
-                                                                            src={getUserAvatar(message.sender || 'User')} 
+                                                                            src={getUserAvatar(message.sender || 'User', message.senderEmail)} 
                                                                             alt={message.sender || 'User'}
                                                                             className="w-full h-full object-cover"
                                                                         />
@@ -4878,15 +4911,16 @@
                                                             alertText = `🔥🚨 URGENT ACTION REQUIRED 🚨🔥\n\n👤 ${actionAlertPeople[0]}${actionAlertMessage ? `\n📋 ${actionAlertMessage}` : ''}`;
                                                         }
                                                         
-                                                        const message = {
-                                                            id: Date.now() + Math.floor(Math.random() * 1000),
-                                                            text: alertText,
-                                                            sender: currentUser, // Current user - will be dynamic when user accounts are added
-                                                            timestamp: new Date().toLocaleString(),
-                                                            timestampMs: Date.now(), // For sorting
-                                                            type: 'action-alert',
-                                                            createdBy: currentUser // Track who created this action alert
-                                                        };
+                                                                                                const message = {
+                                            id: Date.now() + Math.floor(Math.random() * 1000),
+                                            text: alertText,
+                                            sender: currentUserData?.fullName || user?.email?.split('@')[0] || 'User', // Use full name
+                                            senderEmail: user?.email, // Store email for avatar lookup
+                                            timestamp: new Date().toLocaleString(),
+                                            timestampMs: Date.now(), // For sorting
+                                            type: 'action-alert',
+                                            createdBy: currentUserData?.fullName || user?.email?.split('@')[0] || 'User' // Track who created this action alert
+                                        };
                                                         
                                                         const messagesRef = firebase.database().ref(`tender-messages/${selectedEnquiry.id}/${message.id}`);
                                                         messagesRef.set(message);
