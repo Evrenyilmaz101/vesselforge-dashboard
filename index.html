@@ -1516,20 +1516,21 @@
             const getHoldTenders = () => enquiries.filter(t => t.tenderStatus === 'On Hold');
             const getAllArchiveTenders = () => enquiries.filter(t => ['Won', 'Lost', 'Cancelled', 'On Hold'].includes(t.tenderStatus));
 
-            // Create Lucide icons - DISABLED to fix React error #310
-            // React.useEffect(() => {
-            //     // Only run once when component mounts
-            //     if (typeof lucide !== 'undefined' && lucide.createIcons) {
-            //         lucide.createIcons();
-            //     }
-            // }, []);
-            
-            // Re-create icons when needed (without causing infinite loops) - DISABLED
-            // const createIconsOnce = React.useCallback(() => {
-            //     if (typeof lucide !== 'undefined' && lucide.createIcons) {
-            //         lucide.createIcons();
-            //     }
-            // }, []);
+            // Create Lucide icons - Run after DOM is ready
+            React.useEffect(() => {
+                // Delay icon creation to ensure DOM is ready
+                const timer = setTimeout(() => {
+                    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                        try {
+                            lucide.createIcons();
+                        } catch (error) {
+                            console.error('Error creating Lucide icons:', error);
+                        }
+                    }
+                }, 100);
+                
+                return () => clearTimeout(timer);
+            }, [currentView]); // Only re-run when view changes
 
             console.log('Rendering main authenticated UI...');
             return (
@@ -2872,16 +2873,34 @@
                                                     ) : (
                                                         (messages[selectedEnquiry.id] || []).filter(message => message && message.id).map((message, messageIndex) => (
                                                             <div key={message.id || `message-${messageIndex}`} className="flex items-start space-x-3">
-                                                                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
-                                                                    <span className="text-white text-xs font-bold">U</span>
+                                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                                                    message.type === 'action-alert' 
+                                                                        ? 'bg-gradient-to-r from-orange-500 to-red-500' 
+                                                                        : 'bg-blue-500'
+                                                                }`}>
+                                                                    <span className="text-white text-xs font-bold">
+                                                                        {message.type === 'action-alert' ? '🚨' : 'U'}
+                                                                    </span>
                                                                 </div>
                                                                 <div className="flex-1">
                                                                     <div className="flex items-center space-x-2 mb-1">
-                                                                        <span className="text-white font-medium text-sm">User</span>
-                                                                        <span className="text-white/40 text-xs">Now</span>
+                                                                        <span className="text-white font-medium text-sm">
+                                                                            {message.type === 'action-alert' ? 'Action Alert' : 'User'}
+                                                                        </span>
+                                                                        <span className="text-white/40 text-xs">{message.timestamp || 'Now'}</span>
                                                                     </div>
-                                                                    <div className="py-1">
-                                                                        <p className="text-white text-sm">{message.text || 'No message'}</p>
+                                                                    <div className={`py-2 px-3 rounded-lg ${
+                                                                        message.type === 'action-alert' 
+                                                                            ? 'bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/30' 
+                                                                            : 'bg-white/5'
+                                                                    }`}>
+                                                                        <p className={`text-sm ${
+                                                                            message.type === 'action-alert' 
+                                                                                ? 'text-orange-100 font-medium whitespace-pre-line' 
+                                                                                : 'text-white'
+                                                                        }`}>
+                                                                            {message.text || 'No message'}
+                                                                        </p>
                                                                     </div>
                                                                 </div>
                                                             </div>
