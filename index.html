@@ -513,23 +513,34 @@
                             ctx.arc(100, 100, 100, 0, Math.PI * 2);
                             ctx.clip();
                             
-                            // Calculate scaled dimensions with bounds checking
-                            const scaledWidth = Math.max(img.width * position.scale, 50);
-                            const scaledHeight = Math.max(img.height * position.scale, 50);
+                            // Calculate how to fit the image without cropping (like object-fit: contain)
+                            const circleSize = 196; // Leave space for border
+                            const aspectRatio = img.width / img.height;
                             
-                            // Calculate centered position with offset
+                            let drawWidth, drawHeight;
+                            if (aspectRatio > 1) {
+                                // Image is wider than tall
+                                drawWidth = circleSize * position.scale;
+                                drawHeight = drawWidth / aspectRatio;
+                            } else {
+                                // Image is taller than wide
+                                drawHeight = circleSize * position.scale;
+                                drawWidth = drawHeight * aspectRatio;
+                            }
+                            
+                            // Center the image with user positioning offset
                             const centerX = 100 + position.x;
                             const centerY = 100 + position.y;
-                            const drawX = centerX - scaledWidth / 2;
-                            const drawY = centerY - scaledHeight / 2;
+                            const drawX = centerX - drawWidth / 2;
+                            const drawY = centerY - drawHeight / 2;
                             
                             // Draw the positioned and scaled image
                             ctx.drawImage(
                                 img, 
                                 drawX, 
                                 drawY, 
-                                scaledWidth, 
-                                scaledHeight
+                                drawWidth, 
+                                drawHeight
                             );
                             ctx.restore();
                             
@@ -2807,7 +2818,7 @@
                                                 <div className="mt-4">
                                                     <label className="block text-white/80 text-sm font-medium mb-2">Avatar Background Color</label>
                                                     <div className="flex space-x-2 mb-2">
-                                                        {['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#6B7280'].map(color => (
+                                                        {['#FFFFFF', '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#6B7280'].map(color => (
                                                             <button
                                                                 key={color}
                                                                 onClick={() => setSelectedBgColor(color)}
@@ -2975,7 +2986,7 @@
                                                         <img 
                                                             src={URL.createObjectURL(selectedImage)}
                                                             alt="Preview"
-                                                            className="w-full h-full object-cover"
+                                                            className="w-full h-full object-contain"
                                                             style={{
                                                                 transform: `scale(${imagePosition.scale}) translate(${imagePosition.x}px, ${imagePosition.y}px)`,
                                                                 transformOrigin: 'center center'
@@ -3045,7 +3056,7 @@
                                             <div>
                                                 <label className="block text-white/80 text-sm font-medium mb-2">Background Color</label>
                                                 <div className="flex space-x-2 mb-2">
-                                                    {['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#6B7280', '#1F2937'].map(color => (
+                                                    {['#FFFFFF', '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#6B7280'].map(color => (
                                                         <button
                                                             key={color}
                                                             onClick={() => setSelectedBgColor(color)}
