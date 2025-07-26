@@ -204,8 +204,8 @@
                 tenderStatus: 'Active',
                 priorityNumber: 1,
                 assignedTo: 'Unassigned',
-                salesManager: 'Craig Malt',
-                planner: 'Lewis MacDonald',
+                salesManager: 'Unassigned',
+                planner: 'Unassigned',
                 designer: 'Unassigned',
                 dueDate: '',
                 requiresDesign: false
@@ -231,6 +231,7 @@
             const [actionAlertPeople, setActionAlertPeople] = useState([]);
             const [actionAlertMessage, setActionAlertMessage] = useState('');
             const [individualActionMessages, setIndividualActionMessages] = useState({});
+            const [allUsers, setAllUsers] = useState([]);
             
             // Firebase real-time listener for messages
             useEffect(() => {
@@ -401,6 +402,45 @@
                     }
                 };
             }, [selectedEnquiry?.id]);
+            
+            // Fetch all users from database
+            useEffect(() => {
+                let usersRef;
+                let listener;
+                let isMounted = true;
+                
+                try {
+                    usersRef = database.ref('users');
+                    listener = usersRef.on('value', (snapshot) => {
+                        if (!isMounted) return;
+                        const data = snapshot.val();
+                        if (data) {
+                            const usersList = Object.values(data).filter(user => user && user.isActive !== false);
+                            setAllUsers(usersList);
+                        } else {
+                            setAllUsers([]);
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error setting up users listener:', error);
+                }
+                
+                return () => {
+                    isMounted = false;
+                    if (usersRef && listener) {
+                        try {
+                            usersRef.off('value', listener);
+                        } catch (error) {
+                            console.error('Error cleaning up users listener:', error);
+                        }
+                    }
+                };
+            }, []);
+            
+            // Helper function to get users by role
+            const getUsersByRole = (role) => {
+                return allUsers.filter(user => user.role === role).map(user => user.fullName || user.email.split('@')[0]);
+            };
             
             // User roles and permissions system
             const userRoles = {
@@ -3753,7 +3793,7 @@
                                                 Estimators
                                             </label>
                                                                         <div className="space-y-2 max-h-32 overflow-y-auto">
-                                {['Peter Krempin', 'Scott Goodfellow'].map(person => (
+                                {getUsersByRole('Estimator').map(person => (
                                                     <label key={person} className="flex items-center space-x-2 cursor-pointer">
                                                         <input
                                                             type="checkbox"
@@ -3786,7 +3826,7 @@
                                                 Sales Managers
                                             </label>
                                                                         <div className="space-y-2 max-h-32 overflow-y-auto">
-                                {['Craig Malt'].map(person => (
+                                {getUsersByRole('Sales Manager').map(person => (
                                                     <label key={person} className="flex items-center space-x-2 cursor-pointer">
                                                         <input
                                                             type="checkbox"
@@ -3819,7 +3859,7 @@
                                 Design Engineers
                             </label>
                             <div className="space-y-2 max-h-32 overflow-y-auto">
-                                {['Dave Richards', 'Brandon Gregg', 'Sheryl Mirambil'].map(person => (
+                                {getUsersByRole('Design Engineer').map(person => (
                                                     <label key={person} className="flex items-center space-x-2 cursor-pointer">
                                                         <input
                                                             type="checkbox"
@@ -3852,7 +3892,7 @@
                                                 Planners
                                             </label>
                                                                         <div className="space-y-2 max-h-32 overflow-y-auto">
-                                {['Lewis MacDonald'].map(person => (
+                                {getUsersByRole('Planner').map(person => (
                                                     <label key={person} className="flex items-center space-x-2 cursor-pointer">
                                                         <input
                                                             type="checkbox"
