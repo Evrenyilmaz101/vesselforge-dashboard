@@ -509,8 +509,9 @@
                 let isMounted = true;
                 
                 const unsubscribe = auth.onAuthStateChanged(async (user) => {
-                    console.log('Auth state changed:', user ? user.email : 'no user');
-                    if (!isMounted) return;
+                    try {
+                        console.log('Auth state changed:', user ? user.email : 'no user');
+                        if (!isMounted) return;
                     
                     if (user) {
                         setUser(user);
@@ -546,9 +547,14 @@
                         setUser(null);
                         setUserRole(null);
                     }
-                    console.log('Auth setup complete, loading:', false);
-                    if (!isMounted) return;
-                    setLoading(false);
+                        console.log('Auth setup complete, loading:', false);
+                        if (!isMounted) return;
+                        setLoading(false);
+                    } catch (error) {
+                        console.error('Auth state change error:', error);
+                        if (!isMounted) return;
+                        setLoading(false);
+                    }
                 });
                 
                 return () => {
