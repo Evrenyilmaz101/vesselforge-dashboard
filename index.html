@@ -516,6 +516,63 @@
                 return userName.charAt(0).toUpperCase();
             };
             
+            // Toggle user permission function
+            const toggleUserPermission = async (userEmail, permission, action) => {
+                try {
+                    const userRef = database.ref(`users/${userEmail.replace(/[.#$[\]]/g, '_')}`);
+                    const snapshot = await userRef.once('value');
+                    const userData = snapshot.val();
+                    
+                    if (!userData) {
+                        alert('User not found');
+                        return;
+                    }
+                    
+                    const customPermissions = userData.customPermissions || { granted: [], denied: [] };
+                    
+                    if (action === 'grant') {
+                        // Toggle grant permission
+                        if (customPermissions.granted.includes(permission)) {
+                            // Remove from granted
+                            customPermissions.granted = customPermissions.granted.filter(p => p !== permission);
+                        } else {
+                            // Add to granted and remove from denied
+                            customPermissions.granted.push(permission);
+                            customPermissions.denied = customPermissions.denied.filter(p => p !== permission);
+                        }
+                    } else if (action === 'deny') {
+                        // Toggle deny permission
+                        if (customPermissions.denied.includes(permission)) {
+                            // Remove from denied
+                            customPermissions.denied = customPermissions.denied.filter(p => p !== permission);
+                        } else {
+                            // Add to denied and remove from granted
+                            customPermissions.denied.push(permission);
+                            customPermissions.granted = customPermissions.granted.filter(p => p !== permission);
+                        }
+                    }
+                    
+                    // Update user in Firebase
+                    await userRef.update({ customPermissions });
+                    
+                    // Update local allUsers state
+                    setAllUsers(prev => prev.map(user => 
+                        user.email === userEmail 
+                            ? { ...user, customPermissions }
+                            : user
+                    ));
+                    
+                    // If this is the current user, update their data too
+                    if (userEmail === user?.email) {
+                        setCurrentUserData(prev => ({ ...prev, customPermissions }));
+                    }
+                    
+                } catch (error) {
+                    console.error('Error updating user permissions:', error);
+                    alert('Failed to update permissions. Please try again.');
+                }
+            };
+            
             // Helper function to get current user data
             const getCurrentUserData = () => {
                 if (!user) return null;
@@ -659,6 +716,21 @@
             // Permission check function
             const hasPermission = (permission) => {
                 if (!user || !userRole) return false;
+                
+                // Check for custom user permissions first
+                if (currentUserData?.customPermissions) {
+                    // If user has custom permissions, check both granted and denied
+                    const granted = currentUserData.customPermissions.granted || [];
+                    const denied = currentUserData.customPermissions.denied || [];
+                    
+                    // If explicitly denied, return false
+                    if (denied.includes(permission)) return false;
+                    
+                    // If explicitly granted, return true
+                    if (granted.includes(permission) || granted.includes('all')) return true;
+                }
+                
+                // Fall back to role-based permissions
                 const role = userRoles[userRole];
                 if (!role) return false;
                 return role.permissions.includes('all') || role.permissions.includes(permission);
@@ -1916,6 +1988,19 @@
                                         >
                                             Tenders
                                         </button>
+                                        
+                                        {userRole === 'General Manager' && (
+                                            <button
+                                                onClick={() => setCurrentView('user-management')}
+                                                className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                                                    currentView === 'user-management' 
+                                                        ? 'bg-white/20 text-white' 
+                                                        : 'text-white/70 hover:text-white hover:bg-white/10'
+                                                }`}
+                                            >
+                                                Users
+                                            </button>
+                                        )}
 
                                     </nav>
                                 </div>
@@ -2890,6 +2975,105 @@
                                     <p className="text-white/60">You don't have permission to access user management.</p>
                                 </div>
                             )
+                        ) : currentView === 'user-management' && userRole === 'General Manager' ? (
+                            // User Management View
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-2xl font-bold text-white">User Management</h2>
+                                    <button
+                                        onClick={() => setCurrentView('dashboard')}
+                                        className="text-white/60 hover:text-white"
+                                    >
+                                        ← Back to Dashboard
+                                    </button>
+                                </div>
+
+                                <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+                                    <h3 className="text-xl font-bold text-white mb-6">Manage User Permissions</h3>
+                                    
+                                    <div className="space-y-4">
+                                        {allUsers.map(user => (
+                                            <div key={user.email} className="bg-white/5 rounded-lg p-4 border border-white/10">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div 
+                                                            className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden"
+                                                            style={{ backgroundColor: user.avatarBgColor || '#3B82F6' }}
+                                                        >
+                                                            {user.profilePictureUrl ? (
+                                                                <img 
+                                                                    src={user.profilePictureUrl} 
+                                                                    alt={user.fullName}
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                            ) : (
+                                                                <span className="text-white text-sm font-bold">
+                                                                    {getUserInitials(user.fullName || user.email.split('@')[0])}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="text-white font-medium">{user.fullName || user.email.split('@')[0]}</h4>
+                                                            <p className="text-white/60 text-sm">{user.role} • {user.email}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="grid grid-cols-1 gap-4">
+                                                    <div>
+                                                        <h5 className="text-white/80 font-medium mb-3">Custom Permissions</h5>
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            {[
+                                                                'view_all', 'create_tenders', 'edit_all', 'assign_actions', 
+                                                                'manage_team', 'export_reports', 'upload_files', 'add_notes', 'complete_actions'
+                                                            ].map(permission => {
+                                                                const hasRolePermission = userRoles[user.role]?.permissions.includes('all') || userRoles[user.role]?.permissions.includes(permission);
+                                                                const hasCustomGrant = user.customPermissions?.granted?.includes(permission);
+                                                                const hasCustomDeny = user.customPermissions?.denied?.includes(permission);
+                                                                
+                                                                return (
+                                                                    <div key={permission} className="flex items-center justify-between p-2 bg-white/5 rounded">
+                                                                        <span className="text-white/70 text-sm capitalize">
+                                                                            {permission.replace('_', ' ')}
+                                                                        </span>
+                                                                        <div className="flex items-center space-x-2">
+                                                                            {hasRolePermission && !hasCustomDeny && (
+                                                                                <span className="text-green-400 text-xs px-2 py-1 bg-green-500/20 rounded">Role</span>
+                                                                            )}
+                                                                            <button
+                                                                                onClick={() => toggleUserPermission(user.email, permission, 'grant')}
+                                                                                className={`w-7 h-7 rounded text-xs font-bold ${
+                                                                                    hasCustomGrant 
+                                                                                        ? 'bg-green-500 text-white' 
+                                                                                        : 'bg-white/20 text-white/60 hover:bg-green-500/50'
+                                                                                }`}
+                                                                                title={hasCustomGrant ? 'Remove custom grant' : 'Grant permission'}
+                                                                            >
+                                                                                +
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => toggleUserPermission(user.email, permission, 'deny')}
+                                                                                className={`w-7 h-7 rounded text-xs font-bold ${
+                                                                                    hasCustomDeny 
+                                                                                        ? 'bg-red-500 text-white' 
+                                                                                        : 'bg-white/20 text-white/60 hover:bg-red-500/50'
+                                                                                }`}
+                                                                                title={hasCustomDeny ? 'Remove custom deny' : 'Deny permission'}
+                                                                            >
+                                                                                -
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
                         ) : currentView === 'profile' ? (
                             // Profile Settings View
                             <div className="space-y-6">
