@@ -3022,6 +3022,68 @@
                                     </button>
                                 </div>
 
+                                {/* Permission Guide */}
+                                <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 mb-6">
+                                    <h3 className="text-lg font-bold text-white mb-4">📋 Permission Guide</h3>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                                        <div className="bg-white/5 rounded-lg p-3">
+                                            <h4 className="text-blue-400 font-medium mb-2">🔍 view_all</h4>
+                                            <p className="text-white/70">See ALL tenders in system (not just assigned ones)</p>
+                                        </div>
+                                        
+                                        <div className="bg-white/5 rounded-lg p-3">
+                                            <h4 className="text-green-400 font-medium mb-2">📝 create_tenders</h4>
+                                            <p className="text-white/70">Create new tender/project entries</p>
+                                        </div>
+                                        
+                                        <div className="bg-white/5 rounded-lg p-3">
+                                            <h4 className="text-orange-400 font-medium mb-2">✏️ edit_all</h4>
+                                            <p className="text-white/70">Edit ANY tender details (client info, values, etc.)</p>
+                                        </div>
+                                        
+                                        <div className="bg-white/5 rounded-lg p-3">
+                                            <h4 className="text-purple-400 font-medium mb-2">🎯 assign_actions</h4>
+                                            <p className="text-white/70">Create action alerts and assign tasks to team</p>
+                                        </div>
+                                        
+                                        <div className="bg-white/5 rounded-lg p-3">
+                                            <h4 className="text-pink-400 font-medium mb-2">👥 manage_team</h4>
+                                            <p className="text-white/70">Add/remove team members from tender teams</p>
+                                        </div>
+                                        
+                                        <div className="bg-white/5 rounded-lg p-3">
+                                            <h4 className="text-cyan-400 font-medium mb-2">📊 export_reports</h4>
+                                            <p className="text-white/70">Download/export tender data and analytics</p>
+                                        </div>
+                                        
+                                        <div className="bg-white/5 rounded-lg p-3">
+                                            <h4 className="text-yellow-400 font-medium mb-2">📎 upload_files</h4>
+                                            <p className="text-white/70">Upload documents to tender folders</p>
+                                        </div>
+                                        
+                                        <div className="bg-white/5 rounded-lg p-3">
+                                            <h4 className="text-indigo-400 font-medium mb-2">💬 add_notes</h4>
+                                            <p className="text-white/70">Add comments and notes to tenders</p>
+                                        </div>
+                                        
+                                        <div className="bg-white/5 rounded-lg p-3">
+                                            <h4 className="text-emerald-400 font-medium mb-2">✅ complete_actions</h4>
+                                            <p className="text-white/70">Mark action alerts as complete</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                                        <h4 className="text-blue-300 font-medium mb-2">💡 How Custom Permissions Work:</h4>
+                                        <div className="text-white/70 text-sm space-y-1">
+                                            <p><span className="text-green-400 font-bold">+ Green Button:</span> Grant additional permission beyond their role</p>
+                                            <p><span className="text-red-400 font-bold">- Red Button:</span> Deny permission even if their role normally has it</p>
+                                            <p><span className="text-green-400 bg-green-500/20 px-2 py-1 rounded text-xs">Role</span> Badge shows permissions from their job role</p>
+                                            <p><strong>Priority:</strong> Custom permissions override role permissions</p>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
                                     <h3 className="text-xl font-bold text-white mb-6">Manage User Permissions</h3>
                                     
@@ -3115,6 +3177,54 @@
                                                 </div>
                                             </div>
                                         ))}
+                                    </div>
+                                </div>
+                                
+                                {/* Default Role Permissions Reference */}
+                                <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 mt-6">
+                                    <h3 className="text-lg font-bold text-white mb-4">🎭 Default Role Permissions</h3>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                        <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                                            <h4 className="text-green-300 font-bold mb-2">👑 Full Access Roles</h4>
+                                            <div className="space-y-2">
+                                                <div className="text-white">
+                                                    <span className="font-medium">General Manager:</span>
+                                                    <span className="text-green-400 ml-2">ALL permissions ✅</span>
+                                                </div>
+                                                <div className="text-white">
+                                                    <span className="font-medium">Sales Manager:</span>
+                                                    <span className="text-green-400 ml-2">ALL permissions ✅</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                                            <h4 className="text-blue-300 font-bold mb-2">👷 Limited Access Roles</h4>
+                                            <div className="space-y-3 text-white/80">
+                                                <div>
+                                                    <div className="font-medium text-white">Estimator:</div>
+                                                    <div className="text-xs">view_tenders, upload_files, add_notes, complete_actions</div>
+                                                </div>
+                                                <div>
+                                                    <div className="font-medium text-white">Design Engineer:</div>
+                                                    <div className="text-xs">view_tenders, upload_files, add_notes, complete_actions</div>
+                                                </div>
+                                                <div>
+                                                    <div className="font-medium text-white">Planner:</div>
+                                                    <div className="text-xs">view_tenders, upload_files, add_notes, complete_actions</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                                        <h4 className="text-yellow-300 font-medium mb-2">💡 Common Custom Permission Examples:</h4>
+                                        <div className="text-white/70 text-sm space-y-1">
+                                            <p><strong>Senior Estimator:</strong> Grant "view_all" + "export_reports" for project oversight</p>
+                                            <p><strong>Team Lead:</strong> Grant "assign_actions" + "manage_team" for coordination</p>
+                                            <p><strong>Restricted Manager:</strong> Deny "edit_all" while keeping other permissions</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
