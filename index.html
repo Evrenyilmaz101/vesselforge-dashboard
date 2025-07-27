@@ -2505,18 +2505,43 @@
                                     {/* @ Mentions for You */}
                                     {(() => {
                                         const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
-                                        const myMentions = Object.values(messages).flat()
+                                        const currentUserEmail = user?.email || '';
+                                        
+                                        // Debug: Log all messages to see what we have
+                                        const allMessages = Object.values(messages).flat();
+                                        console.log('All messages for mention detection:', allMessages.length);
+                                        console.log('Messages with type mention:', allMessages.filter(m => m?.type === 'mention').length);
+                                        console.log('Current user name:', currentUserName);
+                                        console.log('Current user email:', currentUserEmail);
+                                        
+                                        const myMentions = allMessages
                                             .filter(msg => {
+                                                // Debug each message
+                                                if (msg?.type === 'mention') {
+                                                    console.log('Mention message:', msg);
+                                                    console.log('Mentions array:', msg.mentions);
+                                                }
+                                                
                                                 if (msg?.type !== 'mention' || !msg?.mentions) return false;
-                                                return msg.mentions.some(m => 
-                                                    m.email === user?.email || 
-                                                    m.fullName === currentUserName ||
-                                                    m.name === currentUserName ||
-                                                    m.name?.toLowerCase() === currentUserName.toLowerCase()
-                                                );
+                                                
+                                                return msg.mentions.some(m => {
+                                                    const isMatch = m.email === currentUserEmail || 
+                                                                   m.fullName === currentUserName ||
+                                                                   m.name === currentUserName ||
+                                                                   m.name?.toLowerCase() === currentUserName.toLowerCase() ||
+                                                                   currentUserName.toLowerCase().includes(m.name?.toLowerCase()) ||
+                                                                   m.name?.toLowerCase().includes(currentUserName.toLowerCase());
+                                                    
+                                                    if (isMatch) {
+                                                        console.log('Found matching mention:', m, 'for user:', currentUserName);
+                                                    }
+                                                    return isMatch;
+                                                });
                                             })
                                             .sort((a, b) => (b.timestampMs || 0) - (a.timestampMs || 0))
                                             .slice(0, 5); // Last 5 mentions
+                                        
+                                        console.log('Final myMentions:', myMentions);
                                         
                                         return (
                                             <div className="bg-gradient-to-br from-blue-500/40 to-indigo-600/40 backdrop-blur-lg rounded-xl p-6 border border-blue-500/50 shadow-xl">
@@ -2776,149 +2801,7 @@
                                     </div>
                                 )}
 
-                                {/* Quick Stats for General Manager */}
-                                {userRole === 'General Manager' && (
-                                <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div>
-                                            <h2 className="text-lg font-bold text-white">Top 5 Priority Tenders</h2>
-                                            <p className="text-white/60 text-sm">Showing highest priority items only</p>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <button
-                                                onClick={() => setCurrentView('enquiries')}
-                                                className="flex items-center space-x-2 px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-all"
-                                            >
-                                                <i data-lucide="list" className="h-4 w-4"></i>
-                                                <span>View All</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full">
-                                            <thead>
-                                                <tr className="text-left border-b border-white/10">
-                                                    <th className="pb-2 text-white/60 font-medium text-xs">Priority</th>
-                                                    <th className="pb-2 text-white/60 font-medium text-xs">VS #</th>
-                                                    <th className="pb-2 text-white/60 font-medium text-xs">Client</th>
-                                                    <th className="pb-2 text-white/60 font-medium text-xs">Project</th>
-                                                    <th className="pb-2 text-white/60 font-medium text-xs">Action Required</th>
-                                                    <th className="pb-2 text-white/60 font-medium text-xs">Manage</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {getTopPriorityTenders().map((enquiry) => (
-                                                    <tr 
-                                                        key={enquiry.id}
-                                                        className="border-b border-white/5 hover:bg-white/5 transition-colors"
-                                                    >
-                                                        <td className="py-2">
-                                                            <span className={`text-xs px-1 py-0.5 rounded-full font-bold ${getPriorityColor(enquiry.priorityNumber)}`}>
-                                                                P{enquiry.priorityNumber}
-                                                            </span>
-                                                        </td>
-                                                        <td 
-                                                            className="py-2 text-white font-medium text-xs cursor-pointer hover:text-blue-400"
-                                                            onClick={() => {
-                                                                setSelectedEnquiry(enquiry);
-                                                                setShowEnquiryDetails(true);
-                                                            }}
-                                                        >
-                                                            {enquiry.id}
-                                                        </td>
-                                                        <td className="py-2 text-white/80 text-xs">{enquiry.client}</td>
-                                                        <td className="py-2 text-white/80 text-xs max-w-[200px] truncate">{enquiry.project}</td>
-                                                        <td className="py-2">
-                                                            <div className={`${(() => {
-                                                                // Check if all actions are completed
-                                                                const completedBy = enquiry.completedBy || [];
-                                                                let allCompleted = false;
-                                                                
-                                                                if (Array.isArray(enquiry.actionFrom)) {
-                                                                    allCompleted = enquiry.actionFrom.length > 0 && enquiry.actionFrom.every(person => 
-                                                                        completedBy.includes(person)
-                                                                    );
-                                                                } else if (enquiry.actionFrom && enquiry.actionFrom !== 'Awaiting Assignment') {
-                                                                    allCompleted = completedBy.includes(enquiry.actionFrom);
-                                                                }
-                                                                
-                                                                return allCompleted 
-                                                                    ? 'bg-gradient-to-r from-green-500 to-emerald-500' 
-                                                                    : getActionStatusColor(enquiry);
-                                                            })()} rounded px-1 py-0.5 text-center text-xs`}>
-                                                                <div className="text-white font-bold">
-                                                                    {(() => {
-                                                                        const activePeople = getActivePeopleForTender(enquiry);
-                                                                        if (activePeople === 'awaiting') {
-                                                                            return <span>📝 NO ACTION ALERT</span>;
-                                                                        } else if (Array.isArray(activePeople) && activePeople.length === 0) {
-                                                                            // Temporarily show complete until actionFrom resets to awaiting
-                                                                            return enquiry.actionFrom === 'Awaiting Assignment' ? <span>📝 NO ACTION ALERT</span> : <span>✅ COMPLETE</span>;
-                                                                        } else if (Array.isArray(activePeople)) {
-                                                                            return (
-                                                                                <>
-                                                                                    🚨 {activePeople.length === 1 ? (
-                                                                                        activePeople[0]
-                                                                                    ) : (
-                                                                                        <div className="space-y-1">
-                                                                                            {activePeople.map((person, index) => (
-                                                                                                <div key={index}>{person}</div>
-                                                                                            ))}
-                                                                                        </div>
-                                                                                    )}
-                                                                                </>
-                                                                            );
-                                                                        }
-                                                                        return <span>📝 NO ACTION ALERT</span>;
-                                                                    })()}
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-2">
-                                                            <div className="flex items-center gap-2 ml-2">
-                                                                <button
-                                                                    onClick={() => openStatusUpdate(enquiry)}
-                                                                    className={`text-xs px-2 py-0.5 rounded-full font-bold cursor-pointer hover:opacity-80 transition-opacity ${getTenderStatusColor(enquiry.tenderStatus)}`}
-                                                                    title="Click to change status"
-                                                                >
-                                                                    {enquiry.tenderStatus}
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => openDeleteConfirm(enquiry)}
-                                                                    className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
-                                                                    title="Delete Tender"
-                                                                >
-                                                                    🗑️ Delete
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                                {getTopPriorityTenders().length === 0 && (
-                                                    <tr>
-                                                        <td colSpan="6" className="text-center py-12">
-                                                            <div className="text-white/60">
-                                                                <i data-lucide="file-text" className="h-12 w-12 mx-auto mb-4 opacity-50"></i>
-                                                                <h3 className="text-lg font-medium mb-2 text-white">No active tenders</h3>
-                                                                <p className="text-sm mb-4">Start by creating your first tender to get going.</p>
-                                                                <div className="flex justify-center">
-                                                                    <button
-                                                                        onClick={() => setShowNewEnquiry(true)}
-                                                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
-                                                                    >
-                                                                        ➕ Create First Tender
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                                )}
+
                             </>
                         ) : currentView === 'enquiries' ? (
                             // Tenders View
