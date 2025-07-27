@@ -242,6 +242,9 @@
             const [mentionSuggestions, setMentionSuggestions] = useState([]);
             const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
             const [mentionFilter, setMentionFilter] = useState('');
+            const [notificationPermission, setNotificationPermission] = useState(
+                typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
+            );
             
             // Firebase real-time listener for messages
             useEffect(() => {
@@ -552,14 +555,37 @@
             
             // Desktop notification functions
             const requestNotificationPermission = async () => {
+                console.log('Requesting notification permission...');
                 if ('Notification' in window) {
+                    console.log('Current permission:', Notification.permission);
                     if (Notification.permission === 'default') {
-                        const permission = await Notification.requestPermission();
-                        return permission === 'granted';
+                        try {
+                            const permission = await Notification.requestPermission();
+                            console.log('Permission response:', permission);
+                            setNotificationPermission(permission);
+                            if (permission === 'granted') {
+                                alert('✅ Desktop notifications enabled! You\'ll now receive notifications for mentions and action alerts.');
+                                return true;
+                            } else {
+                                alert('❌ Notifications were denied. You can re-enable them in your browser settings.');
+                                return false;
+                            }
+                        } catch (error) {
+                            console.error('Error requesting permission:', error);
+                            alert('❌ Unable to request notification permission. Please check your browser settings.');
+                            return false;
+                        }
+                    } else if (Notification.permission === 'granted') {
+                        alert('✅ Desktop notifications are already enabled!');
+                        return true;
+                    } else {
+                        alert('❌ Notifications are blocked. To enable them:\n\n1. Click the lock/shield icon in your address bar\n2. Allow notifications for this site\n3. Refresh the page');
+                        return false;
                     }
-                    return Notification.permission === 'granted';
+                } else {
+                    alert('❌ Your browser doesn\'t support desktop notifications.');
+                    return false;
                 }
-                return false;
             };
             
             const sendDesktopNotification = (title, body, icon = null) => {
@@ -651,10 +677,30 @@
                 });
             };
             
-            // Request notification permission on first load
+            // Request notification permission on first load and monitor changes
             React.useEffect(() => {
-                requestNotificationPermission();
-            }, []);
+                // Initial permission request
+                if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+                    // Don't auto-request, let user click the bell
+                    console.log('Notifications available but not requested yet');
+                }
+                
+                // Monitor permission changes
+                const checkPermission = () => {
+                    if (typeof Notification !== 'undefined') {
+                        const currentPermission = Notification.permission;
+                        if (currentPermission !== notificationPermission) {
+                            console.log('Notification permission changed to:', currentPermission);
+                            setNotificationPermission(currentPermission);
+                        }
+                    }
+                };
+                
+                // Check every 5 seconds for permission changes
+                const interval = setInterval(checkPermission, 5000);
+                
+                return () => clearInterval(interval);
+            }, [notificationPermission]);
             
             // Handle mention autocomplete
             const handleMessageChange = (e) => {
@@ -4552,24 +4598,43 @@
                                                         
                                                         {/* Notification Status Indicator */}
                                                         <div 
-                                                            className={`px-2 py-2 rounded-lg transition-colors ${
-                                                                typeof Notification !== 'undefined' && Notification.permission === 'granted'
-                                                                    ? 'bg-green-600 hover:bg-green-700 text-white'
+                                                            className={`px-2 py-2 rounded-lg transition-all duration-200 transform hover:scale-105 ${
+                                                                notificationPermission === 'unsupported'
+                                                                    ? 'bg-gray-600 hover:bg-gray-700 text-white cursor-not-allowed'
+                                                                    : notificationPermission === 'granted'
+                                                                    ? 'bg-green-600 hover:bg-green-700 text-white cursor-default'
+                                                                    : notificationPermission === 'denied'
+                                                                    ? 'bg-red-600 hover:bg-red-700 text-white cursor-pointer'
                                                                     : 'bg-orange-600 hover:bg-orange-700 text-white cursor-pointer'
                                                             }`}
                                                             title={
-                                                                typeof Notification !== 'undefined' && Notification.permission === 'granted'
-                                                                    ? 'Desktop notifications enabled'
+                                                                notificationPermission === 'unsupported'
+                                                                    ? 'Your browser doesn\'t support desktop notifications'
+                                                                    : notificationPermission === 'granted'
+                                                                    ? 'Desktop notifications enabled ✅'
+                                                                    : notificationPermission === 'denied'
+                                                                    ? 'Notifications blocked - Click for help'
                                                                     : 'Click to enable desktop notifications'
                                                             }
                                                             onClick={() => {
-                                                                if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+                                                                if (notificationPermission !== 'granted' && notificationPermission !== 'unsupported') {
                                                                     requestNotificationPermission();
+                                                                } else if (notificationPermission === 'granted') {
+                                                                    alert('✅ Notifications are already enabled!\n\nYou\'ll receive alerts for:\n• @ Mentions in chat\n• Action alerts assigned to you');
+                                                                } else {
+                                                                    alert('❌ Your browser doesn\'t support desktop notifications.\n\nTry using:\n• Chrome\n• Firefox\n• Safari\n• Edge');
                                                                 }
                                                             }}
                                                         >
                                                             <span className="text-xs">
-                                                                {typeof Notification !== 'undefined' && Notification.permission === 'granted' ? '🔔' : '🔕'}
+                                                                {notificationPermission === 'unsupported'
+                                                                    ? '🚫'
+                                                                    : notificationPermission === 'granted' 
+                                                                    ? '🔔' 
+                                                                    : notificationPermission === 'denied'
+                                                                    ? '🔒'
+                                                                    : '🔕'
+                                                                }
                                                             </span>
                                                         </div>
                                                         <label className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg cursor-pointer transition-colors flex items-center text-sm" title="Attach Files">
