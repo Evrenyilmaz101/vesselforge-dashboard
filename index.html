@@ -737,12 +737,17 @@
                 const value = e.target.value;
                 setNewMessage(value);
                 
-                // Check for @ mention
+                // Check for @ mention - find the last @ that's not complete yet
                 const lastAtIndex = value.lastIndexOf('@');
                 if (lastAtIndex !== -1) {
                     const afterAt = value.substring(lastAtIndex + 1);
-                    if (!afterAt.includes(' ') && afterAt.length >= 0) {
-                        const filter = afterAt.toLowerCase();
+                    // Only show suggestions if we're still typing the name (no space or short afterAt)
+                    const spaceIndex = afterAt.indexOf(' ');
+                    const nameBeingTyped = spaceIndex !== -1 ? afterAt.substring(0, spaceIndex) : afterAt;
+                    
+                    // Show suggestions if we're typing a name (no space yet or currently typing)
+                    if (spaceIndex === -1 && nameBeingTyped.length >= 0) {
+                        const filter = nameBeingTyped.toLowerCase();
                         const suggestions = allUsers
                             .filter(user => {
                                 const name = user.fullName || user.email.split('@')[0];
@@ -756,8 +761,8 @@
                             }));
                         
                         setMentionSuggestions(suggestions);
-                        setMentionFilter(filter);
-                        setShowMentionSuggestions(suggestions.length > 0);
+                        setMentionFilter(nameBeingTyped);
+                        setShowMentionSuggestions(suggestions.length > 0 && filter.length > 0);
                     } else {
                         setShowMentionSuggestions(false);
                     }
@@ -769,8 +774,13 @@
             const selectMention = (suggestion) => {
                 const lastAtIndex = newMessage.lastIndexOf('@');
                 const beforeAt = newMessage.substring(0, lastAtIndex);
-                const afterMention = newMessage.substring(lastAtIndex + 1 + mentionFilter.length);
-                setNewMessage(`${beforeAt}@${suggestion.name}${afterMention}`);
+                const afterAt = newMessage.substring(lastAtIndex + 1);
+                const spaceIndex = afterAt.indexOf(' ');
+                const afterMention = spaceIndex !== -1 ? afterAt.substring(spaceIndex) : '';
+                
+                // Insert the selected name and add a space if there's more text after
+                const newText = `${beforeAt}@${suggestion.name}${afterMention ? ' ' + afterMention.trim() : ' '}`;
+                setNewMessage(newText);
                 setShowMentionSuggestions(false);
             };
             
@@ -1583,26 +1593,39 @@
             const sendMessage = async () => {
                 if (!newMessage.trim() || !selectedEnquiry) return;
                 
-                // Detect @ mentions in the message
-                const mentionRegex = /@(\w+(?:\s+\w+)*)/g;
+                // Detect @ mentions in the message - improved regex for names with spaces
+                const mentionRegex = /@([A-Za-z]+(?:\s+[A-Za-z]+)*)/g;
                 const mentions = [];
                 let match;
+                console.log('Detecting mentions in message:', newMessage);
+                
                 while ((match = mentionRegex.exec(newMessage)) !== null) {
-                    const mentionName = match[1];
-                    // Find user by name (first + last name or just first name)
+                    const mentionName = match[1].trim();
+                    console.log('Found potential mention:', mentionName);
+                    
+                    // Find user by exact name match or partial match
                     const mentionedUser = allUsers.find(user => {
                         const fullName = user.fullName || user.email.split('@')[0];
-                        return fullName.toLowerCase().includes(mentionName.toLowerCase()) ||
-                               user.email.split('@')[0].toLowerCase() === mentionName.toLowerCase();
+                        const emailName = user.email.split('@')[0];
+                        
+                        return fullName.toLowerCase() === mentionName.toLowerCase() ||
+                               emailName.toLowerCase() === mentionName.toLowerCase() ||
+                               fullName.toLowerCase().includes(mentionName.toLowerCase());
                     });
+                    
                     if (mentionedUser) {
+                        console.log('Found mentioned user:', mentionedUser);
                         mentions.push({
                             name: mentionName,
                             email: mentionedUser.email,
                             fullName: mentionedUser.fullName || mentionedUser.email.split('@')[0]
                         });
+                    } else {
+                        console.log('No user found for mention:', mentionName);
                     }
                 }
+                
+                console.log('Final mentions array:', mentions);
                 
                 const messageId = Date.now() + Math.floor(Math.random() * 1000);
                 const message = {
