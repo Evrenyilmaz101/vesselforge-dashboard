@@ -2490,56 +2490,293 @@
                     {/* Main Content */}
                     <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                         {currentView === 'dashboard' ? (
-                            // Dashboard View
+                            // Personalized Dashboard View
                             <>
-                                <div className="mb-4">
-                                    <h2 className="text-2xl font-bold text-white mb-1">Tender Management Dashboard</h2>
-                                    <p className="text-white/70 text-sm">Track and manage all pressure vessel enquiries in real-time</p>
+                                <div className="mb-6">
+                                    <h2 className="text-2xl font-bold text-white mb-1">
+                                        Welcome back, {currentUserData?.fullName?.split(' ')[0] || user?.email?.split('@')[0] || 'User'}! 👋
+                                    </h2>
+                                    <p className="text-white/70 text-sm">Here's what needs your attention today</p>
                                 </div>
 
-                                {/* ACTION REQUIRED Stats Cards */}
-                                <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 mb-4">
-                                    <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg p-3 shadow-lg">
-                                        <i data-lucide="file-text" className="h-5 w-5 text-blue-200 mb-1"></i>
-                                        <p className="text-xl font-bold text-white">{stats.total}</p>
-                                        <p className="text-blue-100 text-xs">Total Active</p>
+                                {/* Personalized Action Blocks */}
+                                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
+                                    
+                                    {/* @ Mentions for You */}
+                                    {(() => {
+                                        const myMentions = Object.values(messages).flat()
+                                            .filter(msg => msg?.type === 'mention' && msg?.mentions?.some(m => 
+                                                m.email === user?.email || m.fullName === (currentUserData?.fullName || user?.email?.split('@')[0])
+                                            ))
+                                            .slice(-5); // Last 5 mentions
+                                        
+                                        return (
+                                            <div className="bg-gradient-to-br from-blue-500/20 to-indigo-600/20 backdrop-blur-lg rounded-xl p-6 border border-blue-500/30">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="p-2 bg-blue-500/30 rounded-lg">
+                                                            <span className="text-xl">💬</span>
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="text-white font-bold">@ Mentions for You</h3>
+                                                            <p className="text-blue-200 text-sm">{myMentions.length} recent mentions</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-2xl font-bold text-blue-300">{myMentions.length}</div>
+                                                </div>
+                                                
+                                                {myMentions.length > 0 ? (
+                                                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                                                        {myMentions.map((mention, index) => (
+                                                            <div key={index} className="flex items-center space-x-2 p-2 bg-white/5 rounded-lg">
+                                                                <span className="text-blue-300 text-xs">💬</span>
+                                                                <span className="text-white/80 text-sm flex-1 truncate">
+                                                                    {mention.sender}: {mention.text?.substring(0, 40)}...
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-blue-200/60 text-sm">No recent mentions</p>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {/* Action Alerts for You */}
+                                    {(() => {
+                                        const currentUser = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
+                                        const myActions = enquiries.filter(tender => {
+                                            if (!tender.actionFrom) return false;
+                                            const completed = tender.completedBy || [];
+                                            
+                                            if (Array.isArray(tender.actionFrom)) {
+                                                return tender.actionFrom.includes(currentUser) && !completed.includes(currentUser);
+                                            } else {
+                                                return tender.actionFrom === currentUser && !completed.includes(currentUser);
+                                            }
+                                        });
+                                        
+                                        return (
+                                            <div className="bg-gradient-to-br from-orange-500/20 to-red-600/20 backdrop-blur-lg rounded-xl p-6 border border-orange-500/30">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="p-2 bg-orange-500/30 rounded-lg">
+                                                            <span className="text-xl">🚨</span>
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="text-white font-bold">Action Alerts for You</h3>
+                                                            <p className="text-orange-200 text-sm">{myActions.length} pending actions</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-2xl font-bold text-orange-300">{myActions.length}</div>
+                                                </div>
+                                                
+                                                {myActions.length > 0 ? (
+                                                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                                                        {myActions.slice(0, 3).map((action, index) => (
+                                                            <div key={index} className="flex items-center justify-between p-2 bg-white/5 rounded-lg">
+                                                                <div className="flex-1">
+                                                                    <span className="text-white/90 text-sm font-medium block">{action.id}</span>
+                                                                    <span className="text-orange-200/70 text-xs">{action.client}</span>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => completeMyTask(action.id, currentUser)}
+                                                                    className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-colors"
+                                                                >
+                                                                    Complete
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-orange-200/60 text-sm">✅ No pending actions - great work!</p>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {/* My Tenders */}
+                                    {(() => {
+                                        const myTenders = enquiries.filter(tender => isUserInTenderTeam(tender));
+                                        const recentTenders = myTenders.slice(0, 5);
+                                        
+                                        return (
+                                            <div className="bg-gradient-to-br from-emerald-500/20 to-teal-600/20 backdrop-blur-lg rounded-xl p-6 border border-emerald-500/30">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="p-2 bg-emerald-500/30 rounded-lg">
+                                                            <span className="text-xl">📋</span>
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="text-white font-bold">My Tenders</h3>
+                                                            <p className="text-emerald-200 text-sm">{myTenders.length} tenders assigned to you</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-2xl font-bold text-emerald-300">{myTenders.length}</div>
+                                                </div>
+                                                
+                                                {recentTenders.length > 0 ? (
+                                                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                                                        {recentTenders.map((tender, index) => (
+                                                            <div 
+                                                                key={index} 
+                                                                className="flex items-center justify-between p-2 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-colors"
+                                                                onClick={() => {
+                                                                    setSelectedEnquiry(tender);
+                                                                    setShowEnquiryDetails(true);
+                                                                }}
+                                                            >
+                                                                <div className="flex-1">
+                                                                    <span className="text-white/90 text-sm font-medium block">{tender.id}</span>
+                                                                    <span className="text-emerald-200/70 text-xs">{tender.client} • ${(tender.value/1000).toFixed(0)}k</span>
+                                                                </div>
+                                                                <div className={`px-2 py-1 rounded text-xs font-medium ${
+                                                                    tender.tenderStatus === 'Won' ? 'bg-green-500/30 text-green-300' :
+                                                                    tender.tenderStatus === 'Lost' ? 'bg-red-500/30 text-red-300' :
+                                                                    'bg-blue-500/30 text-blue-300'
+                                                                }`}>
+                                                                    {tender.tenderStatus}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-emerald-200/60 text-sm">No tenders assigned to you yet</p>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+
+                                    
+                                    {/* My Performance & Quick Actions */}
+                                    <div className="bg-gradient-to-br from-purple-500/20 to-pink-600/20 backdrop-blur-lg rounded-xl p-6 border border-purple-500/30">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="flex items-center space-x-3">
+                                                <div className="p-2 bg-purple-500/30 rounded-lg">
+                                                    <span className="text-xl">📊</span>
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-white font-bold">Quick Actions</h3>
+                                                    <p className="text-purple-200 text-sm">What would you like to do?</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="space-y-3">
+                                            {hasPermission('create_tenders') && (
+                                                <button
+                                                    onClick={() => setShowNewEnquiry(true)}
+                                                    className="w-full flex items-center space-x-3 p-3 bg-blue-500/30 hover:bg-blue-500/40 rounded-lg transition-colors text-left"
+                                                >
+                                                    <span className="text-blue-300">➕</span>
+                                                    <span className="text-white font-medium">Create New Tender</span>
+                                                </button>
+                                            )}
+                                            
+                                            <button
+                                                onClick={() => setCurrentView('tenders')}
+                                                className="w-full flex items-center space-x-3 p-3 bg-emerald-500/30 hover:bg-emerald-500/40 rounded-lg transition-colors text-left"
+                                            >
+                                                <span className="text-emerald-300">📋</span>
+                                                <span className="text-white font-medium">View All My Tenders</span>
+                                            </button>
+                                            
+                                            <button
+                                                onClick={() => setCurrentView('profile')}
+                                                className="w-full flex items-center space-x-3 p-3 bg-purple-500/30 hover:bg-purple-500/40 rounded-lg transition-colors text-left"
+                                            >
+                                                <span className="text-purple-300">⚙️</span>
+                                                <span className="text-white font-medium">Update Profile Settings</span>
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-lg p-3 shadow-lg border-2 border-white/30">
-                                        <div className="text-white text-xs font-bold mb-1">🚨 ACTION</div>
-                                        <p className="text-xl font-bold text-white">{stats.actionDesigners}</p>
-                                        <p className="text-orange-100 text-xs">Designers</p>
-                                    </div>
-                                    <div className="bg-gradient-to-br from-red-600 to-red-700 rounded-lg p-4 shadow-lg border-2 border-white/30">
-                                        <div className="text-white text-xs font-bold mb-1">🚨 ACTION</div>
-                                        <p className="text-2xl font-bold text-white">{stats.actionEstimators}</p>
-                                        <p className="text-red-100 text-xs">Estimators</p>
-                                    </div>
-                                    <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg p-4 shadow-lg border-2 border-white/30">
-                                        <div className="text-white text-xs font-bold mb-1">🚨 ACTION</div>
-                                        <p className="text-2xl font-bold text-white">{stats.actionSales}</p>
-                                        <p className="text-purple-100 text-xs">Sales</p>
-                                    </div>
-                                    <div className="bg-gradient-to-br from-emerald-600 to-teal-600 rounded-lg p-4 shadow-lg">
-                                        <i data-lucide="trending-up" className="h-6 w-6 text-emerald-200 mb-2"></i>
-                                        <p className="text-xl font-bold text-white">${(stats.totalValue / 1000).toFixed(0)}k</p>
-                                        <p className="text-emerald-100 text-xs">Pipeline</p>
-                                    </div>
+
                                 </div>
 
-                                {/* New Tender Button */}
-                                {hasPermission('create_tenders') && (
-                                    <div className="flex justify-end mb-4">
+                                {/* My Recent Activity - Simplified */}
+                                <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div>
+                                            <h3 className="text-lg font-bold text-white">My Recent Activity</h3>
+                                            <p className="text-white/60 text-sm">Tenders where you're actively involved</p>
+                                        </div>
                                         <button
-                                            onClick={() => setShowNewEnquiry(true)}
-                                            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all shadow-lg text-base font-medium"
+                                            onClick={() => setCurrentView('tenders')}
+                                            className="text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors"
                                         >
-                                            <i data-lucide="plus" className="h-5 w-5"></i>
-                                            <span>New Tender</span>
+                                            View All →
                                         </button>
                                     </div>
-                                )}
+                                    
+                                    {/* Show only user's tenders in simplified grid */}
+                                    <div className="grid grid-cols-1 gap-3">
+                                        {enquiries.filter(tender => isUserInTenderTeam(tender)).slice(0, 5).map((enquiry, index) => (
+                                            <div 
+                                                key={index} 
+                                                className="flex items-center justify-between p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                                                onClick={() => {
+                                                    setSelectedEnquiry(enquiry);
+                                                    setShowEnquiryDetails(true);
+                                                }}
+                                            >
+                                                <div className="flex-1">
+                                                    <div className="flex items-center space-x-3">
+                                                        <span className="text-white font-medium">{enquiry.id}</span>
+                                                        <span className="text-white/60">•</span>
+                                                        <span className="text-white/80">{enquiry.client}</span>
+                                                        <span className="text-white/60">•</span>
+                                                        <span className="text-emerald-400">${(enquiry.value/1000).toFixed(0)}k</span>
+                                                    </div>
+                                                    <div className="flex items-center space-x-2 mt-1">
+                                                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                                            enquiry.tenderStatus === 'Won' ? 'bg-green-500/30 text-green-400' :
+                                                            enquiry.tenderStatus === 'Lost' ? 'bg-red-500/30 text-red-400' :
+                                                            'bg-blue-500/30 text-blue-400'
+                                                        }`}>
+                                                            {enquiry.tenderStatus}
+                                                        </span>
+                                                        {enquiry.dueDate && (
+                                                            <span className="text-white/50 text-xs">
+                                                                Due: {new Date(enquiry.dueDate).toLocaleDateString()}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Action Required Indicator */}
+                                                {(() => {
+                                                    const currentUser = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
+                                                    const hasAction = enquiry.actionFrom && (
+                                                        Array.isArray(enquiry.actionFrom) 
+                                                            ? enquiry.actionFrom.includes(currentUser)
+                                                            : enquiry.actionFrom === currentUser
+                                                    );
+                                                    const completed = enquiry.completedBy?.includes(currentUser);
+                                                    
+                                                    if (hasAction && !completed) {
+                                                        return (
+                                                            <div className="px-3 py-1 bg-orange-500 text-white text-xs rounded-lg font-medium">
+                                                                Action Required
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
+                                            </div>
+                                        ))}
+                                        
+                                        {enquiries.filter(tender => isUserInTenderTeam(tender)).length === 0 && (
+                                            <div className="text-center py-8 text-white/60">
+                                                <span className="text-4xl mb-2 block">📋</span>
+                                                <p>No tenders assigned to you yet</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
 
-                                {/* Top 5 Priority Tenders */}
+                                {/* Quick Stats for General Manager */}
+                                {userRole === 'General Manager' && (
                                 <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20">
                                     <div className="flex items-center justify-between mb-4">
                                         <div>
@@ -2680,6 +2917,7 @@
                                         </table>
                                     </div>
                                 </div>
+                                )}
                             </>
                         ) : currentView === 'enquiries' ? (
                             // Tenders View
