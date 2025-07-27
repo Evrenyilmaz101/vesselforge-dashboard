@@ -2651,6 +2651,143 @@
 
                                 </div>
 
+                                {/* Top 5 Priority Tenders - Filtered for User */}
+                                <div className="bg-white/15 backdrop-blur-lg rounded-xl p-6 border border-white/30 shadow-xl mb-8">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div>
+                                            <h3 className="text-lg font-bold text-white">📌 My Priority Tenders</h3>
+                                            <p className="text-white/60 text-sm">High-priority tenders where you're involved (set by Sales Manager)</p>
+                                        </div>
+                                        <button
+                                            onClick={() => setCurrentView('tenders')}
+                                            className="text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors"
+                                        >
+                                            View All →
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="text-left border-b border-white/10">
+                                                    <th className="pb-3 text-white/80 text-sm font-medium">Priority</th>
+                                                    <th className="pb-3 text-white/80 text-sm font-medium">VS #</th>
+                                                    <th className="pb-3 text-white/80 text-sm font-medium">Client</th>
+                                                    <th className="pb-3 text-white/80 text-sm font-medium">Project</th>
+                                                    <th className="pb-3 text-white/80 text-sm font-medium">My Role</th>
+                                                    <th className="pb-3 text-white/80 text-sm font-medium">Action Required</th>
+                                                    <th className="pb-3 text-white/80 text-sm font-medium">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {getTopPriorityTenders().filter(tender => isUserInTenderTeam(tender)).slice(0, 5).map((enquiry, index) => {
+                                                    const currentUser = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
+                                                    const hasAction = enquiry.actionFrom && (
+                                                        Array.isArray(enquiry.actionFrom) 
+                                                            ? enquiry.actionFrom.includes(currentUser)
+                                                            : enquiry.actionFrom === currentUser
+                                                    );
+                                                    const completed = enquiry.completedBy?.includes(currentUser);
+                                                    
+                                                    // Determine user's role in this tender
+                                                    let myRole = [];
+                                                    if (enquiry.assignedTo === currentUser) myRole.push('Estimator');
+                                                    if (enquiry.salesManager === currentUser) myRole.push('Sales');
+                                                    if (enquiry.designer === currentUser) myRole.push('Designer');
+                                                    if (enquiry.planner === currentUser) myRole.push('Planner');
+                                                    
+                                                    return (
+                                                        <tr key={index} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                                            <td className="py-3">
+                                                                <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-white text-sm font-bold ${
+                                                                    enquiry.priorityNumber === 1 ? 'bg-red-500' :
+                                                                    enquiry.priorityNumber === 2 ? 'bg-orange-500' :
+                                                                    enquiry.priorityNumber === 3 ? 'bg-yellow-500' :
+                                                                    enquiry.priorityNumber === 4 ? 'bg-blue-500' :
+                                                                    'bg-gray-500'
+                                                                }`}>
+                                                                    {enquiry.priorityNumber}
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-3">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setSelectedEnquiry(enquiry);
+                                                                        setShowEnquiryDetails(true);
+                                                                    }}
+                                                                    className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
+                                                                >
+                                                                    {enquiry.id}
+                                                                </button>
+                                                            </td>
+                                                            <td className="py-3 text-white/90">{enquiry.client}</td>
+                                                            <td className="py-3 text-white/80">{enquiry.project}</td>
+                                                            <td className="py-3">
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {myRole.map((role, roleIndex) => (
+                                                                        <span key={roleIndex} className={`px-2 py-1 rounded text-xs font-medium ${
+                                                                            role === 'Estimator' ? 'bg-blue-500/30 text-blue-300' :
+                                                                            role === 'Sales' ? 'bg-green-500/30 text-green-300' :
+                                                                            role === 'Designer' ? 'bg-purple-500/30 text-purple-300' :
+                                                                            'bg-orange-500/30 text-orange-300'
+                                                                        }`}>
+                                                                            {role}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-3">
+                                                                {hasAction && !completed ? (
+                                                                    <div className="flex items-center space-x-2">
+                                                                        <div className="px-3 py-1 bg-orange-500 text-white text-xs rounded-lg font-medium">
+                                                                            🚨 Action Required
+                                                                        </div>
+                                                                        <button
+                                                                            onClick={() => completeMyTask(enquiry.id, currentUser)}
+                                                                            className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-colors"
+                                                                        >
+                                                                            Complete
+                                                                        </button>
+                                                                    </div>
+                                                                ) : hasAction && completed ? (
+                                                                    <div className="px-3 py-1 bg-green-500/30 text-green-300 text-xs rounded-lg font-medium">
+                                                                        ✅ Completed
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-white/50 text-xs">No action required</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="py-3">
+                                                                <div className="flex items-center space-x-2">
+                                                                    <div className={`px-2 py-1 rounded text-xs font-medium ${
+                                                                        enquiry.tenderStatus === 'Won' ? 'bg-green-500/30 text-green-300' :
+                                                                        enquiry.tenderStatus === 'Lost' ? 'bg-red-500/30 text-red-300' :
+                                                                        enquiry.tenderStatus === 'Active' ? 'bg-blue-500/30 text-blue-300' :
+                                                                        'bg-gray-500/30 text-gray-300'
+                                                                    }`}>
+                                                                        {enquiry.tenderStatus}
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                                
+                                                {getTopPriorityTenders().filter(tender => isUserInTenderTeam(tender)).length === 0 && (
+                                                    <tr>
+                                                        <td colSpan="7" className="py-8 text-center">
+                                                            <div className="text-white/60">
+                                                                <span className="text-4xl mb-2 block">📋</span>
+                                                                <p>No priority tenders assigned to you yet</p>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
                                 {/* New Tender Button */}
                                 {hasPermission('create_tenders') && (
                                     <div className="flex justify-end mb-6">
