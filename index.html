@@ -245,6 +245,40 @@
             const [notificationPermission, setNotificationPermission] = useState(
                 typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
             );
+            const [allTenderMessages, setAllTenderMessages] = useState({});
+            const [mentionReadStatus, setMentionReadStatus] = useState({});
+            
+            // Function to mark mentions as read when user visits a tender
+            const markMentionsAsRead = useCallback((tenderId) => {
+                if (!user?.email || !allTenderMessages[tenderId]) return;
+                
+                const userEmail = user.email;
+                const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
+                
+                // Find all mentions for this user in this tender
+                const tenderMentions = allTenderMessages[tenderId]
+                    .filter(msg => {
+                        if (msg?.type !== 'mention' || !msg?.mentions) return false;
+                        return msg.mentions.some(m => {
+                            return m.email === userEmail || 
+                                   m.fullName === currentUserName ||
+                                   m.name === currentUserName ||
+                                   m.name?.toLowerCase() === currentUserName.toLowerCase();
+                        });
+                    })
+                    .map(msg => msg.id);
+                
+                if (tenderMentions.length > 0) {
+                    console.log('Marking mentions as read for tender:', tenderId, 'mentions:', tenderMentions);
+                    setMentionReadStatus(prev => {
+                        const updated = { ...prev };
+                        tenderMentions.forEach(messageId => {
+                            updated[messageId] = true;
+                        });
+                        return updated;
+                    });
+                }
+            }, [user?.email, currentUserData?.fullName, allTenderMessages]);
             
             // Firebase real-time listener for messages
             useEffect(() => {
@@ -310,6 +344,63 @@
                     }
                 };
             }, [selectedEnquiry?.id]);
+            
+            // Global messages listener for dashboard (loads all messages from all tenders)
+            useEffect(() => {
+                if (!user || !enquiries || enquiries.length === 0) return;
+                
+                let listeners = [];
+                let isMounted = true;
+                
+                // Get all tender IDs that the user has access to
+                const accessibleTenders = enquiries.filter(tender => {
+                    if (userRole === 'General Manager' || userRole === 'Sales Manager') {
+                        return true; // Full access
+                    }
+                    // Check if user is in tender team
+                    return isUserInTenderTeam(tender);
+                });
+                
+                console.log('Setting up global message listeners for', accessibleTenders.length, 'tenders');
+                
+                accessibleTenders.forEach(tender => {
+                    try {
+                        const messagesRef = database.ref(`tender-messages/${tender.id}`);
+                        const listener = messagesRef.on('value', (snapshot) => {
+                            if (!isMounted) return;
+                            
+                            const data = snapshot.val();
+                            const messagesList = data ? Object.values(data).sort((a, b) => {
+                                const aTime = a.timestampMs || 0;
+                                const bTime = b.timestampMs || 0;
+                                return aTime - bTime;
+                            }) : [];
+                            
+                            setAllTenderMessages(prev => ({
+                                ...prev,
+                                [tender.id]: messagesList
+                            }));
+                        }, (error) => {
+                            console.error('Global messages listener error for tender', tender.id, error);
+                        });
+                        
+                        listeners.push({ ref: messagesRef, listener });
+                    } catch (error) {
+                        console.error('Error setting up global messages listener for tender', tender.id, error);
+                    }
+                });
+                
+                return () => {
+                    isMounted = false;
+                    listeners.forEach(({ ref, listener }) => {
+                        try {
+                            ref.off('value', listener);
+                        } catch (error) {
+                            console.error('Error cleaning up global messages listener:', error);
+                        }
+                    });
+                };
+            }, [user?.email, enquiries, userRole]);
             
             // Firebase real-time listener for files
             useEffect(() => {
@@ -2530,9 +2621,9 @@
                                         const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
                                         const currentUserEmail = user?.email || '';
                                         
-                                        // Debug: Log all messages to see what we have
-                                        const allMessages = Object.values(messages).flat();
-                                        console.log('All messages for mention detection:', allMessages.length);
+                                        // Debug: Log all messages to see what we have (using global messages)
+                                        const allMessages = Object.values(allTenderMessages).flat();
+                                        console.log('All messages for mention detection (global):', allMessages.length);
                                         console.log('Messages with type mention:', allMessages.filter(m => m?.type === 'mention').length);
                                         console.log('Current user name:', currentUserName);
                                         console.log('Current user email:', currentUserEmail);
@@ -2546,6 +2637,12 @@
                                                 }
                                                 
                                                 if (msg?.type !== 'mention' || !msg?.mentions) return false;
+                                                
+                                                // Check if this mention is already read
+                                                if (mentionReadStatus[msg.id]) {
+                                                    console.log('Mention already read:', msg.id);
+                                                    return false;
+                                                }
                                                 
                                                 return msg.mentions.some(m => {
                                                     const isMatch = m.email === currentUserEmail || 
@@ -2588,12 +2685,16 @@
                                                                 key={index} 
                                                                 className="flex items-center space-x-2 p-2 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors"
                                                                 onClick={() => {
-                                                                    // Find the tender this mention belongs to
+                                                                    // Find the tender this mention belongs to (using global messages)
                                                                     const tenderWithMessage = enquiries.find(tender => {
-                                                                        const tenderMessages = messages[tender.id] || [];
+                                                                        const tenderMessages = allTenderMessages[tender.id] || [];
                                                                         return tenderMessages.some(msg => msg.id === mention.id);
                                                                     });
                                                                     if (tenderWithMessage) {
+                                                                        console.log('Navigating to tender for mention:', mention.id, 'tender:', tenderWithMessage.id);
+                                                                        // Mark mentions as read for this tender
+                                                                        markMentionsAsRead(tenderWithMessage.id);
+                                                                        // Navigate to the tender
                                                                         setSelectedEnquiry(tenderWithMessage);
                                                                         setShowEnquiryDetails(true);
                                                                         setActiveTab('chat');
@@ -2604,7 +2705,7 @@
                                                                 <div className="text-white/80 text-sm flex-1 truncate">
                                                                     <span className="font-medium text-blue-200">{mention.sender}:</span>
                                                                     <span className="ml-1">
-                                                                        {mention.text?.split(/(@\w+(?:\s+\w+)*)/g).map((part, partIndex) => 
+                                                                        {mention.text?.split(/(@[A-Za-z]+(?:\s+[A-Za-z]+)*)/g).map((part, partIndex) => 
                                                                             part.startsWith('@') ? (
                                                                                 <span key={partIndex} className="bg-blue-400/20 text-blue-200 px-1 rounded font-medium">
                                                                                     {part}
@@ -4711,8 +4812,8 @@
                                                                                 : 'text-white'
                                                                         }`}>
                                                                             {message.type === 'mention' ? (
-                                                                                // Highlight @ mentions in text
-                                                                                message.text.split(/(@\w+(?:\s+\w+)*)/).map((part, index) => {
+                                                                                // Highlight @ mentions in text - using same regex as detection
+                                                                                message.text.split(/(@[A-Za-z]+(?:\s+[A-Za-z]+)*)/).map((part, index) => {
                                                                                     if (part.startsWith('@')) {
                                                                                         return (
                                                                                             <span key={index} className="bg-blue-500/30 text-blue-200 px-1 rounded font-medium">
