@@ -538,7 +538,11 @@
                         return;
                     }
                     
-                    const customPermissions = userData.customPermissions || { granted: [], denied: [] };
+                    // Ensure customPermissions exists with proper structure
+                    const customPermissions = {
+                        granted: (userData.customPermissions?.granted || []).slice(),
+                        denied: (userData.customPermissions?.denied || []).slice()
+                    };
                     
                     if (action === 'grant') {
                         // Toggle grant permission
@@ -562,8 +566,16 @@
                         }
                     }
                     
+                    console.log('Updating permissions for:', userEmail, 'Action:', action, 'Permission:', permission);
+                    console.log('New customPermissions:', customPermissions);
+                    
                     // Update user in Firebase
                     await userRef.update({ customPermissions });
+                    
+                    console.log('Successfully updated Firebase');
+                    
+                    // Small delay to ensure Firebase has processed the change
+                    await new Promise(resolve => setTimeout(resolve, 100));
                     
                     // Update local allUsers state
                     setAllUsers(prev => prev.map(user => 
@@ -577,9 +589,12 @@
                         setCurrentUserData(prev => ({ ...prev, customPermissions }));
                     }
                     
+                    console.log('Successfully updated local state');
+                    
                 } catch (error) {
                     console.error('Error updating user permissions:', error);
-                    alert('Failed to update permissions. Please try again.');
+                    console.error('Error details:', error.message);
+                    alert('Failed to update permissions: ' + error.message);
                 }
             };
             
@@ -3012,7 +3027,7 @@
                                     
                                     <div className="space-y-4">
                                         {allUsers.map(user => (
-                                            <div key={user.email} className="bg-white/5 rounded-lg p-4 border border-white/10">
+                                            <div key={`${user.email}-${JSON.stringify(user.customPermissions || {})}`} className="bg-white/5 rounded-lg p-4 border border-white/10">
                                                 <div className="flex items-center justify-between mb-4">
                                                     <div className="flex items-center space-x-3">
                                                         <div 
@@ -3049,6 +3064,16 @@
                                                                 const hasRolePermission = userRoles[user.role]?.permissions.includes('all') || userRoles[user.role]?.permissions.includes(permission);
                                                                 const hasCustomGrant = user.customPermissions?.granted?.includes(permission);
                                                                 const hasCustomDeny = user.customPermissions?.denied?.includes(permission);
+                                                                
+                                                                // Debug logging
+                                                                if (user.email === 'bestjobsaddy@gmail.com' && permission === 'view_all') {
+                                                                    console.log('UI Debug for', user.email, permission, ':', {
+                                                                        customPermissions: user.customPermissions,
+                                                                        hasCustomGrant,
+                                                                        hasCustomDeny,
+                                                                        hasRolePermission
+                                                                    });
+                                                                }
                                                                 
                                                                 return (
                                                                     <div key={permission} className="flex items-center justify-between p-2 bg-white/5 rounded">
