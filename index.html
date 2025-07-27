@@ -239,6 +239,9 @@
             const [imagePosition, setImagePosition] = useState({ x: 0, y: 0, scale: 1 });
             const [selectedBgColor, setSelectedBgColor] = useState('#3B82F6');
             const [selectedBorderColor, setSelectedBorderColor] = useState('#FFFFFF');
+            const [mentionSuggestions, setMentionSuggestions] = useState([]);
+            const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
+            const [mentionFilter, setMentionFilter] = useState('');
             
             // Firebase real-time listener for messages
             useEffect(() => {
@@ -517,6 +520,112 @@
                     return names[0].charAt(0).toUpperCase() + names[1].charAt(0).toUpperCase();
                 }
                 return userName.charAt(0).toUpperCase();
+            };
+            
+            // Desktop notification functions
+            const requestNotificationPermission = async () => {
+                if ('Notification' in window) {
+                    if (Notification.permission === 'default') {
+                        const permission = await Notification.requestPermission();
+                        return permission === 'granted';
+                    }
+                    return Notification.permission === 'granted';
+                }
+                return false;
+            };
+            
+            const sendDesktopNotification = (title, body, icon = null) => {
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    const notification = new Notification(title, {
+                        body: body,
+                        icon: icon || '/favicon.ico',
+                        tag: 'vesselforge-notification',
+                        renotify: true
+                    });
+                    
+                    // Auto close after 5 seconds
+                    setTimeout(() => notification.close(), 5000);
+                    
+                    return notification;
+                }
+                return null;
+            };
+            
+            const sendMentionNotifications = (mentions, messageText, tender) => {
+                const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
+                
+                mentions.forEach(mention => {
+                    // Don't notify the sender
+                    if (mention.email !== user?.email) {
+                        const title = `💬 ${currentUserName} mentioned you`;
+                        const body = `In ${tender.id}: ${messageText.substring(0, 100)}${messageText.length > 100 ? '...' : ''}`;
+                        sendDesktopNotification(title, body);
+                    }
+                });
+            };
+            
+            const sendActionAlertNotification = (assignees, tender) => {
+                const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
+                
+                assignees.forEach(assignee => {
+                    // Find the user's email to check if it's not the sender
+                    const assigneeUser = allUsers.find(u => 
+                        (u.fullName || u.email.split('@')[0]) === assignee
+                    );
+                    
+                    if (assigneeUser && assigneeUser.email !== user?.email) {
+                        const title = `🚨 Urgent Action Required!`;
+                        const body = `${currentUserName} assigned you an action in ${tender.id}`;
+                        sendDesktopNotification(title, body);
+                    }
+                });
+            };
+            
+            // Request notification permission on first load
+            React.useEffect(() => {
+                requestNotificationPermission();
+            }, []);
+            
+            // Handle mention autocomplete
+            const handleMessageChange = (e) => {
+                const value = e.target.value;
+                setNewMessage(value);
+                
+                // Check for @ mention
+                const lastAtIndex = value.lastIndexOf('@');
+                if (lastAtIndex !== -1) {
+                    const afterAt = value.substring(lastAtIndex + 1);
+                    if (!afterAt.includes(' ') && afterAt.length >= 0) {
+                        const filter = afterAt.toLowerCase();
+                        const suggestions = allUsers
+                            .filter(user => {
+                                const name = user.fullName || user.email.split('@')[0];
+                                return name.toLowerCase().includes(filter);
+                            })
+                            .slice(0, 5)
+                            .map(user => ({
+                                name: user.fullName || user.email.split('@')[0],
+                                email: user.email,
+                                avatar: user.profilePictureUrl
+                            }));
+                        
+                        setMentionSuggestions(suggestions);
+                        setMentionFilter(filter);
+                        setShowMentionSuggestions(suggestions.length > 0);
+                    } else {
+                        setShowMentionSuggestions(false);
+                    }
+                } else {
+                    setShowMentionSuggestions(false);
+                }
+            };
+            
+            const selectMention = (suggestion) => {
+                const lastAtIndex = newMessage.lastIndexOf('@');
+                const beforeAt = newMessage.substring(0, lastAtIndex);
+                const afterMention = newMessage.substring(lastAtIndex + 1 + mentionFilter.length);
+                setNewMessage(`${beforeAt}@${suggestion.name}${afterMention}`);
+                setShowMentionSuggestions(false);
             };
             
             // Toggle user permission function
@@ -1328,6 +1437,27 @@
             const sendMessage = async () => {
                 if (!newMessage.trim() || !selectedEnquiry) return;
                 
+                // Detect @ mentions in the message
+                const mentionRegex = /@(\w+(?:\s+\w+)*)/g;
+                const mentions = [];
+                let match;
+                while ((match = mentionRegex.exec(newMessage)) !== null) {
+                    const mentionName = match[1];
+                    // Find user by name (first + last name or just first name)
+                    const mentionedUser = allUsers.find(user => {
+                        const fullName = user.fullName || user.email.split('@')[0];
+                        return fullName.toLowerCase().includes(mentionName.toLowerCase()) ||
+                               user.email.split('@')[0].toLowerCase() === mentionName.toLowerCase();
+                    });
+                    if (mentionedUser) {
+                        mentions.push({
+                            name: mentionName,
+                            email: mentionedUser.email,
+                            fullName: mentionedUser.fullName || mentionedUser.email.split('@')[0]
+                        });
+                    }
+                }
+                
                 const messageId = Date.now() + Math.floor(Math.random() * 1000);
                 const message = {
                     id: messageId,
@@ -1336,12 +1466,19 @@
                     timestampMs: Date.now(), // For sorting
                     sender: currentUserData?.fullName || user?.email?.split('@')[0] || 'User', // Use full name
                     senderEmail: user?.email, // Store email for avatar lookup
-                    type: 'text'
+                    type: mentions.length > 0 ? 'mention' : 'text',
+                    mentions: mentions
                 };
                 
                 try {
                     // Save to Firebase
                     await database.ref(`tender-messages/${selectedEnquiry.id}/${messageId}`).set(message);
+                    
+                    // Send desktop notifications for mentions
+                    if (mentions.length > 0) {
+                        sendMentionNotifications(mentions, newMessage, selectedEnquiry);
+                    }
+                    
                     setNewMessage('');
                 } catch (error) {
                     console.error('Error sending message:', error);
@@ -4103,6 +4240,8 @@
                                                                                     ? 'bg-gradient-to-r from-green-500 to-emerald-500' 
                                                                                     : 'bg-gradient-to-r from-orange-500 to-red-500';
                                                                             })()
+                                                                            : message.type === 'mention'
+                                                                            ? 'bg-gradient-to-r from-blue-500 to-indigo-500'
                                                                             : ''
                                                                     }`}
                                                                     style={{
@@ -4113,6 +4252,8 @@
                                                                 >
                                                                     {message.type === 'action-alert' ? (
                                                                         <span className="text-white text-xs font-bold">🚨</span>
+                                                                    ) : message.type === 'mention' ? (
+                                                                        <span className="text-blue-200 text-xs font-bold">@</span>
                                                                     ) : getUserAvatar(message.sender || 'User', message.senderEmail) ? (
                                                                         <img 
                                                                             src={getUserAvatar(message.sender || 'User', message.senderEmail)} 
@@ -4182,9 +4323,25 @@
                                                                         <p className={`text-sm ${
                                                                             message.type === 'action-alert' 
                                                                                 ? 'text-orange-100 font-medium whitespace-pre-line' 
+                                                                                : message.type === 'mention'
+                                                                                ? 'text-blue-100'
                                                                                 : 'text-white'
                                                                         }`}>
-                                                                            {message.text || 'No message'}
+                                                                            {message.type === 'mention' ? (
+                                                                                // Highlight @ mentions in text
+                                                                                message.text.split(/(@\w+(?:\s+\w+)*)/).map((part, index) => {
+                                                                                    if (part.startsWith('@')) {
+                                                                                        return (
+                                                                                            <span key={index} className="bg-blue-500/30 text-blue-200 px-1 rounded font-medium">
+                                                                                                {part}
+                                                                                            </span>
+                                                                                        );
+                                                                                    }
+                                                                                    return part;
+                                                                                })
+                                                                            ) : (
+                                                                                message.text || 'No message'
+                                                                            )}
                                                                         </p>
                                                                         
                                                                         {/* Action Alert Completion Controls */}
@@ -4269,14 +4426,55 @@
                                                 </div>
 
                                                 {/* Message Input */}
-                                                <div className="p-3 border-t border-white/20 bg-slate-700/20">
+                                                <div className="p-3 border-t border-white/20 bg-slate-700/20 relative">
+                                                    {/* Mention Suggestions Dropdown */}
+                                                    {showMentionSuggestions && (
+                                                        <div className="absolute bottom-full left-3 right-3 mb-2 bg-slate-800 border border-white/20 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
+                                                            {mentionSuggestions.map((suggestion, index) => (
+                                                                <div
+                                                                    key={index}
+                                                                    onClick={() => selectMention(suggestion)}
+                                                                    className="flex items-center space-x-3 px-3 py-2 hover:bg-white/10 cursor-pointer border-b border-white/10 last:border-b-0"
+                                                                >
+                                                                    <div 
+                                                                        className="w-6 h-6 rounded-full flex items-center justify-center overflow-hidden bg-blue-500"
+                                                                    >
+                                                                        {suggestion.avatar ? (
+                                                                            <img 
+                                                                                src={suggestion.avatar} 
+                                                                                alt={suggestion.name}
+                                                                                className="w-full h-full object-cover"
+                                                                            />
+                                                                        ) : (
+                                                                            <span className="text-white text-xs font-bold">
+                                                                                {suggestion.name.charAt(0).toUpperCase()}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="text-white text-sm font-medium">{suggestion.name}</div>
+                                                                        <div className="text-white/60 text-xs">{suggestion.email}</div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    
                                                     <div className="flex space-x-2">
                                                         <input
                                                             type="text"
                                                             value={newMessage}
-                                                            onChange={(e) => setNewMessage(e.target.value)}
-                                                            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                                                            placeholder="Type your message..."
+                                                            onChange={handleMessageChange}
+                                                            onKeyPress={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    if (showMentionSuggestions) {
+                                                                        setShowMentionSuggestions(false);
+                                                                    } else {
+                                                                        sendMessage();
+                                                                    }
+                                                                }
+                                                            }}
+                                                            placeholder="Type your message... (use @ to mention someone)"
                                                             className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-400 text-sm"
                                                         />
                                                         <label className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg cursor-pointer transition-colors flex items-center text-sm" title="Attach Files">
@@ -5471,6 +5669,9 @@
                                                         
                                                         const messagesRef = firebase.database().ref(`tender-messages/${selectedEnquiry.id}/${message.id}`);
                                                         messagesRef.set(message);
+                                                        
+                                                        // Send desktop notifications for action alerts
+                                                        sendActionAlertNotification(actionAlertPeople, selectedEnquiry);
                                                         
                                                         setShowActionAlert(false);
                                                         setActionAlertPeople([]);
