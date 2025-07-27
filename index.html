@@ -245,40 +245,9 @@
             const [notificationPermission, setNotificationPermission] = useState(
                 typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
             );
-            const [allTenderMessages, setAllTenderMessages] = useState({});
-            const [mentionReadStatus, setMentionReadStatus] = useState({});
-            
-            // Function to mark mentions as read when user visits a tender
-            const markMentionsAsRead = useCallback((tenderId) => {
-                if (!user?.email || !allTenderMessages[tenderId]) return;
-                
-                const userEmail = user.email;
-                const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
-                
-                // Find all mentions for this user in this tender
-                const tenderMentions = allTenderMessages[tenderId]
-                    .filter(msg => {
-                        if (msg?.type !== 'mention' || !msg?.mentions) return false;
-                        return msg.mentions.some(m => {
-                            return m.email === userEmail || 
-                                   m.fullName === currentUserName ||
-                                   m.name === currentUserName ||
-                                   m.name?.toLowerCase() === currentUserName.toLowerCase();
-                        });
-                    })
-                    .map(msg => msg.id);
-                
-                if (tenderMentions.length > 0) {
-                    console.log('Marking mentions as read for tender:', tenderId, 'mentions:', tenderMentions);
-                    setMentionReadStatus(prev => {
-                        const updated = { ...prev };
-                        tenderMentions.forEach(messageId => {
-                            updated[messageId] = true;
-                        });
-                        return updated;
-                    });
-                }
-            }, [user?.email, currentUserData?.fullName, allTenderMessages]);
+            // TEMPORARILY DISABLED ALL NEW MENTION FEATURES TO FIX WHITE SCREEN
+            // const [allTenderMessages, setAllTenderMessages] = useState({});
+            // const [mentionReadStatus, setMentionReadStatus] = useState({});
             
             // Firebase real-time listener for messages
             useEffect(() => {
@@ -2641,12 +2610,6 @@
                                                 
                                                 if (msg?.type !== 'mention' || !msg?.mentions) return false;
                                                 
-                                                // Check if this mention is already read
-                                                if (mentionReadStatus[msg.id]) {
-                                                    console.log('Mention already read:', msg.id);
-                                                    return false;
-                                                }
-                                                
                                                 return msg.mentions.some(m => {
                                                     const isMatch = m.email === currentUserEmail || 
                                                                    m.fullName === currentUserName ||
@@ -2695,9 +2658,6 @@
                                                                     });
                                                                     if (tenderWithMessage) {
                                                                         console.log('Navigating to tender for mention:', mention.id, 'tender:', tenderWithMessage.id);
-                                                                        // Mark mentions as read for this tender
-                                                                        markMentionsAsRead(tenderWithMessage.id);
-                                                                        // Navigate to the tender
                                                                         setSelectedEnquiry(tenderWithMessage);
                                                                         setShowEnquiryDetails(true);
                                                                         setActiveTab('chat');
