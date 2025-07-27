@@ -346,6 +346,8 @@
             }, [selectedEnquiry?.id]);
             
             // Global messages listener for dashboard (loads all messages from all tenders)
+            // TEMPORARILY DISABLED TO FIX WHITE SCREEN
+            /*
             useEffect(() => {
                 if (!user || !enquiries || enquiries.length === 0) return;
                 
@@ -401,6 +403,7 @@
                     });
                 };
             }, [user?.email, enquiries, userRole]);
+            */
             
             // Firebase real-time listener for files
             useEffect(() => {
@@ -2621,8 +2624,8 @@
                                         const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
                                         const currentUserEmail = user?.email || '';
                                         
-                                        // Debug: Log all messages to see what we have (using global messages)
-                                        const allMessages = Object.values(allTenderMessages).flat();
+                                        // Debug: Log all messages to see what we have (reverted to fix white screen)
+                                        const allMessages = Object.values(messages).flat();
                                         console.log('All messages for mention detection (global):', allMessages.length);
                                         console.log('Messages with type mention:', allMessages.filter(m => m?.type === 'mention').length);
                                         console.log('Current user name:', currentUserName);
@@ -2685,9 +2688,9 @@
                                                                 key={index} 
                                                                 className="flex items-center space-x-2 p-2 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors"
                                                                 onClick={() => {
-                                                                    // Find the tender this mention belongs to (using global messages)
+                                                                    // Find the tender this mention belongs to (reverted to fix white screen)
                                                                     const tenderWithMessage = enquiries.find(tender => {
-                                                                        const tenderMessages = allTenderMessages[tender.id] || [];
+                                                                        const tenderMessages = messages[tender.id] || [];
                                                                         return tenderMessages.some(msg => msg.id === mention.id);
                                                                     });
                                                                     if (tenderWithMessage) {
