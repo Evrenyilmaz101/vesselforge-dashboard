@@ -314,65 +314,7 @@
                 };
             }, [selectedEnquiry?.id]);
             
-            // Global messages listener for dashboard (loads all messages from all tenders)
-            // TEMPORARILY DISABLED TO FIX WHITE SCREEN
-            /*
-            useEffect(() => {
-                if (!user || !enquiries || enquiries.length === 0) return;
-                
-                let listeners = [];
-                let isMounted = true;
-                
-                // Get all tender IDs that the user has access to
-                const accessibleTenders = enquiries.filter(tender => {
-                    if (userRole === 'General Manager' || userRole === 'Sales Manager') {
-                        return true; // Full access
-                    }
-                    // Check if user is in tender team
-                    return isUserInTenderTeam(tender);
-                });
-                
-                console.log('Setting up global message listeners for', accessibleTenders.length, 'tenders');
-                
-                accessibleTenders.forEach(tender => {
-                    try {
-                        const messagesRef = database.ref(`tender-messages/${tender.id}`);
-                        const listener = messagesRef.on('value', (snapshot) => {
-                            if (!isMounted) return;
-                            
-                            const data = snapshot.val();
-                            const messagesList = data ? Object.values(data).sort((a, b) => {
-                                const aTime = a.timestampMs || 0;
-                                const bTime = b.timestampMs || 0;
-                                return aTime - bTime;
-                            }) : [];
-                            
-                            setAllTenderMessages(prev => ({
-                                ...prev,
-                                [tender.id]: messagesList
-                            }));
-                        }, (error) => {
-                            console.error('Global messages listener error for tender', tender.id, error);
-                        });
-                        
-                        listeners.push({ ref: messagesRef, listener });
-                    } catch (error) {
-                        console.error('Error setting up global messages listener for tender', tender.id, error);
-                    }
-                });
-                
-                return () => {
-                    isMounted = false;
-                    listeners.forEach(({ ref, listener }) => {
-                        try {
-                            ref.off('value', listener);
-                        } catch (error) {
-                            console.error('Error cleaning up global messages listener:', error);
-                        }
-                    });
-                };
-            }, [user?.email, enquiries, userRole]);
-            */
+            // Global messages listener was here - removed to fix white screen issue
             
             // Firebase real-time listener for files
             useEffect(() => {
