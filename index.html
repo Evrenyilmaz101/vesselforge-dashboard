@@ -245,9 +245,8 @@
             const [notificationPermission, setNotificationPermission] = useState(
                 typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
             );
-            // TEMPORARILY DISABLED ALL NEW MENTION FEATURES TO FIX WHITE SCREEN
-            // const [allTenderMessages, setAllTenderMessages] = useState({});
-            // const [mentionReadStatus, setMentionReadStatus] = useState({});
+            // Simple mention tracking for dashboard
+            const [viewedMentions, setViewedMentions] = useState(new Set());
             
             // Firebase real-time listener for messages
             useEffect(() => {
@@ -1578,10 +1577,10 @@
                     project: '',
                     value: '',
                     priorityNumber: 1,
-                                    assignedTo: '',
-                salesManager: '',
-                planner: '',
-                designer: '',
+                    assignedTo: '',
+                    salesManager: '',
+                    planner: '',
+                    designer: '',
                     dueDate: '',
                     requiresDesign: false
                 });
@@ -1654,6 +1653,11 @@
                     }
                     
                     setNewMessage('');
+                    
+                    // Force refresh of dashboard by updating the messages state
+                    if (mentions.length > 0) {
+                        console.log('New mention sent, dashboard will refresh on next visit');
+                    }
                 } catch (error) {
                     console.error('Error sending message:', error);
                     alert('Failed to send message. Please try again.');
@@ -2552,6 +2556,12 @@
                                                 
                                                 if (msg?.type !== 'mention' || !msg?.mentions) return false;
                                                 
+                                                // Skip if already viewed
+                                                if (viewedMentions.has(msg.id)) {
+                                                    console.log('Mention already viewed:', msg.id);
+                                                    return false;
+                                                }
+                                                
                                                 return msg.mentions.some(m => {
                                                     const isMatch = m.email === currentUserEmail || 
                                                                    m.fullName === currentUserName ||
@@ -2600,6 +2610,8 @@
                                                                     });
                                                                     if (tenderWithMessage) {
                                                                         console.log('Navigating to tender for mention:', mention.id, 'tender:', tenderWithMessage.id);
+                                                                        // Mark this mention as viewed
+                                                                        setViewedMentions(prev => new Set([...prev, mention.id]));
                                                                         setSelectedEnquiry(tenderWithMessage);
                                                                         setShowEnquiryDetails(true);
                                                                         setActiveTab('chat');
