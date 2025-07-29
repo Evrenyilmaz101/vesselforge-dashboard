@@ -2717,7 +2717,7 @@
                                         console.log('🔍 DASHBOARD @ MENTIONS - Accessible tender IDs:', enquiries.filter(t => isUserInTenderTeam(t)).map(t => t.id));
                                         
                                         // TEMPORARY: Clear read mentions for testing (remove this later)
-                                        // localStorage.removeItem(`readMentions_${currentUserEmail}`);
+                                        localStorage.removeItem(`readMentions_${currentUserEmail}`);
                                         
                                         const myMentions = allMessages
                                             .filter(msg => {
@@ -2733,7 +2733,9 @@
                                                 const readMentions = JSON.parse(localStorage.getItem(`readMentions_${currentUserEmail}`) || '[]');
                                                 const isRead = readMentions.includes(msg.id);
                                                 console.log(`🔍 Message ${msg.id} read status:`, isRead, 'Read mentions:', readMentions);
-                                                if (isRead) return false;
+                                                
+                                                // TEMPORARY: Disable read filtering to test mentions
+                                                // if (isRead) return false;
                                                 
                                                 return msg.mentions.some(m => {
                                                     console.log('🔍 Checking mention object:', m);
