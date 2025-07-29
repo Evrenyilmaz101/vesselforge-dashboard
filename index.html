@@ -427,20 +427,28 @@
                 let listener;
                 let isMounted = true;
                 
+                console.log('Setting up users listener...');
+                
                 try {
                     usersRef = database.ref('users');
                     listener = usersRef.on('value', (snapshot) => {
                         if (!isMounted) return;
                         const data = snapshot.val();
+                        console.log('Users data from Firebase:', data);
+                        
                         if (data) {
                             // Include the UID (key) with each user object
                             const usersList = Object.entries(data)
                                 .filter(([uid, user]) => user && user.isActive !== false)
                                 .map(([uid, user]) => ({ ...user, uid }));
+                            console.log('Processed users list:', usersList);
                             setAllUsers(usersList);
                         } else {
+                            console.log('No users data found in Firebase');
                             setAllUsers([]);
                         }
+                    }, (error) => {
+                        console.error('Firebase users listener error:', error);
                     });
                 } catch (error) {
                     console.error('Error setting up users listener:', error);
@@ -460,7 +468,13 @@
             
             // Helper function to get users by role
             const getUsersByRole = (role) => {
-                return allUsers.filter(user => user.role === role).map(user => user.fullName || user.email.split('@')[0]);
+                console.log(`Getting users by role: ${role}`);
+                console.log('All users available:', allUsers);
+                const filteredUsers = allUsers.filter(user => user.role === role);
+                console.log(`Users with role ${role}:`, filteredUsers);
+                const mappedUsers = filteredUsers.map(user => user.fullName || user.email.split('@')[0]);
+                console.log(`Final mapped users for ${role}:`, mappedUsers);
+                return mappedUsers;
             };
             
             // Helper function to get user avatar
