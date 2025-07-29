@@ -1761,7 +1761,7 @@
             const sendMessage = async () => {
                 if (!newMessage.trim() || !selectedEnquiry) return;
                 
-                // Detect @ mentions in the message - improved regex for names with spaces
+                // Detect @ mentions in the message - improved regex for names with spaces, handles punctuation
                 const mentionRegex = /@([A-Za-z]+(?:\s+[A-Za-z]+)*)/g;
                 const mentions = [];
                 let match;
@@ -1769,27 +1769,35 @@
                 
                 while ((match = mentionRegex.exec(newMessage)) !== null) {
                     const mentionName = match[1].trim();
-                    console.log('Found potential mention:', mentionName);
+                    console.log('🔍 SEND MESSAGE - Found potential mention:', mentionName);
+                    console.log('🔍 SEND MESSAGE - Available users:', allUsers.map(u => ({ fullName: u.fullName, email: u.email })));
                     
                     // Find user by exact name match or partial match
                     const mentionedUser = allUsers.find(user => {
                         const fullName = user.fullName || user.email.split('@')[0];
                         const emailName = user.email.split('@')[0];
                         
-                        return fullName.toLowerCase() === mentionName.toLowerCase() ||
-                               emailName.toLowerCase() === mentionName.toLowerCase() ||
-                               fullName.toLowerCase().includes(mentionName.toLowerCase());
+                        const exactMatch = fullName.toLowerCase() === mentionName.toLowerCase();
+                        const emailMatch = emailName.toLowerCase() === mentionName.toLowerCase();
+                        const includesMatch = fullName.toLowerCase().includes(mentionName.toLowerCase());
+                        
+                        console.log(`🔍 SEND MESSAGE - Checking user ${fullName} vs mention ${mentionName}:`);
+                        console.log(`   - Exact match: ${exactMatch}`);
+                        console.log(`   - Email match: ${emailMatch}`);
+                        console.log(`   - Includes match: ${includesMatch}`);
+                        
+                        return exactMatch || emailMatch || includesMatch;
                     });
                     
                     if (mentionedUser) {
-                        console.log('Found mentioned user:', mentionedUser);
+                        console.log('✅ SEND MESSAGE - Found mentioned user:', mentionedUser);
                         mentions.push({
                             name: mentionName,
                             email: mentionedUser.email,
                             fullName: mentionedUser.fullName || mentionedUser.email.split('@')[0]
                         });
                     } else {
-                        console.log('No user found for mention:', mentionName);
+                        console.log('❌ SEND MESSAGE - No user found for mention:', mentionName);
                     }
                 }
                 
@@ -2733,16 +2741,9 @@
                                                 const isRead = readMentions.includes(msg.id);
                                                 console.log(`🔍 Message ${msg.id} read status:`, isRead, 'Read mentions:', readMentions);
                                                 
-                                                // Smart read filtering: hide read mentions after a short delay
+                                                // Immediate read filtering: hide read mentions right away
                                                 if (isRead) {
-                                                    const readTime = localStorage.getItem(`readTime_${msg.id}_${currentUserEmail}`);
-                                                    if (readTime) {
-                                                        const timeSinceRead = Date.now() - parseInt(readTime);
-                                                        // Hide mentions 30 seconds after being read (gives time to see they were clicked)
-                                                        if (timeSinceRead > 30000) {
-                                                            return false;
-                                                        }
-                                                    }
+                                                    return false;
                                                 }
                                                 
                                                 return msg.mentions.some(m => {
@@ -2796,13 +2797,11 @@
                                                                 key={index} 
                                                                 className="flex items-center space-x-2 p-2 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors"
                                                                 onClick={() => {
-                                                                    // Mark this mention as read with timestamp
+                                                                    // Mark this mention as read
                                                                     const readMentions = JSON.parse(localStorage.getItem(`readMentions_${currentUserEmail}`) || '[]');
                                                                     if (!readMentions.includes(mention.id)) {
                                                                         readMentions.push(mention.id);
                                                                         localStorage.setItem(`readMentions_${currentUserEmail}`, JSON.stringify(readMentions));
-                                                                        // Store when it was read for timed hiding
-                                                                        localStorage.setItem(`readTime_${mention.id}_${currentUserEmail}`, Date.now().toString());
                                                                     }
                                                                     
                                                                     // Find the tender this mention belongs to using the tenderId we added
