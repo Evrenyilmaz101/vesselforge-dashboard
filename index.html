@@ -316,6 +316,59 @@
             
             // Global messages listener was here - removed to fix white screen issue
             
+            // Preload messages from all accessible tenders for @ mentions (safer approach)
+            useEffect(() => {
+                if (!user || !enquiries || enquiries.length === 0) return;
+                
+                const loadAllTenderMessages = async () => {
+                    console.log('Preloading messages from all accessible tenders...');
+                    
+                    const accessibleTenders = enquiries.filter(tender => {
+                        if (userRole === 'General Manager' || userRole === 'Sales Manager') {
+                            return true; // Full access
+                        }
+                        // Check if user is in tender team
+                        return isUserInTenderTeam(tender);
+                    });
+                    
+                    console.log('Loading messages from', accessibleTenders.length, 'accessible tenders');
+                    
+                    for (const tender of accessibleTenders) {
+                        try {
+                            // Only load if not already loaded
+                            if (!messages[tender.id]) {
+                                const snapshot = await database.ref(`tender-messages/${tender.id}`).once('value');
+                                const data = snapshot.val();
+                                
+                                if (data) {
+                                    const messagesList = Object.values(data).sort((a, b) => {
+                                        const aTime = a.timestampMs || 0;
+                                        const bTime = b.timestampMs || 0;
+                                        return aTime - bTime;
+                                    });
+                                    
+                                    setMessages(prev => ({
+                                        ...prev,
+                                        [tender.id]: messagesList
+                                    }));
+                                    
+                                    console.log(`Loaded ${messagesList.length} messages from tender ${tender.id}`);
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Error loading messages for tender', tender.id, error);
+                        }
+                    }
+                };
+                
+                // Small delay to ensure all state is ready
+                const timer = setTimeout(() => {
+                    loadAllTenderMessages();
+                }, 1000);
+                
+                return () => clearTimeout(timer);
+            }, [user?.email, enquiries, userRole]); // Trigger when user or tenders change
+            
             // Firebase real-time listener for files
             useEffect(() => {
                 if (!selectedEnquiry) {
@@ -1085,16 +1138,22 @@
                     }
                     
                     // Create user profile in database
-                    await database.ref(`users/${user.uid}`).set({
+                    const newUserData = {
                         email: signupForm.email,
                         fullName: signupForm.fullName,
                         role: signupForm.role,
                         profilePictureUrl: profilePictureUrl,
                         createdAt: new Date().toISOString(),
                         isActive: true
-                    });
+                    };
                     
-                    console.log('User created:', user.email);
+                    await database.ref(`users/${user.uid}`).set(newUserData);
+                    
+                    // Immediately set the user data in state to avoid waiting for auth listener
+                    setUserRole(signupForm.role);
+                    setCurrentUserData(newUserData);
+                    
+                    console.log('User created:', user.email, 'with role:', signupForm.role);
                     setShowSignup(false);
                     setSignupForm({ email: '', password: '', confirmPassword: '', fullName: '', role: 'General Manager', profilePicture: null });
                 } catch (error) {
@@ -1136,7 +1195,7 @@
                             
                             const userData = snapshot.val();
                             if (userData) {
-                                console.log('User role found:', userData.role);
+                                console.log('User role found:', userData.role, 'Full name:', userData.fullName);
                                 
                                 // One-time fix: Update bestjobsaddy@gmail.com to General Manager
                                 if (user.email === 'bestjobsaddy@gmail.com' && userData.role === 'Estimator') {
@@ -1147,8 +1206,15 @@
                                     setUserRole('General Manager');
                                     setCurrentUserData({ ...userData, role: 'General Manager' });
                                 } else {
-                                    setUserRole(userData.role);
-                                    setCurrentUserData(userData);
+                                    // Only update if currentUserData is not already set (prevents overriding signup data)
+                                    if (!currentUserData || !currentUserData.fullName) {
+                                        console.log('Setting user data from Firebase:', userData);
+                                        setUserRole(userData.role);
+                                        setCurrentUserData(userData);
+                                    } else {
+                                        console.log('User data already set, keeping existing data to avoid signup override');
+                                        setUserRole(userData.role); // Still update role in case it changed
+                                    }
                                 }
                             } else {
                                 console.log('No user data found, creating default...');
