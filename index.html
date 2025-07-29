@@ -320,8 +320,8 @@
             useEffect(() => {
                 if (!user || !enquiries || enquiries.length === 0) return;
                 
-                const loadAllTenderMessages = async () => {
-                    console.log('Preloading messages from all accessible tenders...');
+                const setupTenderMessageListeners = () => {
+                    console.log('Setting up message listeners for all accessible tenders...');
                     
                     const accessibleTenders = enquiries.filter(tender => {
                         if (userRole === 'General Manager' || userRole === 'Sales Manager') {
@@ -331,13 +331,14 @@
                         return isUserInTenderTeam(tender);
                     });
                     
-                    console.log('Loading messages from', accessibleTenders.length, 'accessible tenders');
+                    console.log('Setting up listeners for', accessibleTenders.length, 'accessible tenders');
                     
-                    for (const tender of accessibleTenders) {
+                    const listeners = [];
+                    
+                    accessibleTenders.forEach(tender => {
                         try {
-                            // Only load if not already loaded
-                            if (!messages[tender.id]) {
-                                const snapshot = await database.ref(`tender-messages/${tender.id}`).once('value');
+                            const messagesRef = database.ref(`tender-messages/${tender.id}`);
+                            const listener = messagesRef.on('value', (snapshot) => {
                                 const data = snapshot.val();
                                 
                                 if (data) {
@@ -352,21 +353,47 @@
                                         [tender.id]: messagesList
                                     }));
                                     
-                                    console.log(`Loaded ${messagesList.length} messages from tender ${tender.id}`);
+                                    console.log(`Updated ${messagesList.length} messages for tender ${tender.id}`);
+                                } else {
+                                    setMessages(prev => ({
+                                        ...prev,
+                                        [tender.id]: []
+                                    }));
                                 }
-                            }
+                            }, (error) => {
+                                console.error('Dashboard message listener error for tender', tender.id, error);
+                            });
+                            
+                            listeners.push({ ref: messagesRef, listener });
                         } catch (error) {
-                            console.error('Error loading messages for tender', tender.id, error);
+                            console.error('Error setting up dashboard message listener for tender', tender.id, error);
                         }
-                    }
+                    });
+                    
+                    // Cleanup function
+                    return () => {
+                        console.log('Cleaning up dashboard message listeners...');
+                        listeners.forEach(({ ref, listener }) => {
+                            try {
+                                ref.off('value', listener);
+                            } catch (error) {
+                                console.error('Error cleaning up dashboard message listener:', error);
+                            }
+                        });
+                    };
                 };
                 
                 // Small delay to ensure all state is ready
                 const timer = setTimeout(() => {
-                    loadAllTenderMessages();
+                    const cleanup = setupTenderMessageListeners();
+                    
+                    // Store cleanup function for component unmount
+                    return cleanup;
                 }, 1000);
                 
-                return () => clearTimeout(timer);
+                return () => {
+                    clearTimeout(timer);
+                };
             }, [user?.email, enquiries, userRole]); // Trigger when user or tenders change
             
             // Firebase real-time listener for files
@@ -820,18 +847,30 @@
                     // Show suggestions if we're typing a name (no space yet or currently typing)
                     if (spaceIndex === -1 && nameBeingTyped.length >= 0) {
                         const filter = nameBeingTyped.toLowerCase();
-                        const suggestions = allUsers
-                            .filter(user => {
-                                const name = user.fullName || user.email.split('@')[0];
-                                return name.toLowerCase().includes(filter);
-                            })
-                            .slice(0, 5)
-                            .map(user => ({
-                                name: user.fullName || user.email.split('@')[0],
-                                email: user.email,
-                                avatar: user.profilePictureUrl
-                            }));
                         
+                        // Get team members for the current tender only
+                        const teamMemberNames = selectedEnquiry ? getTenderTeamMembers(selectedEnquiry) : [];
+                        console.log('Team members for autocomplete:', teamMemberNames);
+                        
+                        // Filter team members and match with user data for avatars
+                        const suggestions = teamMemberNames
+                            .filter(memberName => memberName.toLowerCase().includes(filter))
+                            .slice(0, 5)
+                            .map(memberName => {
+                                // Find user data for avatar
+                                const userData = allUsers.find(user => {
+                                    const fullName = user.fullName || user.email.split('@')[0];
+                                    return fullName === memberName || user.email.split('@')[0] === memberName;
+                                });
+                                
+                                return {
+                                    name: memberName,
+                                    email: userData?.email || '',
+                                    avatar: userData?.profilePictureUrl
+                                };
+                            });
+                        
+                        console.log('Filtered suggestions for team members:', suggestions);
                         setMentionSuggestions(suggestions);
                         setMentionFilter(nameBeingTyped);
                         setShowMentionSuggestions(suggestions.length > 0 && filter.length > 0);
