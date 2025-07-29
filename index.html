@@ -2737,15 +2737,25 @@
                                                 if (readMentions.includes(msg.id)) return false;
                                                 
                                                 return msg.mentions.some(m => {
-                                                    const isMatch = m.email === currentUserEmail || 
-                                                                   m.fullName === currentUserName ||
-                                                                   m.name === currentUserName ||
-                                                                   m.name?.toLowerCase() === currentUserName.toLowerCase() ||
-                                                                   currentUserName.toLowerCase().includes(m.name?.toLowerCase()) ||
-                                                                   m.name?.toLowerCase().includes(currentUserName.toLowerCase());
+                                                    console.log('🔍 Checking mention object:', m);
+                                                    console.log('🔍 Current user email:', currentUserEmail);
+                                                    console.log('🔍 Current user name:', currentUserName);
+                                                    
+                                                    const emailMatch = m.email === currentUserEmail;
+                                                    const fullNameMatch = m.fullName === currentUserName;
+                                                    const nameMatch = m.name === currentUserName;
+                                                    const nameLowerMatch = m.name?.toLowerCase() === currentUserName.toLowerCase();
+                                                    const userIncludesName = currentUserName.toLowerCase().includes(m.name?.toLowerCase());
+                                                    const nameIncludesUser = m.name?.toLowerCase().includes(currentUserName.toLowerCase());
+                                                    
+                                                    console.log(`🔍 Match results - email: ${emailMatch}, fullName: ${fullNameMatch}, name: ${nameMatch}, nameLower: ${nameLowerMatch}, userIncludesName: ${userIncludesName}, nameIncludesUser: ${nameIncludesUser}`);
+                                                    
+                                                    const isMatch = emailMatch || fullNameMatch || nameMatch || nameLowerMatch || userIncludesName || nameIncludesUser;
                                                     
                                                     if (isMatch) {
-                                                        console.log('Found matching mention:', m, 'for user:', currentUserName);
+                                                        console.log('✅ Found matching mention:', m, 'for user:', currentUserName);
+                                                    } else {
+                                                        console.log('❌ No match for mention:', m, 'and user:', currentUserName);
                                                     }
                                                     return isMatch;
                                                 });
