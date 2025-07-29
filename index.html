@@ -2724,7 +2724,9 @@
                                         console.log('🔍 DASHBOARD @ MENTIONS - Messages state keys:', Object.keys(messages));
                                         console.log('🔍 DASHBOARD @ MENTIONS - Accessible tender IDs:', enquiries.filter(t => isUserInTenderTeam(t)).map(t => t.id));
                                         
-                                        // REMOVED: Auto-clear localStorage (no longer needed)
+                                        // TEMPORARY: Clear read mentions to test
+                                        localStorage.removeItem(`readMentions_${currentUserEmail}`);
+                                        console.log('🔧 CLEARED read mentions for testing');
                                         
                                         const myMentions = allMessages
                                             .filter(msg => {
