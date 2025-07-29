@@ -2724,9 +2724,7 @@
                                         console.log('🔍 DASHBOARD @ MENTIONS - Messages state keys:', Object.keys(messages));
                                         console.log('🔍 DASHBOARD @ MENTIONS - Accessible tender IDs:', enquiries.filter(t => isUserInTenderTeam(t)).map(t => t.id));
                                         
-                                        // TEMPORARY: Clear read mentions to test
-                                        localStorage.removeItem(`readMentions_${currentUserEmail}`);
-                                        console.log('🔧 CLEARED read mentions for testing');
+                                        // REMOVED: No longer clearing read mentions automatically
                                         
                                         const myMentions = allMessages
                                             .filter(msg => {
@@ -2789,7 +2787,19 @@
                                                             <p className="text-blue-200 text-sm">{myMentions.length} recent mentions</p>
                                                         </div>
                                                     </div>
-                                                    <div className="text-2xl font-bold text-blue-300">{myMentions.length}</div>
+                                                    <div className="flex items-center space-x-2">
+                                                        <div className="text-2xl font-bold text-blue-300">{myMentions.length}</div>
+                                                        <button 
+                                                            onClick={() => {
+                                                                localStorage.removeItem(`readMentions_${currentUserEmail}`);
+                                                                window.location.reload();
+                                                            }}
+                                                            className="px-2 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-200 text-xs rounded transition-colors"
+                                                            title="Clear all mentions (for testing)"
+                                                        >
+                                                            Clear
+                                                        </button>
+                                                    </div>
                                                 </div>
                                                 
                                                 {myMentions.length > 0 ? (
