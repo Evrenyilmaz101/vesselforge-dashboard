@@ -2716,8 +2716,7 @@
                                         console.log('🔍 DASHBOARD @ MENTIONS - Messages state keys:', Object.keys(messages));
                                         console.log('🔍 DASHBOARD @ MENTIONS - Accessible tender IDs:', enquiries.filter(t => isUserInTenderTeam(t)).map(t => t.id));
                                         
-                                        // TEMPORARY: Clear read mentions for testing (remove this later)
-                                        localStorage.removeItem(`readMentions_${currentUserEmail}`);
+                                        // REMOVED: Auto-clear localStorage (no longer needed)
                                         
                                         const myMentions = allMessages
                                             .filter(msg => {
@@ -2734,8 +2733,17 @@
                                                 const isRead = readMentions.includes(msg.id);
                                                 console.log(`🔍 Message ${msg.id} read status:`, isRead, 'Read mentions:', readMentions);
                                                 
-                                                // TEMPORARY: Disable read filtering to test mentions
-                                                // if (isRead) return false;
+                                                // Smart read filtering: hide read mentions after a short delay
+                                                if (isRead) {
+                                                    const readTime = localStorage.getItem(`readTime_${msg.id}_${currentUserEmail}`);
+                                                    if (readTime) {
+                                                        const timeSinceRead = Date.now() - parseInt(readTime);
+                                                        // Hide mentions 30 seconds after being read (gives time to see they were clicked)
+                                                        if (timeSinceRead > 30000) {
+                                                            return false;
+                                                        }
+                                                    }
+                                                }
                                                 
                                                 return msg.mentions.some(m => {
                                                     console.log('🔍 Checking mention object:', m);
@@ -2788,11 +2796,13 @@
                                                                 key={index} 
                                                                 className="flex items-center space-x-2 p-2 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors"
                                                                 onClick={() => {
-                                                                    // Mark this mention as read
+                                                                    // Mark this mention as read with timestamp
                                                                     const readMentions = JSON.parse(localStorage.getItem(`readMentions_${currentUserEmail}`) || '[]');
                                                                     if (!readMentions.includes(mention.id)) {
                                                                         readMentions.push(mention.id);
                                                                         localStorage.setItem(`readMentions_${currentUserEmail}`, JSON.stringify(readMentions));
+                                                                        // Store when it was read for timed hiding
+                                                                        localStorage.setItem(`readTime_${mention.id}_${currentUserEmail}`, Date.now().toString());
                                                                     }
                                                                     
                                                                     // Find the tender this mention belongs to using the tenderId we added
