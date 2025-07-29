@@ -402,17 +402,11 @@
                     };
                 };
                 
-                // Small delay to ensure all state is ready
-                const timer = setTimeout(() => {
-                    const cleanup = setupTenderMessageListeners();
-                    
-                    // Store cleanup function for component unmount
-                    return cleanup;
-                }, 1000);
+                // Set up listeners immediately (removed delay that was causing first-time issues)
+                const cleanup = setupTenderMessageListeners();
                 
-                return () => {
-                    clearTimeout(timer);
-                };
+                // Return cleanup function for component unmount
+                return cleanup;
             }, [user?.email, enquiries, userRole]); // Trigger when user or tenders change
             
             // Firebase real-time listener for files
@@ -2722,6 +2716,9 @@
                                         console.log('🔍 DASHBOARD @ MENTIONS - Messages state keys:', Object.keys(messages));
                                         console.log('🔍 DASHBOARD @ MENTIONS - Accessible tender IDs:', enquiries.filter(t => isUserInTenderTeam(t)).map(t => t.id));
                                         
+                                        // TEMPORARY: Clear read mentions for testing (remove this later)
+                                        // localStorage.removeItem(`readMentions_${currentUserEmail}`);
+                                        
                                         const myMentions = allMessages
                                             .filter(msg => {
                                                 // Debug each message
@@ -2734,7 +2731,9 @@
                                                 
                                                 // Check if this mention has been read
                                                 const readMentions = JSON.parse(localStorage.getItem(`readMentions_${currentUserEmail}`) || '[]');
-                                                if (readMentions.includes(msg.id)) return false;
+                                                const isRead = readMentions.includes(msg.id);
+                                                console.log(`🔍 Message ${msg.id} read status:`, isRead, 'Read mentions:', readMentions);
+                                                if (isRead) return false;
                                                 
                                                 return msg.mentions.some(m => {
                                                     console.log('🔍 Checking mention object:', m);
