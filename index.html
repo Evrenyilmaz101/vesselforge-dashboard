@@ -348,12 +348,18 @@
                                         return aTime - bTime;
                                     });
                                     
+                                    // Debug mention messages
+                                    const mentionMessages = messagesList.filter(msg => msg.type === 'mention');
+                                    if (mentionMessages.length > 0) {
+                                        console.log(`📢 Dashboard listener - Found ${mentionMessages.length} mention messages in tender ${tender.id}:`, mentionMessages);
+                                    }
+                                    
                                     setMessages(prev => ({
                                         ...prev,
                                         [tender.id]: messagesList
                                     }));
                                     
-                                    console.log(`Updated ${messagesList.length} messages for tender ${tender.id}`);
+                                    console.log(`✅ Dashboard listener - Updated ${messagesList.length} total messages for tender ${tender.id}`);
                                 } else {
                                     setMessages(prev => ({
                                         ...prev,
@@ -851,17 +857,25 @@
                         // Get team members for the current tender only
                         const teamMemberNames = selectedEnquiry ? getTenderTeamMembers(selectedEnquiry) : [];
                         console.log('Team members for autocomplete:', teamMemberNames);
+                        console.log('Current filter:', filter);
+                        console.log('Selected enquiry:', selectedEnquiry?.id);
                         
                         // Filter team members and match with user data for avatars
                         const suggestions = teamMemberNames
-                            .filter(memberName => memberName.toLowerCase().includes(filter))
-                            .slice(0, 5)
+                            .filter(memberName => {
+                                const matches = memberName.toLowerCase().includes(filter);
+                                console.log(`Member ${memberName} matches filter "${filter}":`, matches);
+                                return matches;
+                            })
+                            .slice(0, 8) // Show more suggestions
                             .map(memberName => {
                                 // Find user data for avatar
                                 const userData = allUsers.find(user => {
                                     const fullName = user.fullName || user.email.split('@')[0];
                                     return fullName === memberName || user.email.split('@')[0] === memberName;
                                 });
+                                
+                                console.log(`Found user data for ${memberName}:`, userData);
                                 
                                 return {
                                     name: memberName,
@@ -870,10 +884,11 @@
                                 };
                             });
                         
-                        console.log('Filtered suggestions for team members:', suggestions);
+                        console.log('Final filtered suggestions for team members:', suggestions);
                         setMentionSuggestions(suggestions);
                         setMentionFilter(nameBeingTyped);
-                        setShowMentionSuggestions(suggestions.length > 0 && filter.length > 0);
+                        // Show suggestions even if filter is empty (when just typing @)
+                        setShowMentionSuggestions(suggestions.length > 0);
                     } else {
                         setShowMentionSuggestions(false);
                     }
@@ -4993,7 +5008,6 @@
                                                                     </div>
                                                                     <div>
                                                                         <div className="text-white text-sm font-medium">{suggestion.name}</div>
-                                                                        <div className="text-white/60 text-xs">{suggestion.email}</div>
                                                                     </div>
                                                                 </div>
                                                             ))}
