@@ -245,8 +245,9 @@
             const [notificationPermission, setNotificationPermission] = useState(
                 typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
             );
-            // Simple mention tracking for dashboard
-            const [viewedMentions, setViewedMentions] = useState(new Set());
+            // TEMPORARILY DISABLED ALL NEW MENTION FEATURES TO FIX WHITE SCREEN
+            // const [allTenderMessages, setAllTenderMessages] = useState({});
+            // const [mentionReadStatus, setMentionReadStatus] = useState({});
             
             // Firebase real-time listener for messages
             useEffect(() => {
@@ -1533,58 +1534,73 @@
                 totalValue: enquiries.filter(e => isUserInTenderTeam(e)).reduce((sum, e) => sum + (e.value > 0 ? e.value : 0), 0)
             };
 
-            const handleNewTenderSubmit = (e) => {
+            const handleNewTenderSubmit = async (e) => {
                 e.preventDefault();
                 
-                // Use manually entered VS number or generate new one if empty
-                let vsNumber = newTenderForm.vsNumber;
-                if (!vsNumber) {
-                    const maxVSNumber = Math.max(...enquiries.map(e => parseInt(e.id.replace('VS', ''))));
-                    vsNumber = `VS${maxVSNumber + 1}`;
-                }
-                
-                // Determine initial action required - always start with awaiting assignment
-                let initialAction = 'Awaiting Assignment'; // No auto-assignment
+                try {
+                    console.log('Creating new tender with form data:', newTenderForm);
+                    
+                    // Use manually entered VS number or generate new one if empty
+                    let vsNumber = newTenderForm.vsNumber;
+                    if (!vsNumber) {
+                        const maxVSNumber = Math.max(...enquiries.map(e => parseInt(e.id.replace('VS', ''))));
+                        vsNumber = `VS${maxVSNumber + 1}`;
+                    }
+                    
+                    console.log('Generated VS Number:', vsNumber);
+                    
+                    // Determine initial action required - always start with awaiting assignment
+                    let initialAction = 'Awaiting Assignment'; // No auto-assignment
 
-                // Create new tender
-                const newTender = {
-                    id: vsNumber,
-                    client: newTenderForm.client,
-                    project: newTenderForm.project,
-                    value: newTenderForm.value ? parseInt(newTenderForm.value) : 0,
-                    status: `Action Required: ${initialAction}`,
-                    actionFrom: initialAction,
-                    tenderStatus: 'Active',
-                    priorityNumber: newTenderForm.priorityNumber,
-                    assignedTo: newTenderForm.assignedTo,
-                    salesManager: newTenderForm.salesManager,
-                    planner: newTenderForm.planner,
-                    designer: newTenderForm.designer,
-                    dateReceived: new Date().toISOString().split('T')[0],
-                    dueDate: newTenderForm.dueDate,
-                    requiresDesign: newTenderForm.requiresDesign,
-                    comments: [],
-                    completedBy: [] // Initialize empty completion tracking
-                };
-                
-                // Save to Firebase
-                database.ref(`tenders/${newTender.id}`).set(newTender);
-                
-                // Reset form and close modal
-                setNewTenderForm({
-                    vsNumber: '',
-                    client: '',
-                    project: '',
-                    value: '',
-                    priorityNumber: 1,
-                    assignedTo: '',
-                    salesManager: '',
-                    planner: '',
-                    designer: '',
-                    dueDate: '',
-                    requiresDesign: false
-                });
-                setShowNewEnquiry(false);
+                    // Create new tender
+                    const newTender = {
+                        id: vsNumber,
+                        client: newTenderForm.client,
+                        project: newTenderForm.project,
+                        value: newTenderForm.value ? parseInt(newTenderForm.value) : 0,
+                        status: `Action Required: ${initialAction}`,
+                        actionFrom: initialAction,
+                        tenderStatus: 'Active',
+                        priorityNumber: newTenderForm.priorityNumber,
+                        assignedTo: newTenderForm.assignedTo,
+                        salesManager: newTenderForm.salesManager,
+                        planner: newTenderForm.planner,
+                        designer: newTenderForm.designer,
+                        dateReceived: new Date().toISOString().split('T')[0],
+                        dueDate: newTenderForm.dueDate,
+                        requiresDesign: newTenderForm.requiresDesign,
+                        comments: [],
+                        completedBy: [] // Initialize empty completion tracking
+                    };
+                    
+                    console.log('Saving tender to Firebase:', newTender);
+                    
+                    // Save to Firebase with proper error handling
+                    await database.ref(`tenders/${newTender.id}`).set(newTender);
+                    
+                    console.log('Tender saved successfully!');
+                    
+                    // Reset form and close modal
+                    setNewTenderForm({
+                        vsNumber: '',
+                        client: '',
+                        project: '',
+                        value: '',
+                        priorityNumber: 1,
+                        assignedTo: '',
+                        salesManager: '',
+                        planner: '',
+                        designer: '',
+                        dueDate: '',
+                        requiresDesign: false
+                    });
+                    setShowNewEnquiry(false);
+                    
+                    alert('Tender created successfully!');
+                } catch (error) {
+                    console.error('Error creating tender:', error);
+                    alert('Failed to create tender. Please try again.');
+                }
             };
 
             const handleFormChange = (field, value) => {
@@ -1653,11 +1669,6 @@
                     }
                     
                     setNewMessage('');
-                    
-                    // Force refresh of dashboard by updating the messages state
-                    if (mentions.length > 0) {
-                        console.log('New mention sent, dashboard will refresh on next visit');
-                    }
                 } catch (error) {
                     console.error('Error sending message:', error);
                     alert('Failed to send message. Please try again.');
@@ -2539,9 +2550,18 @@
                                         const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
                                         const currentUserEmail = user?.email || '';
                                         
-                                        // Debug: Log all messages to see what we have (reverted to fix white screen)
-                                        const allMessages = Object.values(messages).flat();
-                                        console.log('All messages for mention detection (global):', allMessages.length);
+                                        // Get all messages from all tenders (simple approach without global listener)
+                                        const allMessages = [];
+                                        enquiries.forEach(tender => {
+                                            if (isUserInTenderTeam(tender)) {
+                                                const tenderMessages = messages[tender.id] || [];
+                                                tenderMessages.forEach(msg => {
+                                                    allMessages.push({...msg, tenderId: tender.id, tenderName: tender.project});
+                                                });
+                                            }
+                                        });
+                                        
+                                        console.log('All messages for mention detection:', allMessages.length);
                                         console.log('Messages with type mention:', allMessages.filter(m => m?.type === 'mention').length);
                                         console.log('Current user name:', currentUserName);
                                         console.log('Current user email:', currentUserEmail);
@@ -2556,11 +2576,9 @@
                                                 
                                                 if (msg?.type !== 'mention' || !msg?.mentions) return false;
                                                 
-                                                // Skip if already viewed
-                                                if (viewedMentions.has(msg.id)) {
-                                                    console.log('Mention already viewed:', msg.id);
-                                                    return false;
-                                                }
+                                                // Check if this mention has been read
+                                                const readMentions = JSON.parse(localStorage.getItem(`readMentions_${currentUserEmail}`) || '[]');
+                                                if (readMentions.includes(msg.id)) return false;
                                                 
                                                 return msg.mentions.some(m => {
                                                     const isMatch = m.email === currentUserEmail || 
@@ -2603,15 +2621,17 @@
                                                                 key={index} 
                                                                 className="flex items-center space-x-2 p-2 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors"
                                                                 onClick={() => {
-                                                                    // Find the tender this mention belongs to (reverted to fix white screen)
-                                                                    const tenderWithMessage = enquiries.find(tender => {
-                                                                        const tenderMessages = messages[tender.id] || [];
-                                                                        return tenderMessages.some(msg => msg.id === mention.id);
-                                                                    });
+                                                                    // Mark this mention as read
+                                                                    const readMentions = JSON.parse(localStorage.getItem(`readMentions_${currentUserEmail}`) || '[]');
+                                                                    if (!readMentions.includes(mention.id)) {
+                                                                        readMentions.push(mention.id);
+                                                                        localStorage.setItem(`readMentions_${currentUserEmail}`, JSON.stringify(readMentions));
+                                                                    }
+                                                                    
+                                                                    // Find the tender this mention belongs to using the tenderId we added
+                                                                    const tenderWithMessage = enquiries.find(tender => tender.id === mention.tenderId);
                                                                     if (tenderWithMessage) {
                                                                         console.log('Navigating to tender for mention:', mention.id, 'tender:', tenderWithMessage.id);
-                                                                        // Mark this mention as viewed
-                                                                        setViewedMentions(prev => new Set([...prev, mention.id]));
                                                                         setSelectedEnquiry(tenderWithMessage);
                                                                         setShowEnquiryDetails(true);
                                                                         setActiveTab('chat');
