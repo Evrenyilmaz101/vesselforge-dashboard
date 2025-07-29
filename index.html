@@ -1765,7 +1765,9 @@
                 const mentionRegex = /@([A-Za-z]+(?:\s+[A-Za-z]+)*)/g;
                 const mentions = [];
                 let match;
-                console.log('Detecting mentions in message:', newMessage);
+                console.log('🔍 DETECTING MENTIONS in message:', newMessage);
+                console.log('🔍 Message length:', newMessage.length);
+                console.log('🔍 Message type will be determined by mentions found...');
                 
                 while ((match = mentionRegex.exec(newMessage)) !== null) {
                     const mentionName = match[1].trim();
@@ -1801,9 +1803,13 @@
                     }
                 }
                 
-                console.log('Final mentions array:', mentions);
+                console.log('🔍 FINAL mentions array:', mentions);
+                console.log('🔍 Mentions count:', mentions.length);
                 
                 const messageId = Date.now() + Math.floor(Math.random() * 1000);
+                const messageType = mentions.length > 0 ? 'mention' : 'text';
+                console.log('🔍 MESSAGE TYPE will be:', messageType);
+                
                 const message = {
                     id: messageId,
                     text: newMessage,
@@ -1811,9 +1817,11 @@
                     timestampMs: Date.now(), // For sorting
                     sender: currentUserData?.fullName || user?.email?.split('@')[0] || 'User', // Use full name
                     senderEmail: user?.email, // Store email for avatar lookup
-                    type: mentions.length > 0 ? 'mention' : 'text',
+                    type: messageType,
                     mentions: mentions
                 };
+                
+                console.log('🔍 COMPLETE MESSAGE OBJECT:', message);
                 
                 try {
                     // Save to Firebase
@@ -2787,19 +2795,7 @@
                                                             <p className="text-blue-200 text-sm">{myMentions.length} recent mentions</p>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center space-x-2">
-                                                        <div className="text-2xl font-bold text-blue-300">{myMentions.length}</div>
-                                                        <button 
-                                                            onClick={() => {
-                                                                localStorage.removeItem(`readMentions_${currentUserEmail}`);
-                                                                window.location.reload();
-                                                            }}
-                                                            className="px-2 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-200 text-xs rounded transition-colors"
-                                                            title="Clear all mentions (for testing)"
-                                                        >
-                                                            Clear
-                                                        </button>
-                                                    </div>
+                                                    <div className="text-2xl font-bold text-blue-300">{myMentions.length}</div>
                                                 </div>
                                                 
                                                 {myMentions.length > 0 ? (
