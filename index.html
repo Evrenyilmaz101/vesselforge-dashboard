@@ -271,10 +271,21 @@
                                     const bTime = b.timestampMs || 0;
                                     return aTime - bTime;
                                 });
-                                setMessages(prev => ({
-                                    ...prev,
-                                    [selectedEnquiry.id]: messagesList
-                                }));
+                                
+                                // Debug mention messages for individual tender
+                                const mentionMessages = messagesList.filter(msg => msg.type === 'mention');
+                                if (mentionMessages.length > 0) {
+                                    console.log(`🎯 INDIVIDUAL tender listener - Found ${mentionMessages.length} mention messages in selected tender ${selectedEnquiry.id}`);
+                                }
+                                
+                                setMessages(prev => {
+                                    const updated = {
+                                        ...prev,
+                                        [selectedEnquiry.id]: messagesList
+                                    };
+                                    console.log(`🔄 INDIVIDUAL tender listener - Updated messages for selected tender ${selectedEnquiry.id} (${messagesList.length} messages)`);
+                                    return updated;
+                                });
                             } else {
                                 setMessages(prev => ({
                                     ...prev,
@@ -321,7 +332,7 @@
                 if (!user || !enquiries || enquiries.length === 0) return;
                 
                 const setupTenderMessageListeners = () => {
-                    console.log('Setting up message listeners for all accessible tenders...');
+                    console.log('🔧 Setting up DASHBOARD message listeners for all accessible tenders...');
                     
                     const accessibleTenders = enquiries.filter(tender => {
                         if (userRole === 'General Manager' || userRole === 'Sales Manager') {
@@ -331,7 +342,7 @@
                         return isUserInTenderTeam(tender);
                     });
                     
-                    console.log('Setting up listeners for', accessibleTenders.length, 'accessible tenders');
+                    console.log(`🎯 Setting up DASHBOARD listeners for ${accessibleTenders.length} accessible tenders:`, accessibleTenders.map(t => t.id));
                     
                     const listeners = [];
                     
@@ -351,15 +362,17 @@
                                     // Debug mention messages
                                     const mentionMessages = messagesList.filter(msg => msg.type === 'mention');
                                     if (mentionMessages.length > 0) {
-                                        console.log(`📢 Dashboard listener - Found ${mentionMessages.length} mention messages in tender ${tender.id}:`, mentionMessages);
+                                        console.log(`📢 DASHBOARD listener - Found ${mentionMessages.length} mention messages in tender ${tender.id}:`, mentionMessages.map(m => ({id: m.id, type: m.type, text: m.text?.substring(0, 50)})));
                                     }
                                     
-                                    setMessages(prev => ({
-                                        ...prev,
-                                        [tender.id]: messagesList
-                                    }));
-                                    
-                                    console.log(`✅ Dashboard listener - Updated ${messagesList.length} total messages for tender ${tender.id}`);
+                                    setMessages(prev => {
+                                        const updated = {
+                                            ...prev,
+                                            [tender.id]: messagesList
+                                        };
+                                        console.log(`🔄 DASHBOARD listener - Updated messages state for tender ${tender.id} (${messagesList.length} messages)`);
+                                        return updated;
+                                    });
                                 } else {
                                     setMessages(prev => ({
                                         ...prev,
@@ -861,8 +874,15 @@
                         console.log('Selected enquiry:', selectedEnquiry?.id);
                         
                         // Filter team members and match with user data for avatars
+                        const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
                         const suggestions = teamMemberNames
                             .filter(memberName => {
+                                // Exclude the sender's own name
+                                if (memberName === currentUserName) {
+                                    console.log(`Excluding sender's own name: ${memberName}`);
+                                    return false;
+                                }
+                                
                                 const matches = memberName.toLowerCase().includes(filter);
                                 console.log(`Member ${memberName} matches filter "${filter}":`, matches);
                                 return matches;
@@ -2695,10 +2715,12 @@
                                             }
                                         });
                                         
-                                        console.log('All messages for mention detection:', allMessages.length);
-                                        console.log('Messages with type mention:', allMessages.filter(m => m?.type === 'mention').length);
-                                        console.log('Current user name:', currentUserName);
-                                        console.log('Current user email:', currentUserEmail);
+                                        console.log('🔍 DASHBOARD @ MENTIONS - All messages for mention detection:', allMessages.length);
+                                        console.log('🔍 DASHBOARD @ MENTIONS - Messages with type mention:', allMessages.filter(m => m?.type === 'mention').length);
+                                        console.log('🔍 DASHBOARD @ MENTIONS - Current user name:', currentUserName);
+                                        console.log('🔍 DASHBOARD @ MENTIONS - Current user email:', currentUserEmail);
+                                        console.log('🔍 DASHBOARD @ MENTIONS - Messages state keys:', Object.keys(messages));
+                                        console.log('🔍 DASHBOARD @ MENTIONS - Accessible tender IDs:', enquiries.filter(t => isUserInTenderTeam(t)).map(t => t.id));
                                         
                                         const myMentions = allMessages
                                             .filter(msg => {
