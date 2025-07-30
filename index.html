@@ -247,6 +247,7 @@
             );
             const [highlightedMessageId, setHighlightedMessageId] = useState(null);
             const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+            const [replyingTo, setReplyingTo] = useState(null);
             
             // Text formatting functions
             const insertText = (text) => {
@@ -264,16 +265,16 @@
                 let formattedText = '';
                 switch (format) {
                     case 'bold':
-                        formattedText = `**${selectedText || 'bold text'}**`;
+                        formattedText = selectedText ? `**${selectedText}**` : '**';
                         break;
                     case 'italic':
-                        formattedText = `*${selectedText || 'italic text'}*`;
+                        formattedText = selectedText ? `*${selectedText}*` : '*';
                         break;
                     case 'bullet':
-                        formattedText = `• ${selectedText || 'bullet point'}`;
+                        formattedText = selectedText ? `• ${selectedText}` : '• ';
                         break;
                     case 'number':
-                        formattedText = `1. ${selectedText || 'numbered item'}`;
+                        formattedText = selectedText ? `1. ${selectedText}` : '1. ';
                         break;
                 }
                 
@@ -1986,7 +1987,12 @@
                     sender: currentUserData?.fullName || user?.email?.split('@')[0] || 'User', // Use full name
                     senderEmail: user?.email, // Store email for avatar lookup
                     type: messageType,
-                    mentions: mentions
+                    mentions: mentions,
+                    replyTo: replyingTo ? {
+                        id: replyingTo.id,
+                        text: replyingTo.text?.substring(0, 100) + (replyingTo.text?.length > 100 ? '...' : ''),
+                        sender: replyingTo.sender
+                    } : null
                 };
                 
                 console.log('🔍 COMPLETE MESSAGE OBJECT:', message);
@@ -2001,6 +2007,7 @@
                     }
                     
                     setNewMessage('');
+                    setReplyingTo(null);
                 } catch (error) {
                     console.error('Error sending message:', error);
                     alert('Failed to send message. Please try again.');
@@ -5080,6 +5087,23 @@
                                                                             </span>
                                                                             <span className="text-white/40 text-xs">{message.timestamp || 'Now'}</span>
                                                                         </div>
+                                                                        {/* Reply button - available to all users */}
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setReplyingTo(message);
+                                                                                // Focus the textarea
+                                                                                setTimeout(() => {
+                                                                                    const textarea = document.querySelector('textarea[placeholder*="Type your message"]');
+                                                                                    if (textarea) textarea.focus();
+                                                                                }, 100);
+                                                                            }}
+                                                                            className="text-blue-400 hover:text-blue-300 text-xs opacity-0 group-hover:opacity-100 transition-opacity mr-2"
+                                                                            title="Reply to message"
+                                                                        >
+                                                                            ↩️
+                                                                        </button>
+                                                                        
                                                                         {/* Delete button for message sender */}
                                                                         {(() => {
                                                                             const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
@@ -5126,6 +5150,18 @@
                                                                             })()
                                                                             : getUserMessageColor(message.sender || 'User', message.senderEmail)
                                                                     }`}>
+                                                                        {/* Reply display */}
+                                                                        {message.replyTo && (
+                                                                            <div className="mb-2 p-2 bg-black/20 border-l-2 border-blue-400 rounded text-xs">
+                                                                                <div className="text-blue-300 font-medium mb-1">
+                                                                                    Replying to {message.replyTo.sender}:
+                                                                                </div>
+                                                                                <div className="text-white/70 italic">
+                                                                                    {message.replyTo.text}
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                        
                                                                         <div className={`text-sm whitespace-pre-wrap break-words ${
                                                                             message.type === 'action-alert' 
                                                                                 ? 'text-orange-100 font-medium' 
@@ -5312,6 +5348,27 @@
                                                                     </div>
                                                                 </div>
                                                             ))}
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {/* Reply Preview */}
+                                                    {replyingTo && (
+                                                        <div className="mb-3 p-3 bg-blue-500/10 border border-blue-400/30 rounded-lg">
+                                                            <div className="flex items-center justify-between mb-2">
+                                                                <span className="text-blue-300 text-sm font-medium">
+                                                                    Replying to {replyingTo.sender}
+                                                                </span>
+                                                                <button
+                                                                    onClick={() => setReplyingTo(null)}
+                                                                    className="text-blue-400 hover:text-blue-300 text-sm"
+                                                                    title="Cancel reply"
+                                                                >
+                                                                    ✕
+                                                                </button>
+                                                            </div>
+                                                            <div className="text-white/70 text-sm italic border-l-2 border-blue-400 pl-2">
+                                                                {replyingTo.text?.substring(0, 100)}{replyingTo.text?.length > 100 ? '...' : ''}
+                                                            </div>
                                                         </div>
                                                     )}
                                                     
