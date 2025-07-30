@@ -263,26 +263,49 @@
                 const selectedText = newMessage.substring(start, end);
                 
                 let formattedText = '';
+                let newCursorPos = start;
+                
                 switch (format) {
                     case 'bold':
-                        formattedText = selectedText ? `**${selectedText}**` : '**';
-                        break;
-                    case 'italic':
-                        formattedText = selectedText ? `*${selectedText}*` : '*';
+                        if (selectedText) {
+                            // Format selected text as bold (still using markdown for storage/display)
+                            formattedText = `**${selectedText}**`;
+                            newCursorPos = start + formattedText.length;
+                        } else {
+                            // No selection, just insert bold markers and position cursor between them
+                            formattedText = '****';
+                            newCursorPos = start + 2; // Position cursor between the **
+                        }
                         break;
                     case 'bullet':
-                        formattedText = selectedText ? `• ${selectedText}` : '• ';
-                        break;
-                    case 'number':
-                        formattedText = selectedText ? `1. ${selectedText}` : '1. ';
+                        // Add bullet point at current line
+                        const beforeCursor = newMessage.substring(0, start);
+                        const afterCursor = newMessage.substring(end);
+                        
+                        // Find start of current line
+                        const lineStart = beforeCursor.lastIndexOf('\n') + 1;
+                        const currentLine = beforeCursor.substring(lineStart);
+                        
+                        // If we're at the start of a line or line is empty, add bullet
+                        if (currentLine.trim() === '' || start === lineStart) {
+                            formattedText = '• ';
+                            newCursorPos = start + 2;
+                        } else {
+                            // Add bullet on new line
+                            formattedText = '\n• ';
+                            newCursorPos = start + 3;
+                        }
                         break;
                 }
                 
                 const newText = newMessage.substring(0, start) + formattedText + newMessage.substring(end);
                 setNewMessage(newText);
                 
-                // Focus textarea after formatting
-                setTimeout(() => textarea.focus(), 10);
+                // Focus textarea and set cursor position after formatting
+                setTimeout(() => {
+                    textarea.focus();
+                    textarea.setSelectionRange(newCursorPos, newCursorPos);
+                }, 10);
             };
             
             // Emoji picker data
@@ -320,14 +343,8 @@
                 // Replace bold text
                 processedText = processedText.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold">$1</strong>');
                 
-                // Replace italic text
-                processedText = processedText.replace(/\*(.*?)\*/g, '<em class="italic">$1</em>');
-                
                 // Handle bullet points
                 processedText = processedText.replace(/^•\s(.+)$/gm, '<div class="ml-4">• $1</div>');
-                
-                // Handle numbered lists
-                processedText = processedText.replace(/^\d+\.\s(.+)$/gm, '<div class="ml-4">$&</div>');
                 
                 return processedText;
             };
@@ -353,6 +370,17 @@
                 document.addEventListener('mousedown', handleClickOutside);
                 return () => document.removeEventListener('mousedown', handleClickOutside);
             }, [showEmojiPicker]);
+            
+            // Reset textarea height when message is cleared
+            useEffect(() => {
+                if (newMessage === '') {
+                    const textarea = document.querySelector('textarea[placeholder*="Type your message"]');
+                    if (textarea) {
+                        textarea.style.height = 'auto';
+                        textarea.style.height = '40px'; // Reset to minimum height
+                    }
+                }
+            }, [newMessage]);
             
             // TEMPORARILY DISABLED ALL NEW MENTION FEATURES TO FIX WHITE SCREEN
             // const [allTenderMessages, setAllTenderMessages] = useState({});
@@ -5261,16 +5289,9 @@
                                                             <button
                                                                 onClick={() => insertFormatting('bold')}
                                                                 className="px-2 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-sm font-bold transition-colors"
-                                                                title="Bold (surrounds with **)"
+                                                                title="Bold"
                                                             >
                                                                 B
-                                                            </button>
-                                                            <button
-                                                                onClick={() => insertFormatting('italic')}
-                                                                className="px-2 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-sm italic transition-colors"
-                                                                title="Italic (surrounds with *)"
-                                                            >
-                                                                I
                                                             </button>
                                                             <button
                                                                 onClick={() => insertFormatting('bullet')}
@@ -5278,13 +5299,6 @@
                                                                 title="Bullet point"
                                                             >
                                                                 •
-                                                            </button>
-                                                            <button
-                                                                onClick={() => insertFormatting('number')}
-                                                                className="px-2 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-sm transition-colors"
-                                                                title="Numbered list"
-                                                            >
-                                                                1.
                                                             </button>
                                                         </div>
                                                         
@@ -5377,9 +5391,12 @@
                                                             value={newMessage}
                                                             onChange={(e) => {
                                                                 handleMessageChange(e);
-                                                                // Auto-grow textarea
-                                                                e.target.style.height = 'auto';
-                                                                e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px';
+                                                                // Auto-grow textarea with proper reset
+                                                                setTimeout(() => {
+                                                                    e.target.style.height = 'auto';
+                                                                    const newHeight = Math.max(40, Math.min(e.target.scrollHeight, 128));
+                                                                    e.target.style.height = newHeight + 'px';
+                                                                }, 0);
                                                             }}
                                                             onKeyPress={(e) => {
                                                                 if (e.key === 'Enter' && e.shiftKey) {
@@ -5392,7 +5409,7 @@
                                                                 }
                                                             }}
                                                             placeholder="Type your message... (use @ to mention someone, Shift+Enter to send)"
-                                                            className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-400 text-sm resize-none min-h-[2.5rem] max-h-32 overflow-y-auto"
+                                                            className="flex-1 w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-400 text-sm resize-none min-h-[2.5rem] max-h-32 overflow-y-auto"
                                                             rows="1"
                                                         />
 
