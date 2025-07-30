@@ -1761,8 +1761,8 @@
             const sendMessage = async () => {
                 if (!newMessage.trim() || !selectedEnquiry) return;
                 
-                // Detect @ mentions in the message - improved regex for names with spaces, handles punctuation
-                const mentionRegex = /@([A-Za-z]+(?:\s+[A-Za-z]+)*)/g;
+                // Detect @ mentions in the message - regex that stops at word boundaries or punctuation
+                const mentionRegex = /@([A-Za-z]+(?:\s+[A-Za-z]+)*?)(?=\s|$|[^\w\s])/g;
                 const mentions = [];
                 let match;
                 console.log('🔍 DETECTING MENTIONS in message:', newMessage);
