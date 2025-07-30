@@ -4964,8 +4964,6 @@
                                                                 >
                                                                     {message.type === 'action-alert' ? (
                                                                         <span className="text-white text-xs font-bold">🚨</span>
-                                                                    ) : message.type === 'mention' ? (
-                                                                        <span className="text-blue-200 text-xs font-bold">@</span>
                                                                     ) : getUserAvatar(message.sender || 'User', message.senderEmail) ? (
                                                                         <img 
                                                                             src={getUserAvatar(message.sender || 'User', message.senderEmail)} 
@@ -5037,21 +5035,7 @@
                                                                                 ? 'text-orange-100 font-medium whitespace-pre-line' 
                                                                                 : 'text-white'
                                                                         }`}>
-                                                                            {message.type === 'mention' ? (
-                                                                                // Highlight @ mentions in text - only highlight @username, not message
-                                                                                message.text.split(/(@[A-Za-z]+(?:\s+[A-Za-z]+)*)/).map((part, index) => {
-                                                                                    if (part.startsWith('@')) {
-                                                                                        return (
-                                                                                            <span key={index} className="bg-blue-500/30 text-blue-200 px-1 rounded font-medium">
-                                                                                                {part}
-                                                                                            </span>
-                                                                                        );
-                                                                                    }
-                                                                                    return <span key={index} className="text-white">{part}</span>;
-                                                                                })
-                                                                            ) : (
-                                                                                message.text || 'No message'
-                                                                            )}
+                                                                            {message.text || 'No message'}
                                                                         </p>
                                                                         
                                                                         {/* Action Alert Completion Controls */}
