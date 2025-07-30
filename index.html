@@ -1774,21 +1774,21 @@
                     console.log('🔍 SEND MESSAGE - Found potential mention:', mentionName);
                     console.log('🔍 SEND MESSAGE - Available users:', allUsers.map(u => ({ fullName: u.fullName, email: u.email })));
                     
-                    // Find user by exact name match or partial match
+                    // Find user by EXACT name match only (no partial matches to avoid wrong user)
                     const mentionedUser = allUsers.find(user => {
                         const fullName = user.fullName || user.email.split('@')[0];
                         const emailName = user.email.split('@')[0];
                         
-                        const exactMatch = fullName.toLowerCase() === mentionName.toLowerCase();
-                        const emailMatch = emailName.toLowerCase() === mentionName.toLowerCase();
-                        const includesMatch = fullName.toLowerCase().includes(mentionName.toLowerCase());
+                        // Only exact matches to prevent wrong user selection
+                        const exactFullNameMatch = fullName.toLowerCase() === mentionName.toLowerCase();
+                        const exactEmailNameMatch = emailName.toLowerCase() === mentionName.toLowerCase();
                         
-                        console.log(`🔍 SEND MESSAGE - Checking user ${fullName} vs mention ${mentionName}:`);
-                        console.log(`   - Exact match: ${exactMatch}`);
-                        console.log(`   - Email match: ${emailMatch}`);
-                        console.log(`   - Includes match: ${includesMatch}`);
+                        console.log(`🔍 SEND MESSAGE - Checking user "${fullName}" vs mention "${mentionName}":`);
+                        console.log(`   - Exact full name match: ${exactFullNameMatch}`);
+                        console.log(`   - Exact email name match: ${exactEmailNameMatch}`);
+                        console.log(`   - User object:`, user);
                         
-                        return exactMatch || emailMatch || includesMatch;
+                        return exactFullNameMatch || exactEmailNameMatch;
                     });
                     
                     if (mentionedUser) {
