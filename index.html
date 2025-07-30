@@ -246,6 +246,90 @@
                 typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
             );
             const [highlightedMessageId, setHighlightedMessageId] = useState(null);
+            const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+            
+            // Text formatting functions
+            const insertText = (text) => {
+                setNewMessage(prev => prev + text);
+            };
+            
+            const insertFormatting = (format) => {
+                const textarea = document.querySelector('textarea[placeholder*="Type your message"]');
+                if (!textarea) return;
+                
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const selectedText = newMessage.substring(start, end);
+                
+                let formattedText = '';
+                switch (format) {
+                    case 'bold':
+                        formattedText = `**${selectedText || 'bold text'}**`;
+                        break;
+                    case 'italic':
+                        formattedText = `*${selectedText || 'italic text'}*`;
+                        break;
+                    case 'bullet':
+                        formattedText = `• ${selectedText || 'bullet point'}`;
+                        break;
+                    case 'number':
+                        formattedText = `1. ${selectedText || 'numbered item'}`;
+                        break;
+                }
+                
+                const newText = newMessage.substring(0, start) + formattedText + newMessage.substring(end);
+                setNewMessage(newText);
+                
+                // Focus textarea after formatting
+                setTimeout(() => textarea.focus(), 10);
+            };
+            
+            // Emoji picker data
+            const emojis = [
+                '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣',
+                '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰',
+                '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜',
+                '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏',
+                '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣',
+                '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠',
+                '👍', '👎', '👏', '🙌', '👌', '✌️', '🤞', '🤟',
+                '🤘', '🤙', '👈', '👉', '👆', '👇', '☝️', '✋',
+                '🤚', '🖐️', '🖖', '👋', '🤝', '👍', '💪', '🦾',
+                '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍'
+            ];
+            
+            // Function to render formatted text (markdown-style)
+            const renderFormattedText = (text) => {
+                if (!text) return text;
+                
+                // Split text into parts and process formatting
+                const parts = [];
+                let currentIndex = 0;
+                
+                // Process text with regex patterns
+                const patterns = [
+                    { regex: /\*\*(.*?)\*\*/g, tag: 'strong', className: 'font-bold' },
+                    { regex: /\*(.*?)\*/g, tag: 'em', className: 'italic' },
+                    { regex: /^•\s(.+)$/gm, tag: 'li', className: 'ml-4 list-disc list-inside' },
+                    { regex: /^\d+\.\s(.+)$/gm, tag: 'li', className: 'ml-4 list-decimal list-inside' }
+                ];
+                
+                let processedText = text;
+                
+                // Replace bold text
+                processedText = processedText.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold">$1</strong>');
+                
+                // Replace italic text
+                processedText = processedText.replace(/\*(.*?)\*/g, '<em class="italic">$1</em>');
+                
+                // Handle bullet points
+                processedText = processedText.replace(/^•\s(.+)$/gm, '<div class="ml-4">• $1</div>');
+                
+                // Handle numbered lists
+                processedText = processedText.replace(/^\d+\.\s(.+)$/gm, '<div class="ml-4">$&</div>');
+                
+                return processedText;
+            };
             
             // Auto-remove message highlight after 3 seconds
             useEffect(() => {
@@ -256,6 +340,18 @@
                     return () => clearTimeout(timer);
                 }
             }, [highlightedMessageId]);
+            
+            // Close emoji picker when clicking outside
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (showEmojiPicker && !event.target.closest('.emoji-picker-container')) {
+                        setShowEmojiPicker(false);
+                    }
+                };
+                
+                document.addEventListener('mousedown', handleClickOutside);
+                return () => document.removeEventListener('mousedown', handleClickOutside);
+            }, [showEmojiPicker]);
             
             // TEMPORARILY DISABLED ALL NEW MENTION FEATURES TO FIX WHITE SCREEN
             // const [allTenderMessages, setAllTenderMessages] = useState({});
@@ -5030,13 +5126,15 @@
                                                                             })()
                                                                             : getUserMessageColor(message.sender || 'User', message.senderEmail)
                                                                     }`}>
-                                                                        <p className={`text-sm whitespace-pre-wrap break-words ${
+                                                                        <div className={`text-sm whitespace-pre-wrap break-words ${
                                                                             message.type === 'action-alert' 
                                                                                 ? 'text-orange-100 font-medium' 
                                                                                 : 'text-white'
-                                                                        }`}>
-                                                                            {message.text || 'No message'}
-                                                                        </p>
+                                                                        }`}
+                                                                        dangerouslySetInnerHTML={{
+                                                                            __html: renderFormattedText(message.text || 'No message')
+                                                                        }}
+                                                                        />
                                                                         
                                                                         {/* Action Alert Completion Controls */}
                                                                         {message.type === 'action-alert' && (
@@ -5121,6 +5219,70 @@
 
                                                 {/* Message Input */}
                                                 <div className="p-3 border-t border-white/20 bg-slate-700/20 relative">
+                                                    {/* Formatting Toolbar */}
+                                                    <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/10">
+                                                        <div className="flex items-center space-x-2">
+                                                            <button
+                                                                onClick={() => insertFormatting('bold')}
+                                                                className="px-2 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-sm font-bold transition-colors"
+                                                                title="Bold (surrounds with **)"
+                                                            >
+                                                                B
+                                                            </button>
+                                                            <button
+                                                                onClick={() => insertFormatting('italic')}
+                                                                className="px-2 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-sm italic transition-colors"
+                                                                title="Italic (surrounds with *)"
+                                                            >
+                                                                I
+                                                            </button>
+                                                            <button
+                                                                onClick={() => insertFormatting('bullet')}
+                                                                className="px-2 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-sm transition-colors"
+                                                                title="Bullet point"
+                                                            >
+                                                                •
+                                                            </button>
+                                                            <button
+                                                                onClick={() => insertFormatting('number')}
+                                                                className="px-2 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-sm transition-colors"
+                                                                title="Numbered list"
+                                                            >
+                                                                1.
+                                                            </button>
+                                                        </div>
+                                                        
+                                                        <div className="relative emoji-picker-container">
+                                                            <button
+                                                                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                                                className="px-3 py-1 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 rounded text-sm transition-colors"
+                                                                title="Add emoji"
+                                                            >
+                                                                😊
+                                                            </button>
+                                                            
+                                                            {/* Emoji Picker */}
+                                                            {showEmojiPicker && (
+                                                                <div className="absolute bottom-full right-0 mb-2 bg-slate-800 border border-white/20 rounded-lg p-3 shadow-lg z-50 w-64 max-h-48 overflow-y-auto">
+                                                                    <div className="grid grid-cols-8 gap-1">
+                                                                        {emojis.map((emoji, index) => (
+                                                                            <button
+                                                                                key={index}
+                                                                                onClick={() => {
+                                                                                    insertText(emoji);
+                                                                                    setShowEmojiPicker(false);
+                                                                                }}
+                                                                                className="p-1 hover:bg-white/10 rounded text-lg transition-colors"
+                                                                                title={emoji}
+                                                                            >
+                                                                                {emoji}
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                     {/* Mention Suggestions Dropdown */}
                                                     {showMentionSuggestions && (
                                                         <div className="absolute bottom-full left-3 right-3 mb-2 bg-slate-800 border border-white/20 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
@@ -5163,7 +5325,7 @@
                                                                 e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px';
                                                             }}
                                                             onKeyPress={(e) => {
-                                                                if (e.key === 'Enter' && !e.shiftKey) {
+                                                                if (e.key === 'Enter' && e.shiftKey) {
                                                                     e.preventDefault();
                                                                     if (showMentionSuggestions) {
                                                                         setShowMentionSuggestions(false);
@@ -5172,7 +5334,7 @@
                                                                     }
                                                                 }
                                                             }}
-                                                            placeholder="Type your message... (use @ to mention someone, Shift+Enter for new line)"
+                                                            placeholder="Type your message... (use @ to mention someone, Shift+Enter to send)"
                                                             className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-400 text-sm resize-none min-h-[2.5rem] max-h-32 overflow-y-auto"
                                                             rows="1"
                                                         />
