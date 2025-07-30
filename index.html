@@ -1773,6 +1773,7 @@
                     const mentionName = match[1].trim();
                     console.log('🔍 SEND MESSAGE - Found potential mention:', mentionName);
                     console.log('🔍 SEND MESSAGE - Available users:', allUsers.map(u => ({ fullName: u.fullName, email: u.email })));
+                    console.log('🔍 SEND MESSAGE - Total users count:', allUsers.length);
                     
                     // Find user by EXACT name match only (no partial matches to avoid wrong user)
                     const mentionedUser = allUsers.find(user => {
@@ -1793,11 +1794,15 @@
                     
                     if (mentionedUser) {
                         console.log('✅ SEND MESSAGE - Found mentioned user:', mentionedUser);
-                        mentions.push({
+                        console.log('✅ SEND MESSAGE - Mentioned user email:', mentionedUser.email);
+                        console.log('✅ SEND MESSAGE - Mentioned user fullName:', mentionedUser.fullName);
+                        const mentionObject = {
                             name: mentionName,
                             email: mentionedUser.email,
                             fullName: mentionedUser.fullName || mentionedUser.email.split('@')[0]
-                        });
+                        };
+                        console.log('✅ SEND MESSAGE - Mention object to push:', mentionObject);
+                        mentions.push(mentionObject);
                     } else {
                         console.log('❌ SEND MESSAGE - No user found for mention:', mentionName);
                     }
