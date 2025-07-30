@@ -5030,9 +5030,9 @@
                                                                             })()
                                                                             : getUserMessageColor(message.sender || 'User', message.senderEmail)
                                                                     }`}>
-                                                                        <p className={`text-sm ${
+                                                                        <p className={`text-sm whitespace-pre-wrap break-words ${
                                                                             message.type === 'action-alert' 
-                                                                                ? 'text-orange-100 font-medium whitespace-pre-line' 
+                                                                                ? 'text-orange-100 font-medium' 
                                                                                 : 'text-white'
                                                                         }`}>
                                                                             {message.text || 'No message'}
@@ -5154,12 +5154,17 @@
                                                     )}
                                                     
                                                     <div className="flex space-x-2">
-                                                        <input
-                                                            type="text"
+                                                        <textarea
                                                             value={newMessage}
-                                                            onChange={handleMessageChange}
+                                                            onChange={(e) => {
+                                                                handleMessageChange(e);
+                                                                // Auto-grow textarea
+                                                                e.target.style.height = 'auto';
+                                                                e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px';
+                                                            }}
                                                             onKeyPress={(e) => {
-                                                                if (e.key === 'Enter') {
+                                                                if (e.key === 'Enter' && !e.shiftKey) {
+                                                                    e.preventDefault();
                                                                     if (showMentionSuggestions) {
                                                                         setShowMentionSuggestions(false);
                                                                     } else {
@@ -5167,8 +5172,9 @@
                                                                     }
                                                                 }
                                                             }}
-                                                            placeholder="Type your message... (use @ to mention someone)"
-                                                            className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-400 text-sm"
+                                                            placeholder="Type your message... (use @ to mention someone, Shift+Enter for new line)"
+                                                            className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-400 text-sm resize-none min-h-[2.5rem] max-h-32 overflow-y-auto"
+                                                            rows="1"
                                                         />
 
                                                         <label className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg cursor-pointer transition-colors flex items-center text-sm" title="Attach Files">
