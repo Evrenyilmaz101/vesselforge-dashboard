@@ -254,72 +254,18 @@
                 setNewMessage(prev => prev + text);
             };
             
-            const insertFormatting = (format) => {
-                const textarea = document.querySelector('textarea[placeholder*="Type your message"]');
-                if (!textarea) return;
-                
-                const start = textarea.selectionStart;
-                const end = textarea.selectionEnd;
-                const selectedText = newMessage.substring(start, end);
-                
-                let formattedText = '';
-                let newCursorPos = start;
-                
-                switch (format) {
-                    case 'bold':
-                        if (selectedText) {
-                            // Format selected text as bold (still using markdown for storage/display)
-                            formattedText = `**${selectedText}**`;
-                            newCursorPos = start + formattedText.length;
-                        } else {
-                            // No selection, just insert bold markers and position cursor between them
-                            formattedText = '****';
-                            newCursorPos = start + 2; // Position cursor between the **
-                        }
-                        break;
-                    case 'bullet':
-                        // Add bullet point at current line
-                        const beforeCursor = newMessage.substring(0, start);
-                        const afterCursor = newMessage.substring(end);
-                        
-                        // Find start of current line
-                        const lineStart = beforeCursor.lastIndexOf('\n') + 1;
-                        const currentLine = beforeCursor.substring(lineStart);
-                        
-                        // If we're at the start of a line or line is empty, add bullet
-                        if (currentLine.trim() === '' || start === lineStart) {
-                            formattedText = '• ';
-                            newCursorPos = start + 2;
-                        } else {
-                            // Add bullet on new line
-                            formattedText = '\n• ';
-                            newCursorPos = start + 3;
-                        }
-                        break;
-                }
-                
-                const newText = newMessage.substring(0, start) + formattedText + newMessage.substring(end);
-                setNewMessage(newText);
-                
-                // Focus textarea and set cursor position after formatting
-                setTimeout(() => {
-                    textarea.focus();
-                    textarea.setSelectionRange(newCursorPos, newCursorPos);
-                }, 10);
-            };
+
             
-            // Emoji picker data
+            // Emoji picker data - essential emojis only
             const emojis = [
-                '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣',
-                '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰',
-                '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜',
-                '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏',
-                '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣',
-                '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠',
-                '👍', '👎', '👏', '🙌', '👌', '✌️', '🤞', '🤟',
-                '🤘', '🤙', '👈', '👉', '👆', '👇', '☝️', '✋',
-                '🤚', '🖐️', '🖖', '👋', '🤝', '👍', '💪', '🦾',
-                '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍'
+                '👍', // thumbs up
+                '👎', // thumbs down  
+                '👏', // clap hands
+                '😊', // happy
+                '😢', // sad
+                '😅', // sweat
+                '😉', // wink eye
+                '😂'  // laugh cry
             ];
             
             // Function to render formatted text (markdown-style)
@@ -5040,8 +4986,8 @@
                                     {activeTab === 'chat' && (
                                         <div className="h-full flex">
                                             {/* Messages Area */}
-                                            <div className="flex-1 flex flex-col">
-                                                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-700/30">
+                                            <div className="flex-1 flex flex-col w-full">
+                                                <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4 bg-slate-700/30">
                                                     {(messages[selectedEnquiry.id] || []).length === 0 ? (
                                                         <div className="text-center text-white/60 py-12">
                                                             <i data-lucide="message-square" className="h-12 w-12 mx-auto mb-4 opacity-50"></i>
@@ -5282,26 +5228,9 @@
                                                 </div>
 
                                                 {/* Message Input */}
-                                                <div className="p-3 border-t border-white/20 bg-slate-700/20 relative">
-                                                    {/* Formatting Toolbar */}
-                                                    <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/10">
-                                                        <div className="flex items-center space-x-2">
-                                                            <button
-                                                                onClick={() => insertFormatting('bold')}
-                                                                className="px-2 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-sm font-bold transition-colors"
-                                                                title="Bold"
-                                                            >
-                                                                B
-                                                            </button>
-                                                            <button
-                                                                onClick={() => insertFormatting('bullet')}
-                                                                className="px-2 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-sm transition-colors"
-                                                                title="Bullet point"
-                                                            >
-                                                                •
-                                                            </button>
-                                                        </div>
-                                                        
+                                                <div className="p-2 sm:p-3 border-t border-white/20 bg-slate-700/20 relative">
+                                                    {/* Emoji Picker */}
+                                                    <div className="flex justify-end mb-3">
                                                         <div className="relative emoji-picker-container">
                                                             <button
                                                                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -5313,8 +5242,8 @@
                                                             
                                                             {/* Emoji Picker */}
                                                             {showEmojiPicker && (
-                                                                <div className="absolute bottom-full right-0 mb-2 bg-slate-800 border border-white/20 rounded-lg p-3 shadow-lg z-50 w-64 max-h-48 overflow-y-auto">
-                                                                    <div className="grid grid-cols-8 gap-1">
+                                                                <div className="absolute bottom-full right-0 mb-2 bg-slate-800 border border-white/20 rounded-lg p-3 shadow-lg z-50 w-fit">
+                                                                    <div className="grid grid-cols-4 gap-2">
                                                                         {emojis.map((emoji, index) => (
                                                                             <button
                                                                                 key={index}
@@ -5322,7 +5251,7 @@
                                                                                     insertText(emoji);
                                                                                     setShowEmojiPicker(false);
                                                                                 }}
-                                                                                className="p-1 hover:bg-white/10 rounded text-lg transition-colors"
+                                                                                className="p-2 hover:bg-white/10 rounded text-lg transition-colors"
                                                                                 title={emoji}
                                                                             >
                                                                                 {emoji}
@@ -5386,16 +5315,15 @@
                                                         </div>
                                                     )}
                                                     
-                                                    <div className="flex space-x-2">
+                                                    <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                                                         <textarea
                                                             value={newMessage}
                                                             onChange={(e) => {
                                                                 handleMessageChange(e);
-                                                                // Auto-grow textarea with proper reset
+                                                                // Auto-grow textarea to fit all content (no max height)
                                                                 setTimeout(() => {
                                                                     e.target.style.height = 'auto';
-                                                                    const newHeight = Math.max(40, Math.min(e.target.scrollHeight, 128));
-                                                                    e.target.style.height = newHeight + 'px';
+                                                                    e.target.style.height = Math.max(40, e.target.scrollHeight) + 'px';
                                                                 }, 0);
                                                             }}
                                                             onKeyPress={(e) => {
@@ -5409,29 +5337,31 @@
                                                                 }
                                                             }}
                                                             placeholder="Type your message... (use @ to mention someone, Shift+Enter to send)"
-                                                            className="flex-1 w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-400 text-sm resize-none min-h-[2.5rem] max-h-32 overflow-y-auto"
+                                                            className="flex-1 w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-400 text-sm resize-none min-h-[2.5rem] overflow-hidden"
                                                             rows="1"
                                                         />
 
-                                                        <label className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg cursor-pointer transition-colors flex items-center text-sm" title="Attach Files">
-                                                            <span className="mr-1">📎</span>
-                                                            <i data-lucide="paperclip" className="h-4 w-4 mr-1 hidden"></i>
-                                                            <input
-                                                                type="file"
-                                                                multiple
-                                                                onChange={handleFileUpload}
-                                                                className="hidden"
-                                                                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.csv"
-                                                            />
-                                                        </label>
-                                                        <button
-                                                            onClick={sendMessage}
-                                                            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center text-sm"
-                                                            title="Send Message"
-                                                        >
-                                                            <span className="mr-1">➤</span>
-                                                            <i data-lucide="send" className="h-4 w-4 mr-1 hidden"></i>
-                                                        </button>
+                                                        <div className="flex space-x-2 flex-shrink-0">
+                                                            <label className="px-2 sm:px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg cursor-pointer transition-colors flex items-center text-xs sm:text-sm" title="Attach Files">
+                                                                <span className="mr-1">📎</span>
+                                                                <i data-lucide="paperclip" className="h-4 w-4 mr-1 hidden"></i>
+                                                                <input
+                                                                    type="file"
+                                                                    multiple
+                                                                    onChange={handleFileUpload}
+                                                                    className="hidden"
+                                                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.csv"
+                                                                />
+                                                            </label>
+                                                            <button
+                                                                onClick={sendMessage}
+                                                                className="px-2 sm:px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center text-xs sm:text-sm"
+                                                                title="Send Message"
+                                                            >
+                                                                <span className="mr-1">➤</span>
+                                                                <i data-lucide="send" className="h-4 w-4 mr-1 hidden"></i>
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
