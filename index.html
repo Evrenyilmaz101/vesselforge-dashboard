@@ -5124,36 +5124,47 @@
                                                                             })()
                                                                             : getUserMessageColor(message.sender || 'User', message.senderEmail)
                                                                     }`}>
-                                                                        {/* Reply display - Cool overlay style */}
+                                                                        {/* Reply display - Stacked overlay style */}
                                                                         {message.replyTo && (
-                                                                            <div className="relative mb-3">
-                                                                                {/* Original message overlay */}
-                                                                                <div className="relative bg-gradient-to-r from-slate-600/30 to-slate-700/30 border border-slate-500/40 rounded-lg p-3 mb-2 transform -rotate-1 shadow-lg backdrop-blur-sm">
-                                                                                    <div className="absolute top-1 right-1 text-xs text-slate-400">💬</div>
-                                                                                    <div className="text-slate-300 font-semibold text-xs mb-1 flex items-center">
-                                                                                        <div className="w-2 h-2 bg-blue-400 rounded-full mr-2 animate-pulse"></div>
+                                                                            <div className="relative mb-4">
+                                                                                {/* Original message - background layer */}
+                                                                                <div className="relative bg-gradient-to-r from-slate-600/40 to-slate-700/40 border border-slate-400/30 rounded-lg p-3 shadow-md">
+                                                                                    <div className="text-slate-300 font-medium text-xs mb-1 flex items-center">
+                                                                                        <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2"></div>
                                                                                         {message.replyTo.sender}
                                                                                     </div>
-                                                                                    <div className="text-slate-200 text-sm italic opacity-90 line-clamp-2">
-                                                                                        "{message.replyTo.text}"
+                                                                                    <div className="text-slate-200 text-sm opacity-80 pr-8">
+                                                                                        {message.replyTo.text}
                                                                                     </div>
-                                                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-lg pointer-events-none"></div>
                                                                                 </div>
-                                                                                {/* Reply connector */}
-                                                                                <div className="absolute -bottom-1 left-4 w-8 h-4 bg-gradient-to-r from-blue-500/60 to-purple-500/60 rounded-full blur-sm"></div>
-                                                                                <div className="absolute -bottom-1 left-6 text-blue-400 text-xs">↳</div>
+                                                                                
+                                                                                {/* Current reply - overlaid on top-right */}
+                                                                                <div className="absolute top-3 right-3 bg-gradient-to-br from-blue-500/90 to-purple-600/90 border border-blue-400/50 rounded-lg p-3 shadow-lg backdrop-blur-sm transform translate-x-2 translate-y-2 min-w-[200px] max-w-[300px]">
+                                                                                    <div className="text-blue-100 font-medium text-xs mb-1 flex items-center">
+                                                                                        <div className="w-1.5 h-1.5 bg-white rounded-full mr-2 animate-pulse"></div>
+                                                                                        Reply from {message.sender}
+                                                                                    </div>
+                                                                                    <div className="text-white text-sm font-medium">
+                                                                                        {message.text}
+                                                                                    </div>
+                                                                                    {/* Small arrow pointing to original */}
+                                                                                    <div className="absolute -left-2 top-4 w-0 h-0 border-t-4 border-b-4 border-r-8 border-transparent border-r-blue-500/90"></div>
+                                                                                </div>
                                                                             </div>
                                                                         )}
                                                                         
-                                                                        <div className={`text-sm whitespace-pre-wrap break-words ${
-                                                                            message.type === 'action-alert' 
-                                                                                ? 'text-orange-100 font-medium' 
-                                                                                : 'text-white'
-                                                                        }`}
-                                                                        dangerouslySetInnerHTML={{
-                                                                            __html: renderFormattedText(message.text || 'No message')
-                                                                        }}
-                                                                        />
+                                                                        {/* Only show message text if it's not a reply (reply text is shown in overlay) */}
+                                                                        {!message.replyTo && (
+                                                                            <div className={`text-sm whitespace-pre-wrap break-words ${
+                                                                                message.type === 'action-alert' 
+                                                                                    ? 'text-orange-100 font-medium' 
+                                                                                    : 'text-white'
+                                                                            }`}
+                                                                            dangerouslySetInnerHTML={{
+                                                                                __html: renderFormattedText(message.text || 'No message')
+                                                                            }}
+                                                                            />
+                                                                        )}
                                                                         
                                                                         {/* Action Alert Completion Controls */}
                                                                         {message.type === 'action-alert' && (
