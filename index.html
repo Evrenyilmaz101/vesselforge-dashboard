@@ -2787,7 +2787,7 @@
                                                     console.log('🔍 Current user email:', currentUserEmail);
                                                     console.log('🔍 Current user name:', currentUserName);
                                                     
-                                                    const emailMatch = m.email === currentUserEmail;
+                                                    const emailMatch = m.email?.toLowerCase() === currentUserEmail.toLowerCase();
                                                     const fullNameMatch = m.fullName === currentUserName;
                                                     const nameMatch = m.name === currentUserName;
                                                     const nameLowerMatch = m.name?.toLowerCase() === currentUserName.toLowerCase();
