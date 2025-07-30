@@ -331,8 +331,16 @@
             useEffect(() => {
                 if (!user || !enquiries || enquiries.length === 0) return;
                 
+                // Detect if we're in Microsoft Edge
+                const isEdge = navigator.userAgent.includes('Edg/');
+                console.log('🌐 Browser detection - Edge:', isEdge);
+                
                 const setupTenderMessageListeners = () => {
                     console.log('🔧 Setting up DASHBOARD message listeners for all accessible tenders...');
+                    
+                    if (isEdge) {
+                        console.log('🔄 Edge detected - adding extra initialization delay...');
+                    }
                     
                     const accessibleTenders = enquiries.filter(tender => {
                         if (userRole === 'General Manager' || userRole === 'Sales Manager') {
@@ -402,11 +410,58 @@
                     };
                 };
                 
-                // Set up listeners immediately (removed delay that was causing first-time issues)
-                const cleanup = setupTenderMessageListeners();
-                
-                // Return cleanup function for component unmount
-                return cleanup;
+                // Set up listeners with Edge-specific handling
+                if (isEdge) {
+                    console.log('🔄 Edge: Setting up listeners with delay and force refresh...');
+                    
+                    // Initial setup
+                    const cleanup = setupTenderMessageListeners();
+                    
+                    // Edge-specific: Force refresh after a delay
+                    const edgeRefreshTimeout = setTimeout(() => {
+                        console.log('🔄 Edge: Force refreshing message listeners...');
+                        
+                        // Force re-query the database for Edge
+                        const accessibleTenders = enquiries.filter(tender => {
+                            if (userRole === 'General Manager' || userRole === 'Sales Manager') {
+                                return true;
+                            }
+                            return isUserInTenderTeam(tender);
+                        });
+                        
+                        // Force refresh each tender's messages
+                        accessibleTenders.forEach(tender => {
+                            const messagesRef = database.ref(`tender-messages/${tender.id}`);
+                            messagesRef.once('value', (snapshot) => {
+                                const data = snapshot.val();
+                                if (data) {
+                                    const messagesList = Object.values(data).sort((a, b) => {
+                                        const aTime = a.timestampMs || 0;
+                                        const bTime = b.timestampMs || 0;
+                                        return aTime - bTime;
+                                    });
+                                    
+                                    console.log(`🔄 Edge force refresh: Found ${messagesList.length} messages for tender ${tender.id}`);
+                                    
+                                    setMessages(prev => ({
+                                        ...prev,
+                                        [tender.id]: messagesList
+                                    }));
+                                }
+                            });
+                        });
+                    }, 2000); // 2 second delay for Edge
+                    
+                    // Return cleanup that includes timeout
+                    return () => {
+                        clearTimeout(edgeRefreshTimeout);
+                        cleanup();
+                    };
+                } else {
+                    // Normal setup for other browsers
+                    const cleanup = setupTenderMessageListeners();
+                    return cleanup;
+                }
             }, [user?.email, enquiries, userRole]); // Trigger when user or tenders change
             
             // Firebase real-time listener for files
