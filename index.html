@@ -2829,19 +2829,8 @@
                                                             >
                                                                 <span className="text-blue-300 text-xs">💬</span>
                                                                 <div className="text-white/80 text-sm flex-1 truncate">
-                                                                    <span className="font-medium text-blue-200">{mention.sender}:</span>
-                                                                    <span className="ml-1">
-                                                                        {mention.text?.split(/(@[A-Za-z]+(?:\s+[A-Za-z]+)*)/g).map((part, partIndex) => 
-                                                                            part.startsWith('@') ? (
-                                                                                <span key={partIndex} className="bg-blue-400/20 text-blue-200 px-1 rounded font-medium">
-                                                                                    {part}
-                                                                                </span>
-                                                                            ) : (
-                                                                                part.substring(0, 30)
-                                                                            )
-                                                                        )}
-                                                                        {mention.text?.length > 30 ? '...' : ''}
-                                                                    </span>
+                                                                    <span className="font-medium text-blue-200">{mention.sender}</span>
+                                                                    <span className="ml-1 text-blue-200/80">asked you something</span>
                                                                 </div>
                                                             </div>
                                                         ))}
