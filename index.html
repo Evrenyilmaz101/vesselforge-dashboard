@@ -245,6 +245,18 @@
             const [notificationPermission, setNotificationPermission] = useState(
                 typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
             );
+            const [highlightedMessageId, setHighlightedMessageId] = useState(null);
+            
+            // Auto-remove message highlight after 3 seconds
+            useEffect(() => {
+                if (highlightedMessageId) {
+                    const timer = setTimeout(() => {
+                        setHighlightedMessageId(null);
+                    }, 3000);
+                    return () => clearTimeout(timer);
+                }
+            }, [highlightedMessageId]);
+            
             // TEMPORARILY DISABLED ALL NEW MENTION FEATURES TO FIX WHITE SCREEN
             // const [allTenderMessages, setAllTenderMessages] = useState({});
             // const [mentionReadStatus, setMentionReadStatus] = useState({});
@@ -2905,6 +2917,20 @@
                                                                         setSelectedEnquiry(tenderWithMessage);
                                                                         setShowEnquiryDetails(true);
                                                                         setActiveTab('chat');
+                                                                        
+                                                                        // Highlight the specific message and scroll to it
+                                                                        setHighlightedMessageId(mention.id);
+                                                                        
+                                                                        // Scroll to message after a small delay to ensure DOM is updated
+                                                                        setTimeout(() => {
+                                                                            const messageElement = document.getElementById(`message-${mention.id}`);
+                                                                            if (messageElement) {
+                                                                                messageElement.scrollIntoView({ 
+                                                                                    behavior: 'smooth', 
+                                                                                    block: 'center'
+                                                                                });
+                                                                            }
+                                                                        }, 500);
                                                                     }
                                                                 }}
                                                             >
@@ -4893,9 +4919,17 @@
                                                         </div>
                                                     ) : (
                                                         (messages[selectedEnquiry.id] || []).filter(message => message && message.id).map((message, messageIndex) => (
-                                                            <div key={message.id || `message-${messageIndex}`} className={`group flex items-start space-x-3 ${
-                                                                message.type === 'action-alert' ? 'max-w-2xl' : ''
-                                                            }`}>
+                                                            <div 
+                                                                key={message.id || `message-${messageIndex}`}
+                                                                id={`message-${message.id}`}
+                                                                className={`group flex items-start space-x-3 transition-all duration-500 ${
+                                                                    message.type === 'action-alert' ? 'max-w-2xl' : ''
+                                                                } ${
+                                                                    highlightedMessageId === message.id 
+                                                                        ? 'bg-yellow-400/20 border border-yellow-400/50 rounded-lg p-3 -mx-3' 
+                                                                        : ''
+                                                                }`}
+                                                            >
                                                                 <div 
                                                                     className={`w-8 h-8 rounded-full flex items-center justify-center overflow-hidden ${
                                                                         message.type === 'action-alert' 
@@ -5008,7 +5042,7 @@
                                                                                 : 'text-white'
                                                                         }`}>
                                                                             {message.type === 'mention' ? (
-                                                                                // Highlight @ mentions in text - using same regex as detection
+                                                                                // Highlight @ mentions in text - only highlight @username, not message
                                                                                 message.text.split(/(@[A-Za-z]+(?:\s+[A-Za-z]+)*)/).map((part, index) => {
                                                                                     if (part.startsWith('@')) {
                                                                                         return (
@@ -5017,7 +5051,7 @@
                                                                                             </span>
                                                                                         );
                                                                                     }
-                                                                                    return part;
+                                                                                    return <span key={index} className="text-white">{part}</span>;
                                                                                 })
                                                                             ) : (
                                                                                 message.text || 'No message'
