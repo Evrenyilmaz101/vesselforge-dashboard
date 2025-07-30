@@ -3081,15 +3081,22 @@
                                                 const isReplyToMe = msg.replyTo.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase();
                                                 const isNotFromMe = msg.senderEmail?.toLowerCase() !== currentUserEmail.toLowerCase();
                                                 
+                                                // Check if this reply has been read
+                                                const localStorageKey = `readReplies_${currentUserEmail}`;
+                                                const readReplies = JSON.parse(localStorage.getItem(localStorageKey) || '[]');
+                                                const isRead = readReplies.includes(msg.id);
+                                                
                                                 console.log(`🔍 REPLY CHECK - Message ${msg.id}:`, {
                                                     isReplyToMe,
                                                     isNotFromMe,
+                                                    isRead,
                                                     replyToEmail: msg.replyTo.senderEmail,
                                                     senderEmail: msg.senderEmail,
                                                     currentUserEmail
                                                 });
                                                 
-                                                return isReplyToMe && isNotFromMe;
+                                                // Only show unread replies to me from others
+                                                return isReplyToMe && isNotFromMe && !isRead;
                                             })
                                             .slice(0, 5); // Show only last 5 replies
                                         
@@ -3117,6 +3124,15 @@
                                                                 key={index} 
                                                                 className="flex items-center space-x-2 p-2 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors"
                                                                 onClick={() => {
+                                                                    // Mark this reply as read
+                                                                    const localStorageKey = `readReplies_${currentUserEmail}`;
+                                                                    const readReplies = JSON.parse(localStorage.getItem(localStorageKey) || '[]');
+                                                                    if (!readReplies.includes(reply.id)) {
+                                                                        readReplies.push(reply.id);
+                                                                        localStorage.setItem(localStorageKey, JSON.stringify(readReplies));
+                                                                        console.log('🔔 REPLY - Marked reply as read:', reply.id);
+                                                                    }
+                                                                    
                                                                     // Navigate to the tender and specific message
                                                                     const tenderWithReply = enquiries.find(tender => 
                                                                         Object.values(messages[tender.id] || {}).some(msg => msg.id === reply.id)
