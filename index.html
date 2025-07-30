@@ -940,6 +940,23 @@
                 });
             };
             
+            const sendReplyNotification = (recipientEmail, recipientName, replyText, tender) => {
+                const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
+                console.log('🔔 REPLY NOTIFICATION - Sending reply notification:', {
+                    recipientEmail,
+                    recipientName,
+                    currentUserName,
+                    replyText: replyText.substring(0, 50) + '...'
+                });
+                
+                if (recipientEmail !== user?.email) {
+                    const title = `💬 ${currentUserName} replied to your message`;
+                    const body = `In ${tender.id}: ${replyText.substring(0, 100)}${replyText.length > 100 ? '...' : ''}`;
+                    console.log('🔔 REPLY NOTIFICATION - Title:', title);
+                    sendDesktopNotification(title, body);
+                }
+            };
+            
             const sendActionAlertNotification = (assignees, tender) => {
                 const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
                 
@@ -1965,7 +1982,8 @@
                     replyTo: replyingTo ? {
                         id: replyingTo.id,
                         text: replyingTo.text?.substring(0, 100) + (replyingTo.text?.length > 100 ? '...' : ''),
-                        sender: replyingTo.sender
+                        sender: replyingTo.sender,
+                        senderEmail: replyingTo.senderEmail
                     } : null
                 };
                 
@@ -1978,6 +1996,12 @@
                     // Send desktop notifications for mentions
                     if (mentions.length > 0) {
                         sendMentionNotifications(mentions, newMessage, selectedEnquiry);
+                    }
+                    
+                    // Send reply notifications
+                    if (replyingTo && replyingTo.senderEmail && replyingTo.senderEmail !== user?.email) {
+                        console.log('🔔 REPLY NOTIFICATION - Sending to:', replyingTo.senderEmail);
+                        sendReplyNotification(replyingTo.senderEmail, replyingTo.sender, newMessage, selectedEnquiry);
                     }
                     
                     setNewMessage('');
@@ -2856,7 +2880,7 @@
                                 </div>
 
                                 {/* Personalized Action Blocks */}
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
                                     
                                     {/* @ Mentions for You */}
                                     {(() => {
@@ -3021,6 +3045,110 @@
                                                     </div>
                                                 ) : (
                                                     <p className="text-blue-200/60 text-sm">No recent mentions</p>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {/* Replies to You */}
+                                    {(() => {
+                                        const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
+                                        const currentUserEmail = user?.email || '';
+                                        
+                                        if (!currentUserEmail) {
+                                            console.log('🔍 DASHBOARD REPLIES - User email not loaded yet, skipping reply processing');
+                                            return (
+                                                <div className="bg-gradient-to-br from-purple-500/40 to-pink-600/40 backdrop-blur-lg rounded-xl p-6 border border-purple-500/50 shadow-xl">
+                                                    <div className="text-center text-purple-200">Loading replies...</div>
+                                                </div>
+                                            );
+                                        }
+                                        
+                                        // Get all messages from accessible tenders
+                                        const allMessages = enquiries
+                                            .filter(tender => isUserInTenderTeam(tender))
+                                            .flatMap(tender => Object.values(messages[tender.id] || {}))
+                                            .filter(msg => msg && msg.id);
+                                        
+                                        console.log('🔍 DASHBOARD REPLIES - All messages for reply detection:', allMessages.length);
+                                        
+                                        const myReplies = allMessages
+                                            .filter(msg => {
+                                                // Must be a reply to the current user's message
+                                                if (!msg?.replyTo || !msg?.replyTo?.senderEmail) return false;
+                                                
+                                                // Must be replying to current user's message (not their own)
+                                                const isReplyToMe = msg.replyTo.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase();
+                                                const isNotFromMe = msg.senderEmail?.toLowerCase() !== currentUserEmail.toLowerCase();
+                                                
+                                                console.log(`🔍 REPLY CHECK - Message ${msg.id}:`, {
+                                                    isReplyToMe,
+                                                    isNotFromMe,
+                                                    replyToEmail: msg.replyTo.senderEmail,
+                                                    senderEmail: msg.senderEmail,
+                                                    currentUserEmail
+                                                });
+                                                
+                                                return isReplyToMe && isNotFromMe;
+                                            })
+                                            .slice(0, 5); // Show only last 5 replies
+                                        
+                                        console.log('🔍 DASHBOARD REPLIES - Final replies:', myReplies);
+                                        
+                                        return (
+                                            <div className="bg-gradient-to-br from-purple-500/40 to-pink-600/40 backdrop-blur-lg rounded-xl p-6 border border-purple-500/50 shadow-xl">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="p-2 bg-purple-500/30 rounded-lg">
+                                                            <span className="text-xl">↩️</span>
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="text-white font-bold">Replies to You</h3>
+                                                            <p className="text-purple-200 text-sm">{myReplies.length} recent replies</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-2xl font-bold text-purple-300">{myReplies.length}</div>
+                                                </div>
+                                                
+                                                {myReplies.length > 0 ? (
+                                                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                                                        {myReplies.map((reply, index) => (
+                                                            <div 
+                                                                key={index} 
+                                                                className="flex items-center space-x-2 p-2 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors"
+                                                                onClick={() => {
+                                                                    // Navigate to the tender and specific message
+                                                                    const tenderWithReply = enquiries.find(tender => 
+                                                                        Object.values(messages[tender.id] || {}).some(msg => msg.id === reply.id)
+                                                                    );
+                                                                    if (tenderWithReply) {
+                                                                        console.log('Navigating to tender for reply:', reply.id, 'tender:', tenderWithReply.id);
+                                                                        setSelectedEnquiry(tenderWithReply);
+                                                                        setShowEnquiryDetails(true);
+                                                                        setActiveTab('chat');
+                                                                        
+                                                                        // Highlight the reply message
+                                                                        setHighlightedMessageId(reply.id);
+                                                                        
+                                                                        // Scroll to the message after navigation
+                                                                        setTimeout(() => {
+                                                                            const messageElement = document.getElementById(`message-${reply.id}`);
+                                                                            if (messageElement) {
+                                                                                messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                            }
+                                                                        }, 500);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <div className="text-white/80 text-sm flex-1 truncate">
+                                                                    <span className="font-medium text-purple-200">{reply.sender}</span>
+                                                                    <span className="ml-1 text-purple-200/80">replied to your message</span>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-purple-200/60 text-sm">No recent replies</p>
                                                 )}
                                             </div>
                                         );
