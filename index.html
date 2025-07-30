@@ -2719,6 +2719,28 @@
                                         const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
                                         const currentUserEmail = user?.email || '';
                                         
+                                        // Don't process mentions if user email is not loaded yet
+                                        if (!currentUserEmail) {
+                                            console.log('🔍 DASHBOARD @ MENTIONS - User email not loaded yet, skipping mention processing');
+                                            return (
+                                                <div className="bg-gradient-to-br from-blue-500/40 to-indigo-600/40 backdrop-blur-lg rounded-xl p-6 border border-blue-500/50 shadow-xl">
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <div className="flex items-center space-x-3">
+                                                            <div className="p-2 bg-blue-500/30 rounded-lg">
+                                                                <span className="text-xl">💬</span>
+                                                            </div>
+                                                            <div>
+                                                                <h3 className="text-white font-bold">@ Mentions for You</h3>
+                                                                <p className="text-blue-200 text-sm">Loading...</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-2xl font-bold text-blue-300">...</div>
+                                                    </div>
+                                                    <p className="text-blue-200/60 text-sm">Loading mentions...</p>
+                                                </div>
+                                            );
+                                        }
+                                        
                                         // Get all messages from all tenders (simple approach without global listener)
                                         const allMessages = [];
                                         enquiries.forEach(tender => {
@@ -2750,9 +2772,10 @@
                                                 if (msg?.type !== 'mention' || !msg?.mentions) return false;
                                                 
                                                 // Check if this mention has been read
-                                                const readMentions = JSON.parse(localStorage.getItem(`readMentions_${currentUserEmail}`) || '[]');
+                                                const localStorageKey = `readMentions_${currentUserEmail}`;
+                                                const readMentions = JSON.parse(localStorage.getItem(localStorageKey) || '[]');
                                                 const isRead = readMentions.includes(msg.id);
-                                                console.log(`🔍 Message ${msg.id} read status:`, isRead, 'Read mentions:', readMentions);
+                                                console.log(`🔍 Message ${msg.id} read status:`, isRead, 'LocalStorage key:', localStorageKey, 'Read mentions:', readMentions);
                                                 
                                                 // Immediate read filtering: hide read mentions right away
                                                 if (isRead) {
@@ -2811,10 +2834,13 @@
                                                                 className="flex items-center space-x-2 p-2 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors"
                                                                 onClick={() => {
                                                                     // Mark this mention as read
-                                                                    const readMentions = JSON.parse(localStorage.getItem(`readMentions_${currentUserEmail}`) || '[]');
+                                                                    const localStorageKey = `readMentions_${currentUserEmail}`;
+                                                                    const readMentions = JSON.parse(localStorage.getItem(localStorageKey) || '[]');
+                                                                    console.log('🔍 CLICK - Marking mention as read:', mention.id, 'LocalStorage key:', localStorageKey);
                                                                     if (!readMentions.includes(mention.id)) {
                                                                         readMentions.push(mention.id);
-                                                                        localStorage.setItem(`readMentions_${currentUserEmail}`, JSON.stringify(readMentions));
+                                                                        localStorage.setItem(localStorageKey, JSON.stringify(readMentions));
+                                                                        console.log('🔍 CLICK - Updated read mentions:', readMentions);
                                                                     }
                                                                     
                                                                     // Find the tender this mention belongs to using the tenderId we added
