@@ -5142,17 +5142,14 @@
                                                         (messages[selectedEnquiry.id] || [])
                                                             .filter(message => message && message.id)
                                                             .filter(message => {
-                                                                // DEBUG: Let's see what messages we have
-                                                                console.log('🔍 MESSAGE DEBUG:', {
-                                                                    id: message.id,
-                                                                    text: message.text?.substring(0, 30),
-                                                                    sender: message.sender,
-                                                                    hasReplyTo: !!message.replyTo,
-                                                                    replyToId: message.replyTo?.id
-                                                                });
-                                                                
-                                                                // Temporarily show all messages to debug
-                                                                return true;
+                                                                // Only hide reply messages (not original messages)
+                                                                // Original messages will show conversation threads, replies will be hidden
+                                                                if (message.replyTo) {
+                                                                    console.log('🔍 HIDING REPLY:', message.id, message.text?.substring(0, 30));
+                                                                    return false; // Hide reply messages
+                                                                }
+                                                                console.log('🔍 SHOWING ORIGINAL:', message.id, message.text?.substring(0, 30));
+                                                                return true; // Show all original messages (with or without replies)
                                                             })
                                                             .map((message, messageIndex) => (
                                                             <div 
@@ -5417,8 +5414,13 @@
                                                                             );
                                                                         })()}
                                                                         
-                                                                        {/* DEBUG: Show all message text temporarily */}
-                                                                        {(
+                                                                        {/* Show message text only for standalone messages (no replies) */}
+                                                                        {(() => {
+                                                                            const allMessages = (messages[selectedEnquiry.id] || []).filter(m => m && m.id);
+                                                                            const hasReplies = allMessages.some(m => m.replyTo && m.replyTo.id === message.id);
+                                                                            console.log('🔍 TEXT DISPLAY - Message:', message.id, 'hasReplies:', hasReplies);
+                                                                            return !hasReplies; // Only show text if this message has no replies
+                                                                        })() && (
                                                                             <div className={`text-sm whitespace-pre-wrap break-words ${
                                                                                 message.type === 'action-alert' 
                                                                                     ? 'text-orange-100 font-medium' 
