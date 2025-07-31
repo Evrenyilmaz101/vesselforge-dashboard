@@ -5329,29 +5329,40 @@
                                                                                                     </div>
                                                                                                 </div>
                                                                                                 
-                                                                                                {/* All conversation replies stacked as overlays */}
-                                                                                                {conversationThread.slice(1).map((reply, replyIndex) => (
-                                                                                                    <div 
-                                                                                                        key={`stack-${reply.id}`}
-                                                                                                        className="absolute top-3 right-3"
-                                                                                                        style={{
-                                                                                                            transform: `translateX(${replyIndex * 12}px) translateY(${replyIndex * 8}px)`,
-                                                                                                            zIndex: 10 + replyIndex
-                                                                                                        }}
-                                                                                                    >
-                                                                                                        <div className="bg-gradient-to-br from-blue-500/90 to-purple-600/90 border border-blue-400/50 rounded-lg p-3 shadow-lg backdrop-blur-sm min-w-[200px] max-w-[300px]">
-                                                                                                            <div className="text-blue-100 font-medium text-xs mb-1 flex items-center">
-                                                                                                                <div className="w-1.5 h-1.5 bg-white rounded-full mr-2 animate-pulse"></div>
-                                                                                                                Reply #{replyIndex + 1} from {reply.sender}
+                                                                                                {/* Conversation thread - replies flow down and alternate left/right */}
+                                                                                                <div className="mt-4 space-y-3">
+                                                                                                    {conversationThread.slice(1).map((reply, replyIndex) => {
+                                                                                                        const isEven = replyIndex % 2 === 0;
+                                                                                                        const isRight = isEven; // First reply on right, then alternate
+                                                                                                        
+                                                                                                        return (
+                                                                                                            <div 
+                                                                                                                key={`thread-${reply.id}`}
+                                                                                                                className={`flex ${isRight ? 'justify-end' : 'justify-start'}`}
+                                                                                                            >
+                                                                                                                <div className={`max-w-[300px] ${isRight ? 'ml-8' : 'mr-8'}`}>
+                                                                                                                    <div className="bg-gradient-to-br from-blue-500/90 to-purple-600/90 border border-blue-400/50 rounded-lg p-3 shadow-lg backdrop-blur-sm">
+                                                                                                                        <div className="text-blue-100 font-medium text-xs mb-1 flex items-center">
+                                                                                                                            <div className="w-1.5 h-1.5 bg-white rounded-full mr-2 animate-pulse"></div>
+                                                                                                                            Reply #{replyIndex + 1} from {reply.sender}
+                                                                                                                        </div>
+                                                                                                                        <div className="text-white text-sm font-medium whitespace-pre-wrap break-words">
+                                                                                                                            {reply.text}
+                                                                                                                        </div>
+                                                                                                                    </div>
+                                                                                                                    {/* Connection line */}
+                                                                                                                    <div className={`w-4 h-4 ${isRight ? 'ml-4' : 'mr-4 ml-auto'} -mt-2`}>
+                                                                                                                        <div className={`w-0 h-0 ${
+                                                                                                                            isRight 
+                                                                                                                                ? 'border-t-8 border-r-8 border-transparent border-r-blue-500/70' 
+                                                                                                                                : 'border-t-8 border-l-8 border-transparent border-l-blue-500/70'
+                                                                                                                        }`}></div>
+                                                                                                                    </div>
+                                                                                                                </div>
                                                                                                             </div>
-                                                                                                            <div className="text-white text-sm font-medium">
-                                                                                                                {reply.text}
-                                                                                                            </div>
-                                                                                                            {/* Arrow pointing to original */}
-                                                                                                            <div className="absolute -left-2 top-4 w-0 h-0 border-t-4 border-b-4 border-r-8 border-transparent border-r-blue-500/90"></div>
-                                                                                                        </div>
-                                                                                                    </div>
-                                                                                                ))}
+                                                                                                        );
+                                                                                                    })}
+                                                                                                </div>
                                                                                             </div>
                                                                                         );
                                                                                     } else {
