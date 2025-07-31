@@ -5288,8 +5288,16 @@
                                                                             // Check if this is an original message that has replies (should show conversation thread)
                                                                             const hasReplies = allMessages.some(m => m.replyTo && m.replyTo.id === message.id);
                                                                             
+                                                                            console.log('🔗 MESSAGE ANALYSIS:', {
+                                                                                messageId: message.id,
+                                                                                messageText: message.text?.substring(0, 30),
+                                                                                hasReplies: hasReplies,
+                                                                                totalMessages: allMessages.length
+                                                                            });
+                                                                            
                                                                             if (hasReplies) {
                                                                                 console.log('🔗 ORIGINAL MESSAGE WITH REPLIES:', message.id, 'replies found');
+                                                                                console.log('🔗 All messages:', allMessages.map(m => ({id: m.id, text: m.text?.substring(0, 20), hasReplyTo: !!m.replyTo})));
                                                                                 
                                                                                 // Build conversation thread starting from this original message
                                                                                 const buildConversationThread = (originalMessageId) => {
@@ -5372,34 +5380,9 @@
                                                                                 }
                                                                             }
                                                                             
-                                                                            // Single reply or no reply - render normally
-                                                                            return message.replyTo && (
-                                                                            <div className="relative mb-4">
-                                                                                {/* Original message - background layer */}
-                                                                                <div className="relative bg-gradient-to-r from-slate-600/40 to-slate-700/40 border border-slate-400/30 rounded-lg p-3 shadow-md">
-                                                                                    <div className="text-slate-300 font-medium text-xs mb-1 flex items-center">
-                                                                                        <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2"></div>
-                                                                                        {message.replyTo.sender}
-                                                                                    </div>
-                                                                                    <div className="text-slate-200 text-sm opacity-80 pr-8">
-                                                                                        {message.replyTo.text}
-                                                                                    </div>
-                                                                                </div>
-                                                                                
-                                                                                {/* Current reply - overlaid on top-right */}
-                                                                                <div className="absolute top-3 right-3 bg-gradient-to-br from-blue-500/90 to-purple-600/90 border border-blue-400/50 rounded-lg p-3 shadow-lg backdrop-blur-sm transform translate-x-2 translate-y-2 min-w-[200px] max-w-[300px]">
-                                                                                    <div className="text-blue-100 font-medium text-xs mb-1 flex items-center">
-                                                                                        <div className="w-1.5 h-1.5 bg-white rounded-full mr-2 animate-pulse"></div>
-                                                                                        Reply from {message.sender}
-                                                                                    </div>
-                                                                                    <div className="text-white text-sm font-medium">
-                                                                                        {message.text}
-                                                                                    </div>
-                                                                                    {/* Small arrow pointing to original */}
-                                                                                    <div className="absolute -left-2 top-4 w-0 h-0 border-t-4 border-b-4 border-r-8 border-transparent border-r-blue-500/90"></div>
-                                                                                </div>
-                                                                            </div>
-                                                                            );
+                                                                            // Original message with no replies - return null (let text display handle it)
+                                                                            console.log('🔗 ORIGINAL MESSAGE WITH NO REPLIES - returning null for:', message.id);
+                                                                            return null;
                                                                         })()}
                                                                         
                                                                         {/* Show message text only for standalone messages (no replies) */}
