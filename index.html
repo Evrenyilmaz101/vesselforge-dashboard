@@ -5402,24 +5402,25 @@
                                                                             );
                                                                         })()}
                                                                         
-                                                                        {/* Only show message text if it's not a reply or if the reply render returned null */}
+                                                                        {/* Only show message text if it's not part of any conversation thread */}
                                                                         {(() => {
-                                                                            // Check if this message should show its text
-                                                                            if (!message.replyTo) {
-                                                                                // Non-reply message - always show text
-                                                                                return true;
-                                                                            } else {
-                                                                                // Reply message - only show text if it's hidden (not first in chain)
-                                                                                const allMessages = (messages[selectedEnquiry.id] || []).filter(m => m && m.id);
-                                                                                const allRepliesToSameMessage = allMessages.filter(m => 
-                                                                                    m.replyTo && m.replyTo.id === message.replyTo.id
-                                                                                );
-                                                                                const currentReplyIndex = allRepliesToSameMessage.findIndex(m => m.id === message.id);
-                                                                                const isFirstReply = currentReplyIndex === 0;
-                                                                                
-                                                                                // Show text for hidden replies (not first in chain) or single replies
-                                                                                return allRepliesToSameMessage.length === 1 || !isFirstReply;
+                                                                            const allMessages = (messages[selectedEnquiry.id] || []).filter(m => m && m.id);
+                                                                            
+                                                                            // Check if this message is part of a conversation thread
+                                                                            if (message.replyTo) {
+                                                                                // This is a reply - never show as standalone message
+                                                                                return false;
                                                                             }
+                                                                            
+                                                                            // Check if this message has any replies
+                                                                            const hasReplies = allMessages.some(m => m.replyTo && m.replyTo.id === message.id);
+                                                                            if (hasReplies) {
+                                                                                // This is an original message with replies - never show as standalone message
+                                                                                return false;
+                                                                            }
+                                                                            
+                                                                            // This is a standalone message with no replies - show it
+                                                                            return true;
                                                                         })() && (
                                                                             <div className={`text-sm whitespace-pre-wrap break-words ${
                                                                                 message.type === 'action-alert' 
