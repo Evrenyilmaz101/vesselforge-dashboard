@@ -5274,22 +5274,45 @@
                                                                             const allMessages = (messages[selectedEnquiry.id] || []).filter(m => m && m.id);
                                                                             
                                                                             if (message.replyTo) {
-                                                                                // This is a reply - check if there are other replies to the same original message
-                                                                                const allRepliesToSameMessage = allMessages.filter(m => 
-                                                                                    m.replyTo && m.replyTo.id === message.replyTo.id
-                                                                                );
+                                                                                // Build the conversation thread starting from the root message
+                                                                                const buildConversationThread = (rootMessageId) => {
+                                                                                    const thread = [];
+                                                                                    const findRootMessage = (msgId) => {
+                                                                                        const msg = allMessages.find(m => m.id === msgId);
+                                                                                        if (!msg) return null;
+                                                                                        if (!msg.replyTo) return msg; // This is the root
+                                                                                        return findRootMessage(msg.replyTo.id); // Keep going up
+                                                                                    };
+                                                                                    
+                                                                                    const addRepliesRecursively = (parentId) => {
+                                                                                        const directReplies = allMessages.filter(m => m.replyTo && m.replyTo.id === parentId);
+                                                                                        directReplies.forEach(reply => {
+                                                                                            thread.push(reply);
+                                                                                            addRepliesRecursively(reply.id); // Add replies to this reply
+                                                                                        });
+                                                                                    };
+                                                                                    
+                                                                                    const root = findRootMessage(rootMessageId);
+                                                                                    if (root) {
+                                                                                        thread.unshift(root); // Add root at beginning
+                                                                                        addRepliesRecursively(root.id);
+                                                                                    }
+                                                                                    return thread;
+                                                                                };
                                                                                 
-                                                                                const currentReplyIndex = allRepliesToSameMessage.findIndex(m => m.id === message.id);
-                                                                                const isFirstReply = currentReplyIndex === 0;
+                                                                                const conversationThread = buildConversationThread(message.replyTo.id);
+                                                                                const currentReplyIndex = conversationThread.findIndex(m => m.id === message.id);
+                                                                                const isFirstReply = currentReplyIndex === 1; // Index 0 is root, 1 is first reply
                                                                                 
-                                                                                console.log(`🔗 REPLY CHAIN - Message ${message.id}:`, {
+                                                                                console.log(`🔗 CONVERSATION THREAD - Message ${message.id}:`, {
                                                                                     replyingTo: message.replyTo.id,
-                                                                                    totalReplies: allRepliesToSameMessage.length,
+                                                                                    threadLength: conversationThread.length,
                                                                                     currentIndex: currentReplyIndex,
-                                                                                    isFirstReply
+                                                                                    isFirstReply,
+                                                                                    thread: conversationThread.map(m => ({id: m.id, sender: m.sender, text: m.text?.substring(0, 30)}))
                                                                                 });
                                                                                 
-                                                                                if (allRepliesToSameMessage.length > 1) {
+                                                                                if (conversationThread.length > 1) {
                                                                                     // Multiple replies to the same message - render as chain
                                                                                     if (isFirstReply) {
                                                                                         // This is the first reply - show original + all replies stacked
@@ -5299,15 +5322,15 @@
                                                                                                 <div className="relative bg-gradient-to-r from-slate-600/40 to-slate-700/40 border border-slate-400/30 rounded-lg p-3 shadow-md">
                                                                                                     <div className="text-slate-300 font-medium text-xs mb-1 flex items-center">
                                                                                                         <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2"></div>
-                                                                                                        {message.replyTo.sender}
+                                                                                                        {conversationThread[0]?.sender}
                                                                                                     </div>
                                                                                                     <div className="text-slate-200 text-sm opacity-80 pr-8">
-                                                                                                        {message.replyTo.text}
+                                                                                                        {conversationThread[0]?.text}
                                                                                                     </div>
                                                                                                 </div>
                                                                                                 
-                                                                                                {/* All replies stacked as overlays */}
-                                                                                                {allRepliesToSameMessage.map((reply, replyIndex) => (
+                                                                                                {/* All conversation replies stacked as overlays */}
+                                                                                                {conversationThread.slice(1).map((reply, replyIndex) => (
                                                                                                     <div 
                                                                                                         key={`stack-${reply.id}`}
                                                                                                         className="absolute top-3 right-3"
