@@ -5268,8 +5268,78 @@
                                                                             })()
                                                                             : getUserMessageColor(message.sender || 'User', message.senderEmail)
                                                                     }`}>
-                                                                        {/* Reply display - Stacked overlay style */}
-                                                                        {message.replyTo && (
+                                                                        {/* Reply chain detection */}
+                                                                        {(() => {
+                                                                            // Check if this message is part of a reply chain
+                                                                            const allMessages = (messages[selectedEnquiry.id] || []).filter(m => m && m.id);
+                                                                            
+                                                                            if (message.replyTo) {
+                                                                                // This is a reply - check if there are other replies to the same original message
+                                                                                const allRepliesToSameMessage = allMessages.filter(m => 
+                                                                                    m.replyTo && m.replyTo.id === message.replyTo.id
+                                                                                );
+                                                                                
+                                                                                const currentReplyIndex = allRepliesToSameMessage.findIndex(m => m.id === message.id);
+                                                                                const isFirstReply = currentReplyIndex === 0;
+                                                                                
+                                                                                console.log(`🔗 REPLY CHAIN - Message ${message.id}:`, {
+                                                                                    replyingTo: message.replyTo.id,
+                                                                                    totalReplies: allRepliesToSameMessage.length,
+                                                                                    currentIndex: currentReplyIndex,
+                                                                                    isFirstReply
+                                                                                });
+                                                                                
+                                                                                if (allRepliesToSameMessage.length > 1) {
+                                                                                    // Multiple replies to the same message - render as chain
+                                                                                    if (isFirstReply) {
+                                                                                        // This is the first reply - show original + all replies stacked
+                                                                                        return (
+                                                                                            <div className="relative mb-4">
+                                                                                                {/* Original message - background layer */}
+                                                                                                <div className="relative bg-gradient-to-r from-slate-600/40 to-slate-700/40 border border-slate-400/30 rounded-lg p-3 shadow-md">
+                                                                                                    <div className="text-slate-300 font-medium text-xs mb-1 flex items-center">
+                                                                                                        <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2"></div>
+                                                                                                        {message.replyTo.sender}
+                                                                                                    </div>
+                                                                                                    <div className="text-slate-200 text-sm opacity-80 pr-8">
+                                                                                                        {message.replyTo.text}
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                                
+                                                                                                {/* All replies stacked as overlays */}
+                                                                                                {allRepliesToSameMessage.map((reply, replyIndex) => (
+                                                                                                    <div 
+                                                                                                        key={`stack-${reply.id}`}
+                                                                                                        className="absolute top-3 right-3"
+                                                                                                        style={{
+                                                                                                            transform: `translateX(${replyIndex * 12}px) translateY(${replyIndex * 8}px)`,
+                                                                                                            zIndex: 10 + replyIndex
+                                                                                                        }}
+                                                                                                    >
+                                                                                                        <div className="bg-gradient-to-br from-blue-500/90 to-purple-600/90 border border-blue-400/50 rounded-lg p-3 shadow-lg backdrop-blur-sm min-w-[200px] max-w-[300px]">
+                                                                                                            <div className="text-blue-100 font-medium text-xs mb-1 flex items-center">
+                                                                                                                <div className="w-1.5 h-1.5 bg-white rounded-full mr-2 animate-pulse"></div>
+                                                                                                                Reply #{replyIndex + 1} from {reply.sender}
+                                                                                                            </div>
+                                                                                                            <div className="text-white text-sm font-medium">
+                                                                                                                {reply.text}
+                                                                                                            </div>
+                                                                                                            {/* Arrow pointing to original */}
+                                                                                                            <div className="absolute -left-2 top-4 w-0 h-0 border-t-4 border-b-4 border-r-8 border-transparent border-r-blue-500/90"></div>
+                                                                                                        </div>
+                                                                                                    </div>
+                                                                                                ))}
+                                                                                            </div>
+                                                                                        );
+                                                                                    } else {
+                                                                                        // This is not the first reply - hide it (it's already rendered in the stack above)
+                                                                                        return null;
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                            
+                                                                            // Single reply or no reply - render normally
+                                                                            return message.replyTo && (
                                                                             <div className="relative mb-4">
                                                                                 {/* Original message - background layer */}
                                                                                 <div className="relative bg-gradient-to-r from-slate-600/40 to-slate-700/40 border border-slate-400/30 rounded-lg p-3 shadow-md">
@@ -5295,10 +5365,28 @@
                                                                                     <div className="absolute -left-2 top-4 w-0 h-0 border-t-4 border-b-4 border-r-8 border-transparent border-r-blue-500/90"></div>
                                                                                 </div>
                                                                             </div>
-                                                                        )}
+                                                                            );
+                                                                        })()}
                                                                         
-                                                                        {/* Only show message text if it's not a reply (reply text is shown in overlay) */}
-                                                                        {!message.replyTo && (
+                                                                        {/* Only show message text if it's not a reply or if the reply render returned null */}
+                                                                        {(() => {
+                                                                            // Check if this message should show its text
+                                                                            if (!message.replyTo) {
+                                                                                // Non-reply message - always show text
+                                                                                return true;
+                                                                            } else {
+                                                                                // Reply message - only show text if it's hidden (not first in chain)
+                                                                                const allMessages = (messages[selectedEnquiry.id] || []).filter(m => m && m.id);
+                                                                                const allRepliesToSameMessage = allMessages.filter(m => 
+                                                                                    m.replyTo && m.replyTo.id === message.replyTo.id
+                                                                                );
+                                                                                const currentReplyIndex = allRepliesToSameMessage.findIndex(m => m.id === message.id);
+                                                                                const isFirstReply = currentReplyIndex === 0;
+                                                                                
+                                                                                // Show text for hidden replies (not first in chain) or single replies
+                                                                                return allRepliesToSameMessage.length === 1 || !isFirstReply;
+                                                                            }
+                                                                        })() && (
                                                                             <div className={`text-sm whitespace-pre-wrap break-words ${
                                                                                 message.type === 'action-alert' 
                                                                                     ? 'text-orange-100 font-medium' 
