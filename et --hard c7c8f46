@@ -1,0 +1,5 @@
+[33m9ef9e57[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m \Add comprehensive debug logging and fix fallback for conversation threads to investigate message disappearing issue"
+[33mc7c8f46[m \Fix conversation thread rendering - make original messages with replies show conversation threads instead of only triggering on reply messages"
+[33m6f99579[m \Fix conversation filtering - properly hide reply messages and show original messages with conversation threads based on debug analysis"
+[33m8a67f05[m \Add debug logging to investigate disappearing messages"
+[33meaee5a8[m \Fix conversation threads - show original messages with conversation threads, only hide individual reply messages"

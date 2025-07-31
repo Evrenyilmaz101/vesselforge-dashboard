@@ -5142,14 +5142,9 @@
                                                         (messages[selectedEnquiry.id] || [])
                                                             .filter(message => message && message.id)
                                                             .filter(message => {
-                                                                // Only hide reply messages (not original messages)
-                                                                // Original messages will show conversation threads, replies will be hidden
-                                                                if (message.replyTo) {
-                                                                    console.log('🔍 HIDING REPLY:', message.id, message.text?.substring(0, 30));
-                                                                    return false; // Hide reply messages
-                                                                }
-                                                                console.log('🔍 SHOWING ORIGINAL:', message.id, message.text?.substring(0, 30));
-                                                                return true; // Show all original messages (with or without replies)
+                                                                // Hide messages that are replies to other messages
+                                                                // We'll show them as part of conversation threads instead
+                                                                return !message.replyTo;
                                                             })
                                                             .map((message, messageIndex) => (
                                                             <div 
@@ -5280,128 +5275,44 @@
                                                                             })()
                                                                             : getUserMessageColor(message.sender || 'User', message.senderEmail)
                                                                     }`}>
-                                                                        {/* Reply chain detection */}
+                                                                        {/* Check if this message has replies */}
                                                                         {(() => {
-                                                                            // Check if this message is part of a reply chain
                                                                             const allMessages = (messages[selectedEnquiry.id] || []).filter(m => m && m.id);
+                                                                            const replies = allMessages.filter(m => m.replyTo && m.replyTo.id === message.id);
                                                                             
-                                                                            // Check if this is an original message that has replies (should show conversation thread)
-                                                                            const hasReplies = allMessages.some(m => m.replyTo && m.replyTo.id === message.id);
-                                                                            
-                                                                            console.log('🔗 MESSAGE ANALYSIS:', {
-                                                                                messageId: message.id,
-                                                                                messageText: message.text?.substring(0, 30),
-                                                                                hasReplies: hasReplies,
-                                                                                totalMessages: allMessages.length
-                                                                            });
-                                                                            
-                                                                            if (hasReplies) {
-                                                                                console.log('🔗 ORIGINAL MESSAGE WITH REPLIES:', message.id, 'replies found');
-                                                                                console.log('🔗 All messages:', allMessages.map(m => ({id: m.id, text: m.text?.substring(0, 20), hasReplyTo: !!m.replyTo})));
-                                                                                
-                                                                                // Build conversation thread starting from this original message
-                                                                                const buildConversationThread = (originalMessageId) => {
-                                                                                    const thread = [message]; // Start with the original message
-                                                                                    
-                                                                                    const addRepliesRecursively = (parentId) => {
-                                                                                        const directReplies = allMessages.filter(m => m.replyTo && m.replyTo.id === parentId);
-                                                                                        directReplies.forEach(reply => {
-                                                                                            thread.push(reply);
-                                                                                            addRepliesRecursively(reply.id); // Add replies to this reply
-                                                                                        });
-                                                                                    };
-                                                                                    
-                                                                                    addRepliesRecursively(originalMessageId);
-                                                                                    return thread;
-                                                                                };
-                                                                                
-                                                                                const conversationThread = buildConversationThread(message.id);
-                                                                                console.log(`🔗 CONVERSATION THREAD - Original message ${message.id}:`, {
-                                                                                    threadLength: conversationThread.length,
-                                                                                    thread: conversationThread.map(m => ({id: m.id, sender: m.sender, text: m.text?.substring(0, 30)}))
-                                                                                });
-                                                                                
-                                                                                if (conversationThread.length > 1) {
-                                                                                    // This original message has replies - render as conversation thread
-                                                                                    console.log('🔗 RENDERING CONVERSATION THREAD');
-                                                                                    return (
-                                                                                            <div className="relative mb-4">
-                                                                                                {/* Original message - background layer */}
-                                                                                                <div className="relative bg-gradient-to-r from-slate-600/40 to-slate-700/40 border border-slate-400/30 rounded-lg p-3 shadow-md">
-                                                                                                    <div className="text-slate-300 font-medium text-xs mb-1 flex items-center">
-                                                                                                        <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2"></div>
-                                                                                                        {conversationThread[0]?.sender}
-                                                                                                    </div>
-                                                                                                    <div className="text-slate-200 text-sm opacity-80 pr-8">
-                                                                                                        {conversationThread[0]?.text}
+                                                                            if (replies.length > 0) {
+                                                                                // This message has replies - show conversation thread
+                                                                                return (
+                                                                                    <div className="space-y-3">
+                                                                                        {/* Original message */}
+                                                                                        <div className="bg-slate-600/30 border border-slate-500/30 rounded-lg p-3">
+                                                                                            <div className="text-slate-300 text-xs mb-1">{message.sender}</div>
+                                                                                            <div className="text-white text-sm whitespace-pre-wrap break-words">{message.text}</div>
+                                                                                        </div>
+                                                                                        
+                                                                                        {/* Replies */}
+                                                                                        <div className="ml-6 space-y-2">
+                                                                                            {replies.map((reply, index) => (
+                                                                                                <div key={reply.id} className={`flex ${index % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
+                                                                                                    <div className="max-w-xs bg-blue-500/80 border border-blue-400/50 rounded-lg p-2">
+                                                                                                        <div className="text-blue-100 text-xs mb-1">{reply.sender}</div>
+                                                                                                        <div className="text-white text-sm whitespace-pre-wrap break-words">{reply.text}</div>
                                                                                                     </div>
                                                                                                 </div>
-                                                                                                
-                                                                                                {/* Conversation thread - replies flow down and alternate left/right */}
-                                                                                                <div className="mt-4 space-y-3">
-                                                                                                    {conversationThread.slice(1).map((reply, replyIndex) => {
-                                                                                                        const isEven = replyIndex % 2 === 0;
-                                                                                                        const isRight = isEven; // First reply on right, then alternate
-                                                                                                        
-                                                                                                        return (
-                                                                                                            <div 
-                                                                                                                key={`thread-${reply.id}`}
-                                                                                                                className={`flex ${isRight ? 'justify-end' : 'justify-start'}`}
-                                                                                                            >
-                                                                                                                <div className={`max-w-[300px] ${isRight ? 'ml-8' : 'mr-8'}`}>
-                                                                                                                    <div className="bg-gradient-to-br from-blue-500/90 to-purple-600/90 border border-blue-400/50 rounded-lg p-3 shadow-lg backdrop-blur-sm">
-                                                                                                                        <div className="text-blue-100 font-medium text-xs mb-1 flex items-center">
-                                                                                                                            <div className="w-1.5 h-1.5 bg-white rounded-full mr-2 animate-pulse"></div>
-                                                                                                                            Reply #{replyIndex + 1} from {reply.sender}
-                                                                                                                        </div>
-                                                                                                                        <div className="text-white text-sm font-medium whitespace-pre-wrap break-words">
-                                                                                                                            {reply.text}
-                                                                                                                        </div>
-                                                                                                                    </div>
-                                                                                                                    {/* Connection line */}
-                                                                                                                    <div className={`w-4 h-4 ${isRight ? 'ml-4' : 'mr-4 ml-auto'} -mt-2`}>
-                                                                                                                        <div className={`w-0 h-0 ${
-                                                                                                                            isRight 
-                                                                                                                                ? 'border-t-8 border-r-8 border-transparent border-r-blue-500/70' 
-                                                                                                                                : 'border-t-8 border-l-8 border-transparent border-l-blue-500/70'
-                                                                                                                        }`}></div>
-                                                                                                                    </div>
-                                                                                                                </div>
-                                                                                                            </div>
-                                                                                                        );
-                                                                                                    })}
-                                                                                                </div>
-                                                                                            </div>
-                                                                                        );
-                                                                                    } else {
-                                                                                        // This is not the first reply - hide it (it's already rendered in the stack above)
-                                                                                        return null;
-                                                                                    }
-                                                                                }
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                );
                                                                             }
                                                                             
-                                                                            // Original message with no replies - return null (let text display handle it)
-                                                                            console.log('🔗 ORIGINAL MESSAGE WITH NO REPLIES - returning null for:', message.id);
-                                                                            return null;
+                                                                            // No replies - show normal message
+                                                                            return (
+                                                                                <div className="text-white text-sm whitespace-pre-wrap break-words">
+                                                                                    {message.text}
+                                                                                </div>
+                                                                            );
                                                                         })()}
-                                                                        
-                                                                        {/* Show message text only for standalone messages (no replies) */}
-                                                                        {(() => {
-                                                                            const allMessages = (messages[selectedEnquiry.id] || []).filter(m => m && m.id);
-                                                                            const hasReplies = allMessages.some(m => m.replyTo && m.replyTo.id === message.id);
-                                                                            console.log('🔍 TEXT DISPLAY - Message:', message.id, 'hasReplies:', hasReplies);
-                                                                            return !hasReplies; // Only show text if this message has no replies
-                                                                        })() && (
-                                                                            <div className={`text-sm whitespace-pre-wrap break-words ${
-                                                                                message.type === 'action-alert' 
-                                                                                    ? 'text-orange-100 font-medium' 
-                                                                                    : 'text-white'
-                                                                            }`}
-                                                                            dangerouslySetInnerHTML={{
-                                                                                __html: renderFormattedText(message.text || 'No message')
-                                                                            }}
-                                                                            />
-                                                                        )}
+
                                                                         
                                                                         {/* Action Alert Completion Controls */}
                                                                         {message.type === 'action-alert' && (
