@@ -5142,22 +5142,12 @@
                                                         (messages[selectedEnquiry.id] || [])
                                                             .filter(message => message && message.id)
                                                             .filter(message => {
-                                                                // Hide messages that are part of conversation threads
-                                                                const allMessages = (messages[selectedEnquiry.id] || []).filter(m => m && m.id);
-                                                                
-                                                                // Hide if this is a reply
+                                                                // Only hide reply messages (not original messages)
+                                                                // Original messages will show conversation threads, replies will be hidden
                                                                 if (message.replyTo) {
-                                                                    return false;
+                                                                    return false; // Hide reply messages
                                                                 }
-                                                                
-                                                                // Hide if this is an original message that has replies
-                                                                const hasReplies = allMessages.some(m => m.replyTo && m.replyTo.id === message.id);
-                                                                if (hasReplies) {
-                                                                    return false;
-                                                                }
-                                                                
-                                                                // Show standalone messages only
-                                                                return true;
+                                                                return true; // Show all original messages (with or without replies)
                                                             })
                                                             .map((message, messageIndex) => (
                                                             <div 
@@ -5422,8 +5412,12 @@
                                                                             );
                                                                         })()}
                                                                         
-                                                                        {/* Show message text for standalone messages */}
-                                                                        {(
+                                                                        {/* Show message text only for standalone messages (no replies) */}
+                                                                        {(() => {
+                                                                            const allMessages = (messages[selectedEnquiry.id] || []).filter(m => m && m.id);
+                                                                            const hasReplies = allMessages.some(m => m.replyTo && m.replyTo.id === message.id);
+                                                                            return !hasReplies; // Only show text if this message has no replies
+                                                                        })() && (
                                                                             <div className={`text-sm whitespace-pre-wrap break-words ${
                                                                                 message.type === 'action-alert' 
                                                                                     ? 'text-orange-100 font-medium' 
