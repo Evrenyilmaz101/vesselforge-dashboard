@@ -3087,6 +3087,15 @@
                                             .filter(msg => msg && msg.id);
                                         
                                         console.log('🔍 DASHBOARD REPLIES - All messages for reply detection:', allMessages.length);
+                                        console.log('🔍 DASHBOARD REPLIES - Sample messages:', allMessages.slice(0, 3).map(msg => ({
+                                            id: msg.id,
+                                            sender: msg.sender,
+                                            senderEmail: msg.senderEmail,
+                                            hasReplyTo: !!msg.replyTo,
+                                            replyToSender: msg.replyTo?.sender,
+                                            replyToEmail: msg.replyTo?.senderEmail,
+                                            type: msg.type
+                                        })));
                                         
                                         const myReplies = allMessages
                                             .filter(msg => {
@@ -3195,9 +3204,19 @@
                                     {/* Action Alerts for You */}
                                     {(() => {
                                         const currentUser = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
+                                        const currentUserEmail = user?.email || '';
+                                        
+                                        // Get read action alerts from localStorage
+                                        const localStorageKey = `readActions_${currentUserEmail}`;
+                                        const readActions = JSON.parse(localStorage.getItem(localStorageKey) || '[]');
+                                        
                                         const myActions = enquiries.filter(tender => {
                                             if (!tender.actionFrom) return false;
                                             const completed = tender.completedBy || [];
+                                            
+                                            // Check if this action alert has been read
+                                            const isRead = readActions.includes(tender.id);
+                                            if (isRead) return false; // Hide read action alerts
                                             
                                             if (Array.isArray(tender.actionFrom)) {
                                                 return tender.actionFrom.includes(currentUser) && !completed.includes(currentUser);
@@ -3228,6 +3247,16 @@
                                                                 key={index} 
                                                                 className="flex items-center justify-between p-2 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors"
                                                                 onClick={() => {
+                                                                    // Mark this action alert as read
+                                                                    const localStorageKey = `readActions_${currentUserEmail}`;
+                                                                    const readActions = JSON.parse(localStorage.getItem(localStorageKey) || '[]');
+                                                                    console.log('🔍 ACTION CLICK - Marking action as read:', action.id, 'LocalStorage key:', localStorageKey);
+                                                                    if (!readActions.includes(action.id)) {
+                                                                        readActions.push(action.id);
+                                                                        localStorage.setItem(localStorageKey, JSON.stringify(readActions));
+                                                                        console.log('🔍 ACTION CLICK - Updated read actions:', readActions);
+                                                                    }
+                                                                    
                                                                     setSelectedEnquiry(action);
                                                                     setShowEnquiryDetails(true);
                                                                     setActiveTab('chat');
@@ -3471,7 +3500,19 @@
                                                             return allCompleted ? '✅ ACTION COMPLETE' : '🚨 ACTION REQUIRED';
                                                         })()}
                                                     </div>
-                                                    <div className="text-white font-bold text-lg mb-2">{enquiry.actionFrom}</div>
+                                                    <div className="text-white font-bold text-lg mb-2">
+                                                        {(() => {
+                                                            if (!enquiry.actionFrom || enquiry.actionFrom === 'Awaiting Assignment') {
+                                                                return 'No actions assigned';
+                                                            }
+                                                            
+                                                            if (Array.isArray(enquiry.actionFrom)) {
+                                                                return enquiry.actionFrom.join(', ');
+                                                            }
+                                                            
+                                                            return enquiry.actionFrom;
+                                                        })()}
+                                                    </div>
                                                     {(() => {
                                                         // Check if current user is assigned to this action
                                                         const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
