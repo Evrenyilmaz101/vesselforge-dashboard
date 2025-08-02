@@ -40,31 +40,45 @@
             background-color: #3b82f6 !important;
         }
         
-        /* Speech Bubble CSS with rotated square tail */
+        /* Speech Bubble using image background */
+        .speech-bubble-left {
+            background: linear-gradient(135deg, var(--bubble-color), var(--bubble-color-end)) !important;
+            border: 2px solid var(--border-color, rgba(0,0,0,0.2)) !important;
+            border-radius: 20px !important;
+            position: relative;
+        }
+        
         .speech-bubble-left::before {
             content: '';
             position: absolute;
-            width: 15px;
-            height: 15px;
-            background: var(--bubble-color);
-            left: -7px;
+            left: -10px;
             top: 50%;
-            transform: translateY(-50%) rotate(45deg);
-            border-left: 1px solid var(--border-color, rgba(100, 116, 139, 0.5));
-            border-bottom: 1px solid var(--border-color, rgba(100, 116, 139, 0.5));
+            transform: translateY(-50%);
+            width: 0;
+            height: 0;
+            border: 10px solid transparent;
+            border-right-color: var(--bubble-color);
+            border-left: 0;
+        }
+        
+        .speech-bubble-right {
+            background: linear-gradient(135deg, var(--bubble-color), var(--bubble-color-end)) !important;
+            border: 2px solid var(--border-color, rgba(0,0,0,0.2)) !important;
+            border-radius: 20px !important;
+            position: relative;
         }
         
         .speech-bubble-right::before {
             content: '';
             position: absolute;
-            width: 15px;
-            height: 15px;
-            background: var(--bubble-color);
-            right: -7px;
+            right: -10px;
             top: 50%;
-            transform: translateY(-50%) rotate(45deg);
-            border-top: 1px solid var(--border-color, rgba(100, 116, 139, 0.5));
-            border-right: 1px solid var(--border-color, rgba(100, 116, 139, 0.5));
+            transform: translateY(-50%);
+            width: 0;
+            height: 0;
+            border: 10px solid transparent;
+            border-left-color: var(--bubble-color);
+            border-right: 0;
         }
     </style>
 </head>
@@ -5331,23 +5345,24 @@
                                                                                             <div className="max-w-md relative">
                                                                                                 {/* CSS Speech Bubble */}
                                                                                                 <div 
-                                                                                                    className="speech-bubble-left bg-gradient-to-br from-slate-700/90 to-slate-800/90 border border-slate-500/50 rounded-2xl p-4 shadow-lg backdrop-blur-sm relative"
+                                                                                                    className="speech-bubble-left p-4 shadow-lg backdrop-blur-sm relative"
                                                                                                     style={{
-                                                                                                        '--bubble-color': 'rgb(51 65 85 / 0.9)', 
-                                                                                                        '--border-color': 'rgba(100, 116, 139, 0.5)'
+                                                                                                        '--bubble-color': '#fbbf24', 
+                                                                                                        '--bubble-color-end': '#f59e0b',
+                                                                                                        '--border-color': '#000000'
                                                                                                     }}
                                                                                                 >
                                                                                                     <div className="flex items-center mb-2">
                                                                                                         <div className="w-2 h-2 bg-emerald-400 rounded-full mr-2 animate-pulse"></div>
-                                                                                                        <div className="text-slate-300 font-medium text-xs">{message.sender}</div>
+                                                                                                        <div className="text-black font-medium text-xs">{message.sender}</div>
                                                                                                     </div>
-                                                                                                    <div className="text-white text-sm whitespace-pre-wrap break-words leading-relaxed">
+                                                                                                    <div className="text-black text-sm whitespace-pre-wrap break-words leading-relaxed">
                                                                                                         {message.type === 'file' ? (
                                                                                                             <a 
                                                                                                                 href={message.fileUrl} 
                                                                                                                 target="_blank" 
                                                                                                                 rel="noopener noreferrer"
-                                                                                                                className="text-blue-300 hover:text-blue-200 underline flex items-center space-x-2 transition-colors"
+                                                                                                                className="text-blue-600 hover:text-blue-800 underline flex items-center space-x-2 transition-colors"
                                                                                                             >
                                                                                                                 <span>📎</span>
                                                                                                                 <span>{message.fileName || message.text}</span>
@@ -5375,33 +5390,28 @@
                                                                                                             <div 
                                                                                                                 className={`${
                                                                                                                     isOriginalPoster ? 'speech-bubble-left' : 'speech-bubble-right'
-                                                                                                                } ${
-                                                                                                                    isOriginalPoster 
-                                                                                                                        ? 'bg-gradient-to-br from-emerald-500/90 to-teal-600/90 border-emerald-400/50' 
-                                                                                                                        : 'bg-gradient-to-br from-blue-500/90 to-purple-600/90 border-blue-400/50'
-                                                                                                                } border rounded-2xl p-3 shadow-lg backdrop-blur-sm transform hover:scale-[1.02] transition-all duration-200 relative`}
+                                                                                                                } p-3 shadow-lg backdrop-blur-sm transform hover:scale-[1.02] transition-all duration-200 relative`}
                                                                                                                 style={{
-                                                                                                                    '--bubble-color': isOriginalPoster ? 'rgb(16 185 129 / 0.9)' : 'rgb(59 130 246 / 0.9)',
-                                                                                                                    '--border-color': isOriginalPoster ? 'rgba(52, 211, 153, 0.5)' : 'rgba(96, 165, 250, 0.5)'
+                                                                                                                    '--bubble-color': isOriginalPoster ? '#10b981' : '#3b82f6',
+                                                                                                                    '--bubble-color-end': isOriginalPoster ? '#059669' : '#1d4ed8',
+                                                                                                                    '--border-color': '#000000'
                                                                                                                 }}
                                                                                                             >
                                                                                                                 <div className="flex items-center mb-2">
                                                                                                                     <div className={`w-2 h-2 ${
                                                                                                                         isOriginalPoster ? 'bg-emerald-200' : 'bg-blue-200'
                                                                                                                     } rounded-full mr-2 animate-pulse`}></div>
-                                                                                                                    <div className={`${
-                                                                                                                        isOriginalPoster ? 'text-emerald-100' : 'text-blue-100'
-                                                                                                                    } font-medium text-xs`}>
+                                                                                                                    <div className="text-black font-medium text-xs">
                                                                                                                         {reply.sender}
                                                                                                                     </div>
                                                                                                                 </div>
-                                                                                                                <div className="text-white text-sm font-medium whitespace-pre-wrap break-words leading-relaxed">
+                                                                                                                <div className="text-black text-sm font-medium whitespace-pre-wrap break-words leading-relaxed">
                                                                                                                     {reply.type === 'file' ? (
                                                                                                                         <a 
                                                                                                                             href={reply.fileUrl} 
                                                                                                                             target="_blank" 
                                                                                                                             rel="noopener noreferrer"
-                                                                                                                            className="text-white hover:text-gray-200 underline flex items-center space-x-2 transition-colors"
+                                                                                                                            className="text-black hover:text-gray-800 underline flex items-center space-x-2 transition-colors"
                                                                                                                         >
                                                                                                                             <span>📎</span>
                                                                                                                             <span>{reply.fileName || reply.text}</span>
