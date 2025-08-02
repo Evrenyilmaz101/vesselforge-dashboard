@@ -3140,7 +3140,21 @@
                                                 // Check if this reply has been read
                                                 const localStorageKey = `readReplies_${currentUserEmail}`;
                                                 const readReplies = JSON.parse(localStorage.getItem(localStorageKey) || '[]');
-                                                const isRead = readReplies.includes(msg.id);
+                                                
+                                                // Firefox workaround: be less aggressive about marking replies as read
+                                                let isRead = readReplies.includes(msg.id);
+                                                if (navigator.userAgent.includes('Firefox')) {
+                                                    // For Firefox, only consider a reply read if it was explicitly clicked
+                                                    // This prevents Firefox from auto-marking all replies as read
+                                                    const currentTime = Date.now();
+                                                    const messageAge = currentTime - (msg.timestampMs || 0);
+                                                    
+                                                    // If the message is less than 30 seconds old, don't consider it read
+                                                    // This helps with Firefox's aggressive read marking
+                                                    if (messageAge < 30000) {
+                                                        isRead = false;
+                                                    }
+                                                }
                                                 
                                                 console.log(`🔍 REPLY CHECK - Message ${msg.id}:`, {
                                                     isReplyToMe,
