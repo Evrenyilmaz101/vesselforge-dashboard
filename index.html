@@ -2268,11 +2268,18 @@
                             text: `📎 Uploaded: ${file.name}`,
                             timestamp: fileObj.timestamp,
                             timestampMs: fileObj.timestampMs,
-                            sender: user?.email?.split('@')[0] || 'User',
+                            sender: currentUserData?.fullName || user?.email?.split('@')[0] || 'User',
+                            senderEmail: user?.email,
                             type: 'file',
                             fileId: fileId,
                             fileName: file.name,
-                            fileUrl: downloadURL
+                            fileUrl: downloadURL,
+                            replyTo: replyingTo ? {
+                                id: replyingTo.id,
+                                text: replyingTo.text?.substring(0, 100) + (replyingTo.text?.length > 100 ? '...' : ''),
+                                sender: replyingTo.sender,
+                                senderEmail: replyingTo.senderEmail
+                            } : null
                         };
                         
                         // Save message to Firebase
@@ -2283,6 +2290,9 @@
                         alert(`Failed to upload ${file.name}. Please try again.`);
                     }
                 }
+                
+                // Clear reply state after file upload
+                setReplyingTo(null);
                 
                 // Reset file input
                 event.target.value = '';
@@ -5223,10 +5233,13 @@
                                                                                     if (textarea) textarea.focus();
                                                                                 }, 100);
                                                                             }}
-                                                                            className="text-blue-400 hover:text-blue-300 text-xs opacity-0 group-hover:opacity-100 transition-opacity mr-2"
+                                                                            className="flex items-center space-x-1 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 text-blue-300 hover:text-white text-xs px-2 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-105"
                                                                             title="Reply to message"
                                                                         >
-                                                                            ↩️
+                                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                                                                            </svg>
+                                                                            <span>Reply</span>
                                                                         </button>
                                                                         
                                                                         {/* Delete button for message sender */}
@@ -5288,17 +5301,18 @@
                                                                                     <div className="space-y-4">
                                                                                         {/* Original message - always on the left */}
                                                                                         <div className="flex justify-start">
-                                                                                            <div className="max-w-md">
-                                                                                                <div className="bg-gradient-to-br from-slate-700/90 to-slate-800/90 border border-slate-500/50 rounded-2xl p-4 shadow-lg backdrop-blur-sm">
+                                                                                            <div className="max-w-md relative">
+                                                                                                <div className="bg-gradient-to-br from-slate-700/90 to-slate-800/90 border border-slate-500/50 rounded-2xl p-4 shadow-lg backdrop-blur-sm relative">
                                                                                                     <div className="flex items-center mb-2">
                                                                                                         <div className="w-2 h-2 bg-emerald-400 rounded-full mr-2 animate-pulse"></div>
                                                                                                         <div className="text-slate-300 font-medium text-xs">{message.sender}</div>
                                                                                                     </div>
                                                                                                     <div className="text-white text-sm whitespace-pre-wrap break-words leading-relaxed">{message.text}</div>
-                                                                                                </div>
-                                                                                                {/* Connection arrow */}
-                                                                                                <div className="ml-4 mt-1">
-                                                                                                    <div className="w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-slate-600/60"></div>
+                                                                                                    
+                                                                                                    {/* Speech bubble tail - pointing left */}
+                                                                                                    <div className="absolute left-0 bottom-4 transform -translate-x-2">
+                                                                                                        <div className="w-0 h-0 border-t-[10px] border-r-[15px] border-b-[10px] border-transparent border-r-slate-700/90"></div>
+                                                                                                    </div>
                                                                                                 </div>
                                                                                             </div>
                                                                                         </div>
@@ -5310,12 +5324,12 @@
                                                                                                 
                                                                                                 return (
                                                                                                     <div key={reply.id} className={`flex ${isOriginalPoster ? 'justify-start' : 'justify-end'}`}>
-                                                                                                        <div className="max-w-sm">
+                                                                                                        <div className="max-w-sm relative">
                                                                                                             <div className={`${
                                                                                                                 isOriginalPoster 
                                                                                                                     ? 'bg-gradient-to-br from-emerald-500/90 to-teal-600/90 border-emerald-400/50' 
                                                                                                                     : 'bg-gradient-to-br from-blue-500/90 to-purple-600/90 border-blue-400/50'
-                                                                                                            } border rounded-2xl p-3 shadow-lg backdrop-blur-sm transform hover:scale-[1.02] transition-all duration-200`}>
+                                                                                                            } border rounded-2xl p-3 shadow-lg backdrop-blur-sm transform hover:scale-[1.02] transition-all duration-200 relative`}>
                                                                                                                 <div className="flex items-center mb-2">
                                                                                                                     <div className={`w-2 h-2 ${
                                                                                                                         isOriginalPoster ? 'bg-emerald-200' : 'bg-blue-200'
@@ -5324,20 +5338,24 @@
                                                                                                                         isOriginalPoster ? 'text-emerald-100' : 'text-blue-100'
                                                                                                                     } font-medium text-xs`}>
                                                                                                                         {reply.sender}
-                                                                                                                        {isOriginalPoster && <span className="ml-1 opacity-60">(OP)</span>}
                                                                                                                     </div>
                                                                                                                 </div>
                                                                                                                 <div className="text-white text-sm font-medium whitespace-pre-wrap break-words leading-relaxed">
                                                                                                                     {reply.text}
                                                                                                                 </div>
-                                                                                                            </div>
-                                                                                                            {/* Connection arrow */}
-                                                                                                            <div className={`${isOriginalPoster ? 'ml-4' : 'mr-4 ml-auto'} mt-1`}>
-                                                                                                                <div className={`w-0 h-0 ${
+                                                                                                                
+                                                                                                                {/* Speech bubble tail */}
+                                                                                                                <div className={`absolute bottom-4 ${
                                                                                                                     isOriginalPoster 
-                                                                                                                        ? 'border-l-6 border-r-6 border-b-6 border-transparent border-b-emerald-500/60' 
-                                                                                                                        : 'border-l-6 border-r-6 border-b-6 border-transparent border-b-blue-500/60'
-                                                                                                                }`}></div>
+                                                                                                                        ? 'left-0 transform -translate-x-2' 
+                                                                                                                        : 'right-0 transform translate-x-2'
+                                                                                                                }`}>
+                                                                                                                    <div className={`w-0 h-0 ${
+                                                                                                                        isOriginalPoster 
+                                                                                                                            ? 'border-t-[10px] border-r-[15px] border-b-[10px] border-transparent border-r-emerald-500/90' 
+                                                                                                                            : 'border-t-[10px] border-l-[15px] border-b-[10px] border-transparent border-l-blue-500/90'
+                                                                                                                    }`}></div>
+                                                                                                                </div>
                                                                                                             </div>
                                                                                                         </div>
                                                                                                     </div>
