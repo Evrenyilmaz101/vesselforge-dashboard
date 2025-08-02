@@ -3117,6 +3117,12 @@
                                             .slice(0, 5); // Show only last 5 replies
                                         
                                         console.log('🔍 DASHBOARD REPLIES - Final replies:', myReplies);
+                                        console.log('🔍 DASHBOARD REPLIES - Browser info:', {
+                                            userAgent: navigator.userAgent,
+                                            isEdge: navigator.userAgent.includes('Edg'),
+                                            isFirefox: navigator.userAgent.includes('Firefox'),
+                                            localStorageSupported: typeof(Storage) !== "undefined"
+                                        });
                                         
                                         return (
                                             <div className="bg-gradient-to-br from-purple-500/40 to-pink-600/40 backdrop-blur-lg rounded-xl p-6 border border-purple-500/50 shadow-xl">
@@ -3238,7 +3244,7 @@
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <p className="text-orange-200/60 text-sm">✅ No pending actions - great work!</p>
+                                                    <p className="text-orange-200/60 text-sm">📝 No actions required</p>
                                                 )}
                                             </div>
                                         );
@@ -5342,7 +5348,11 @@
                                                                                                 const isOriginalPoster = reply.sender === originalPoster;
                                                                                                 
                                                                                                 return (
-                                                                                                    <div key={reply.id} className={`flex ${isOriginalPoster ? 'justify-start' : 'justify-end'}`}>
+                                                                                                    <div 
+                                                                                                                        key={reply.id} 
+                                                                                                                        id={`message-${reply.id}`}
+                                                                                                                        className={`flex ${isOriginalPoster ? 'justify-start' : 'justify-end'}`}
+                                                                                                                    >
                                                                                                         <div className="max-w-sm relative">
                                                                                                             {/* CSS Speech Bubble */}
                                                                                                             <div 
@@ -6768,11 +6778,6 @@
                                                         
                                                         // Combine new people with existing ones, remove duplicates
                                                         const combinedActions = [...new Set([...existingActions, ...actionAlertPeople])];
-                                                        
-                                                        console.log('🔍 ACTION ALERT DEBUG:');
-                                                        console.log('Existing actions:', existingActions);
-                                                        console.log('New alert people:', actionAlertPeople);
-                                                        console.log('Combined actions:', combinedActions);
                                                         
                                                         const updatedTender = {
                                                             ...selectedEnquiry,
