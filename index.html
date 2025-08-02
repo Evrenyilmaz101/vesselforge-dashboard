@@ -6217,16 +6217,24 @@
                                             className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-400"
                                         >
                                             <option value="">Select Person...</option>
-                                            {getUsersByRole('Estimator').map(person => (
+                                            {getUsersByRole('Estimator')
+                                                .filter(person => person !== (currentUserData?.fullName || user?.email?.split('@')[0] || 'User'))
+                                                .map(person => (
                                                 <option key={person} value={person}>{person} (Estimator)</option>
                                             ))}
-                                            {getUsersByRole('Sales Manager').map(person => (
+                                            {getUsersByRole('Sales Manager')
+                                                .filter(person => person !== (currentUserData?.fullName || user?.email?.split('@')[0] || 'User'))
+                                                .map(person => (
                                                 <option key={person} value={person}>{person} (Sales Manager)</option>
                                             ))}
-                                            {getUsersByRole('Design Engineer').map(person => (
+                                            {getUsersByRole('Design Engineer')
+                                                .filter(person => person !== (currentUserData?.fullName || user?.email?.split('@')[0] || 'User'))
+                                                .map(person => (
                                                 <option key={person} value={person}>{person} (Design Engineer)</option>
                                             ))}
-                                            {getUsersByRole('Planner').map(person => (
+                                            {getUsersByRole('Planner')
+                                                .filter(person => person !== (currentUserData?.fullName || user?.email?.split('@')[0] || 'User'))
+                                                .map(person => (
                                                 <option key={person} value={person}>{person} (Planner)</option>
                                             ))}
                                         </select>
@@ -6674,7 +6682,9 @@
                                                 Assign Action To (Select Multiple)
                                             </label>
                                             <div className="space-y-2 max-h-40 overflow-y-auto">
-                                                {getTenderTeamMembers(selectedEnquiry).map(person => (
+                                                {getTenderTeamMembers(selectedEnquiry)
+                                                    .filter(person => person !== (currentUserData?.fullName || user?.email?.split('@')[0] || 'User'))
+                                                    .map(person => (
                                                     <label key={person} className="flex items-center space-x-2 cursor-pointer">
                                                         <input
                                                             type="checkbox"
@@ -6749,30 +6759,42 @@
                                             <button
                                                 onClick={() => {
                                                     if (actionAlertPeople.length > 0) {
-                                                        // Update the tender with new action assignment and reset completions
+                                                        // Update the tender - ADD to existing actions, don't replace them
+                                                        const existingActions = Array.isArray(selectedEnquiry.actionFrom) 
+                                                            ? selectedEnquiry.actionFrom 
+                                                            : selectedEnquiry.actionFrom ? [selectedEnquiry.actionFrom] : [];
+                                                        
+                                                        const existingCompletions = selectedEnquiry.completedBy || [];
+                                                        
+                                                        // Combine new people with existing ones, remove duplicates
+                                                        const combinedActions = [...new Set([...existingActions, ...actionAlertPeople])];
+                                                        
                                                         const updatedTender = {
                                                             ...selectedEnquiry,
-                                                            actionFrom: actionAlertPeople,
-                                                            completedBy: [] // Reset completions when new action is assigned
+                                                            tenderStatus: 'Action Required',
+                                                            actionFrom: combinedActions,
+                                                            completedBy: existingCompletions // Keep existing completions
                                                         };
                                                         
                                                         const tenderRef = firebase.database().ref(`tenders/${updatedTender.id}`);
                                                         tenderRef.update({
-                                                            actionFrom: actionAlertPeople,
-                                                            completedBy: [] // Reset completions for new action
+                                                            actionFrom: combinedActions,
+                                                            tenderStatus: 'Action Required'
+                                                            // Don't reset completedBy - keep existing ones
                                                         });
                                                         
                                                         // IMMEDIATELY update local state for instant UI response
                                                         setSelectedEnquiry(prev => ({
                                                             ...prev,
-                                                            actionFrom: actionAlertPeople,
-                                                            completedBy: []
+                                                            actionFrom: combinedActions,
+                                                            tenderStatus: 'Action Required'
+                                                            // Keep existing completedBy
                                                         }));
                                                         
                                                         // Also update the enquiries list so dashboard stays in sync
                                                         setEnquiries(prev => prev.map(enquiry => 
                                                             enquiry.id === selectedEnquiry.id 
-                                                                ? { ...enquiry, actionFrom: actionAlertPeople, completedBy: [] }
+                                                                ? { ...enquiry, actionFrom: combinedActions, tenderStatus: 'Action Required' }
                                                                 : enquiry
                                                         ));
                                                         
