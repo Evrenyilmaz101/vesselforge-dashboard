@@ -119,7 +119,6 @@
 
                     const VesselForge = () => {
                 console.log('VesselForge component rendering...');
-                console.log('🌐 BROWSER DEBUG - User Agent:', navigator.userAgent.substring(0, 50) + '...');
             // Authentication state
             const [user, setUser] = useState(null);
             const [userRole, setUserRole] = useState(null);
@@ -3098,15 +3097,7 @@
                                             type: msg.type
                                         })));
                                         
-                                        // Check how many messages are FROM the current user (potential candidates for replies)
-                                        const myMessages = allMessages.filter(msg => msg.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase());
-                                        console.log('🔍 DASHBOARD REPLIES - My messages (potential for replies):', myMessages.length);
-                                        
-                                        // Check how many replies exist TO my messages
-                                        const repliesToMyMessages = allMessages.filter(msg => 
-                                            msg.replyTo && msg.replyTo.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase()
-                                        );
-                                        console.log('🔍 DASHBOARD REPLIES - Replies to my messages:', repliesToMyMessages.length);
+
                                         
                                         const myReplies = allMessages
                                             .filter(msg => {
@@ -3137,23 +3128,7 @@
                                             .slice(0, 5); // Show only last 5 replies
                                         
                                         console.log('🔍 DASHBOARD REPLIES - Final replies:', myReplies);
-                                        console.log('🔍 DASHBOARD REPLIES - Browser info:', {
-                                            userAgent: navigator.userAgent,
-                                            isEdge: navigator.userAgent.includes('Edg'),
-                                            isFirefox: navigator.userAgent.includes('Firefox'),
-                                            localStorageSupported: typeof(Storage) !== "undefined",
-                                            localStorageReplyKey: `readReplies_${currentUserEmail}`,
-                                            localStorageReplyData: localStorage.getItem(`readReplies_${currentUserEmail}`)
-                                        });
-                                        
-                                        // Browser-specific logging
-                                        if (navigator.userAgent.includes('Firefox')) {
-                                            console.log('🦊 FIREFOX SPECIFIC - Reply processing...');
-                                        } else if (navigator.userAgent.includes('Edg')) {
-                                            console.log('🌐 EDGE SPECIFIC - Reply processing...');
-                                        } else {
-                                            console.log('🌍 OTHER BROWSER - Reply processing...');
-                                        }
+
                                         
                                         return (
                                             <div className="bg-gradient-to-br from-purple-500/40 to-pink-600/40 backdrop-blur-lg rounded-xl p-6 border border-purple-500/50 shadow-xl">
@@ -5452,7 +5427,11 @@
                                                                                                     <div 
                                                                                                                         key={reply.id} 
                                                                                                                         id={`message-${reply.id}`}
-                                                                                                                        className={`flex ${isOriginalPoster ? 'justify-start' : 'justify-end'}`}
+                                                                                                                        className={`flex ${isOriginalPoster ? 'justify-start' : 'justify-end'} ${
+                                                                                                                            highlightedMessageId === reply.id 
+                                                                                                                                ? 'bg-yellow-400/20 border border-yellow-400/50 rounded-lg p-3 -mx-3' 
+                                                                                                                                : ''
+                                                                                                                        }`}
                                                                                                                     >
                                                                                                         <div className="max-w-sm relative">
                                                                                                             {/* CSS Speech Bubble */}
