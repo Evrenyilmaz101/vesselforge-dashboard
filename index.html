@@ -117,8 +117,9 @@
             console.error('Unhandled promise rejection:', event.reason);
         });
 
-        const VesselForge = () => {
-            console.log('VesselForge component rendering...');
+                    const VesselForge = () => {
+                console.log('VesselForge component rendering...');
+                console.log('🌐 BROWSER DEBUG - User Agent:', navigator.userAgent.substring(0, 50) + '...');
             // Authentication state
             const [user, setUser] = useState(null);
             const [userRole, setUserRole] = useState(null);
@@ -3140,8 +3141,19 @@
                                             userAgent: navigator.userAgent,
                                             isEdge: navigator.userAgent.includes('Edg'),
                                             isFirefox: navigator.userAgent.includes('Firefox'),
-                                            localStorageSupported: typeof(Storage) !== "undefined"
+                                            localStorageSupported: typeof(Storage) !== "undefined",
+                                            localStorageReplyKey: `readReplies_${currentUserEmail}`,
+                                            localStorageReplyData: localStorage.getItem(`readReplies_${currentUserEmail}`)
                                         });
+                                        
+                                        // Browser-specific logging
+                                        if (navigator.userAgent.includes('Firefox')) {
+                                            console.log('🦊 FIREFOX SPECIFIC - Reply processing...');
+                                        } else if (navigator.userAgent.includes('Edg')) {
+                                            console.log('🌐 EDGE SPECIFIC - Reply processing...');
+                                        } else {
+                                            console.log('🌍 OTHER BROWSER - Reply processing...');
+                                        }
                                         
                                         return (
                                             <div className="bg-gradient-to-br from-purple-500/40 to-pink-600/40 backdrop-blur-lg rounded-xl p-6 border border-purple-500/50 shadow-xl">
@@ -3221,8 +3233,17 @@
                                         const readActions = JSON.parse(localStorage.getItem(localStorageKey) || '[]');
                                         
                                         console.log('🔍 ACTION ALERTS DEBUG - Current user:', currentUser);
+                                        console.log('🔍 ACTION ALERTS DEBUG - Current user email:', currentUserEmail);
                                         console.log('🔍 ACTION ALERTS DEBUG - Available enquiries:', enquiries.length);
                                         console.log('🔍 ACTION ALERTS DEBUG - Read actions:', readActions);
+                                        
+                                        // Debug the first few enquiries to see their actionFrom values
+                                        console.log('🔍 ACTION ALERTS DEBUG - Sample enquiries:', enquiries.slice(0, 3).map(enq => ({
+                                            id: enq.id,
+                                            actionFrom: enq.actionFrom,
+                                            completedBy: enq.completedBy,
+                                            tenderStatus: enq.tenderStatus
+                                        })));
                                         
                                         const myActions = enquiries.filter(tender => {
                                             console.log(`🔍 ACTION FILTER - Tender ${tender.id}:`, {
@@ -3232,7 +3253,20 @@
                                                 isRead: readActions.includes(tender.id),
                                                 currentUserInActions: Array.isArray(tender.actionFrom) 
                                                     ? tender.actionFrom.includes(currentUser)
-                                                    : tender.actionFrom === currentUser
+                                                    : tender.actionFrom === currentUser,
+                                                currentUserAlsoInCompletedBy: (tender.completedBy || []).includes(currentUser),
+                                                shouldShow: (() => {
+                                                    if (!tender.actionFrom) return false;
+                                                    const completed = tender.completedBy || [];
+                                                    const isRead = readActions.includes(tender.id);
+                                                    if (isRead) return false;
+                                                    
+                                                    if (Array.isArray(tender.actionFrom)) {
+                                                        return tender.actionFrom.includes(currentUser) && !completed.includes(currentUser);
+                                                    } else {
+                                                        return tender.actionFrom === currentUser && !completed.includes(currentUser);
+                                                    }
+                                                })()
                                             });
                                             
                                             if (!tender.actionFrom) return false;
