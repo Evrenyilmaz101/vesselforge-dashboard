@@ -2547,7 +2547,7 @@
             // Get top 5 priority tenders for home page
             const getTopPriorityTenders = () => {
                 return enquiries
-                    .filter(enquiry => enquiry.tenderStatus === 'Active') // Only show active tenders
+                    .filter(enquiry => enquiry.tenderStatus === 'Active' || enquiry.tenderStatus === 'Action Required') // Show active and action required tenders
                     .filter(enquiry => isUserInTenderTeam(enquiry)) // Only show tenders user is assigned to
                     .sort((a, b) => a.priorityNumber - b.priorityNumber) // Sort by priority (1 = highest)
                     .slice(0, 5); // Take top 5
@@ -2621,7 +2621,7 @@
             };
 
             // Filter tenders by status (only show tenders user is assigned to)
-            const getActiveTenders = () => enquiries.filter(t => t.tenderStatus === 'Active').filter(t => isUserInTenderTeam(t));
+            const getActiveTenders = () => enquiries.filter(t => t.tenderStatus === 'Active' || t.tenderStatus === 'Action Required').filter(t => isUserInTenderTeam(t));
             const getWonTenders = () => enquiries.filter(t => t.tenderStatus === 'Won').filter(t => isUserInTenderTeam(t));
             const getLostTenders = () => enquiries.filter(t => t.tenderStatus === 'Lost').filter(t => isUserInTenderTeam(t));
             const getCancelledTenders = () => enquiries.filter(t => t.tenderStatus === 'Cancelled').filter(t => isUserInTenderTeam(t));
@@ -3418,7 +3418,7 @@
                                             enq.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                             enq.project.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                             enq.id.toLowerCase().includes(searchTerm.toLowerCase())
-                                        ).filter(enq => enq.tenderStatus === 'Active').filter(enq => isUserInTenderTeam(enq)).map((enquiry) => (
+                                        ).filter(enq => enq.tenderStatus === 'Active' || enq.tenderStatus === 'Action Required').filter(enq => isUserInTenderTeam(enq)).map((enquiry) => (
                                             <div
                                                 key={enquiry.id}
                                                 onClick={() => {
