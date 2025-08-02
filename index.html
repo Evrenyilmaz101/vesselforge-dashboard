@@ -3220,8 +3220,18 @@
                                             tenderStatus: enq.tenderStatus
                                         })));
                                         
+                                        console.log('🚨 ACTION ALERTS DEBUG - Current user:', currentUser);
+                                        console.log('🚨 ACTION ALERTS DEBUG - Current user email:', currentUserEmail);
+                                        console.log('🚨 ACTION ALERTS DEBUG - Available enquiries:', enquiries.length);
+                                        console.log('🚨 ACTION ALERTS DEBUG - Sample enquiries:', enquiries.slice(0, 3).map(enq => ({
+                                            id: enq.id,
+                                            actionFrom: enq.actionFrom,
+                                            completedBy: enq.completedBy,
+                                            tenderStatus: enq.tenderStatus
+                                        })));
+                                        
                                         const myActions = enquiries.filter(tender => {
-                                            console.log(`🔍 ACTION FILTER - Tender ${tender.id}:`, {
+                                            console.log(`🚨 ACTION FILTER - Tender ${tender.id}:`, {
                                                 actionFrom: tender.actionFrom,
                                                 actionFromArray: Array.isArray(tender.actionFrom),
                                                 completedBy: tender.completedBy,
@@ -3258,7 +3268,12 @@
                                             }
                                         });
                                         
-                                        console.log('🔍 ACTION ALERTS DEBUG - Final myActions:', myActions.length);
+                                        console.log('🚨 ACTION ALERTS DEBUG - Final myActions:', myActions.length);
+                                        console.log('🚨 ACTION ALERTS DEBUG - Final myActions list:', myActions.map(action => ({
+                                            id: action.id,
+                                            actionFrom: action.actionFrom,
+                                            client: action.client
+                                        })));
                                         
                                         return (
                                             <div className="bg-gradient-to-br from-orange-500/40 to-red-600/40 backdrop-blur-lg rounded-xl p-6 border border-orange-500/50 shadow-xl">
