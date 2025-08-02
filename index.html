@@ -367,6 +367,21 @@
                                     console.log(`🎯 INDIVIDUAL tender listener - Found ${mentionMessages.length} mention messages in selected tender ${selectedEnquiry.id}`);
                                 }
                                 
+                                // Firefox-specific debugging for reply threading
+                                if (navigator.userAgent.includes('Firefox')) {
+                                    const replyMessages = messagesList.filter(msg => msg.replyTo);
+                                    console.log(`🦊 FIREFOX INDIVIDUAL LISTENER - Found ${replyMessages.length} reply messages`);
+                                    console.log('🦊 FIREFOX INDIVIDUAL LISTENER - Sample replies:', 
+                                        replyMessages.slice(0, 2).map(msg => ({
+                                            id: msg.id,
+                                            replyToId: msg.replyTo?.id,
+                                            sender: msg.sender,
+                                            timestamp: msg.timestamp,
+                                            text: msg.text?.substring(0, 30)
+                                        }))
+                                    );
+                                }
+                                
                                 setMessages(prev => {
                                     const updated = {
                                         ...prev,
@@ -460,6 +475,14 @@
                                     const mentionMessages = messagesList.filter(msg => msg.type === 'mention');
                                     if (mentionMessages.length > 0) {
                                         console.log(`📢 DASHBOARD listener - Found ${mentionMessages.length} mention messages in tender ${tender.id}:`, mentionMessages.map(m => ({id: m.id, type: m.type, text: m.text?.substring(0, 50)})));
+                                    }
+                                    
+                                    // Firefox-specific debugging for reply threading in dashboard
+                                    if (navigator.userAgent.includes('Firefox')) {
+                                        const replyMessages = messagesList.filter(msg => msg.replyTo);
+                                        if (replyMessages.length > 0) {
+                                            console.log(`🦊 FIREFOX DASHBOARD LISTENER - Found ${replyMessages.length} reply messages in tender ${tender.id}`);
+                                        }
                                     }
                                     
                                     setMessages(prev => {
@@ -1995,6 +2018,12 @@
                 
                 console.log('🔍 COMPLETE MESSAGE OBJECT:', message);
                 
+                // Firefox-specific debugging for reply threading
+                if (navigator.userAgent.includes('Firefox') && replyingTo) {
+                    console.log('🦊 FIREFOX SEND DEBUG - Replying to message:', replyingTo);
+                    console.log('🦊 FIREFOX SEND DEBUG - Reply structure being created:', message.replyTo);
+                }
+                
                 try {
                     // Save to Firebase
                     await database.ref(`tender-messages/${selectedEnquiry.id}/${messageId}`).set(message);
@@ -3128,6 +3157,21 @@
                                             .slice(0, 5); // Show only last 5 replies
                                         
                                         console.log('🔍 DASHBOARD REPLIES - Final replies:', myReplies);
+                                        
+                                        // Firefox-specific debugging for reply threading
+                                        if (navigator.userAgent.includes('Firefox')) {
+                                            console.log('🦊 FIREFOX DEBUG - Reply threading check');
+                                            console.log('🦊 FIREFOX DEBUG - All messages with replyTo:', allMessages.filter(msg => msg.replyTo).length);
+                                            console.log('🦊 FIREFOX DEBUG - Sample reply structure:', 
+                                                allMessages.filter(msg => msg.replyTo).slice(0, 2).map(msg => ({
+                                                    id: msg.id,
+                                                    replyToId: msg.replyTo?.id,
+                                                    replyToSender: msg.replyTo?.sender,
+                                                    sender: msg.sender,
+                                                    timestamp: msg.timestamp
+                                                }))
+                                            );
+                                        }
 
                                         
                                         return (
@@ -3534,10 +3578,16 @@
                                                             }
                                                             
                                                             if (Array.isArray(enquiry.actionFrom)) {
-                                                                return enquiry.actionFrom.join(', ');
+                                                                // Filter out 'Awaiting Assignment' and other placeholder values
+                                                                const realAssignees = enquiry.actionFrom.filter(name => 
+                                                                    name !== 'Awaiting Assignment' && name !== 'Unassigned' && name !== ''
+                                                                );
+                                                                return realAssignees.length > 0 ? realAssignees.join(', ') : 'No actions assigned';
                                                             }
                                                             
-                                                            return enquiry.actionFrom;
+                                                            return enquiry.actionFrom === 'Awaiting Assignment' || enquiry.actionFrom === 'Unassigned' || enquiry.actionFrom === '' 
+                                                                ? 'No actions assigned' 
+                                                                : enquiry.actionFrom;
                                                         })()}
                                                     </div>
                                                     {(() => {
