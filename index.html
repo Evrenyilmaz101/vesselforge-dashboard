@@ -6769,6 +6769,11 @@
                                                         // Combine new people with existing ones, remove duplicates
                                                         const combinedActions = [...new Set([...existingActions, ...actionAlertPeople])];
                                                         
+                                                        console.log('🔍 ACTION ALERT DEBUG:');
+                                                        console.log('Existing actions:', existingActions);
+                                                        console.log('New alert people:', actionAlertPeople);
+                                                        console.log('Combined actions:', combinedActions);
+                                                        
                                                         const updatedTender = {
                                                             ...selectedEnquiry,
                                                             tenderStatus: 'Action Required',
