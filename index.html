@@ -3097,6 +3097,16 @@
                                             type: msg.type
                                         })));
                                         
+                                        // Check how many messages are FROM the current user (potential candidates for replies)
+                                        const myMessages = allMessages.filter(msg => msg.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase());
+                                        console.log('🔍 DASHBOARD REPLIES - My messages (potential for replies):', myMessages.length);
+                                        
+                                        // Check how many replies exist TO my messages
+                                        const repliesToMyMessages = allMessages.filter(msg => 
+                                            msg.replyTo && msg.replyTo.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase()
+                                        );
+                                        console.log('🔍 DASHBOARD REPLIES - Replies to my messages:', repliesToMyMessages.length);
+                                        
                                         const myReplies = allMessages
                                             .filter(msg => {
                                                 // Must be a reply to the current user's message
@@ -3210,7 +3220,21 @@
                                         const localStorageKey = `readActions_${currentUserEmail}`;
                                         const readActions = JSON.parse(localStorage.getItem(localStorageKey) || '[]');
                                         
+                                        console.log('🔍 ACTION ALERTS DEBUG - Current user:', currentUser);
+                                        console.log('🔍 ACTION ALERTS DEBUG - Available enquiries:', enquiries.length);
+                                        console.log('🔍 ACTION ALERTS DEBUG - Read actions:', readActions);
+                                        
                                         const myActions = enquiries.filter(tender => {
+                                            console.log(`🔍 ACTION FILTER - Tender ${tender.id}:`, {
+                                                actionFrom: tender.actionFrom,
+                                                actionFromArray: Array.isArray(tender.actionFrom),
+                                                completedBy: tender.completedBy,
+                                                isRead: readActions.includes(tender.id),
+                                                currentUserInActions: Array.isArray(tender.actionFrom) 
+                                                    ? tender.actionFrom.includes(currentUser)
+                                                    : tender.actionFrom === currentUser
+                                            });
+                                            
                                             if (!tender.actionFrom) return false;
                                             const completed = tender.completedBy || [];
                                             
@@ -3224,6 +3248,8 @@
                                                 return tender.actionFrom === currentUser && !completed.includes(currentUser);
                                             }
                                         });
+                                        
+                                        console.log('🔍 ACTION ALERTS DEBUG - Final myActions:', myActions.length);
                                         
                                         return (
                                             <div className="bg-gradient-to-br from-orange-500/40 to-red-600/40 backdrop-blur-lg rounded-xl p-6 border border-orange-500/50 shadow-xl">
