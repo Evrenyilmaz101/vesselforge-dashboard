@@ -40,28 +40,31 @@
             background-color: #3b82f6 !important;
         }
         
-        /* Speech Bubble CSS */
-        .speech-bubble-left::after {
+        /* Speech Bubble CSS with rotated square tail */
+        .speech-bubble-left::before {
             content: '';
             position: absolute;
-            border-style: solid;
-            border-color: transparent var(--bubble-color) transparent transparent;
-            bottom: auto;
-            left: calc(-1 * var(--arrow-h) * 2 + 0.5px);
-            border-width: var(--arrow-w) var(--arrow-h);
-            top: calc(50% - var(--arrow-w));
+            width: 15px;
+            height: 15px;
+            background: var(--bubble-color);
+            left: -7px;
+            top: 50%;
+            transform: translateY(-50%) rotate(45deg);
+            border-left: 1px solid var(--border-color, rgba(100, 116, 139, 0.5));
+            border-bottom: 1px solid var(--border-color, rgba(100, 116, 139, 0.5));
         }
         
-        .speech-bubble-right::after {
+        .speech-bubble-right::before {
             content: '';
             position: absolute;
-            border-style: solid;
-            border-color: transparent transparent transparent var(--bubble-color);
-            bottom: auto;
-            left: auto;
-            border-width: var(--arrow-w) var(--arrow-h);
-            top: calc(50% - var(--arrow-w));
-            right: calc(-1 * var(--arrow-h) * 2 + 0.5px);
+            width: 15px;
+            height: 15px;
+            background: var(--bubble-color);
+            right: -7px;
+            top: 50%;
+            transform: translateY(-50%) rotate(45deg);
+            border-top: 1px solid var(--border-color, rgba(100, 116, 139, 0.5));
+            border-right: 1px solid var(--border-color, rgba(100, 116, 139, 0.5));
         }
     </style>
 </head>
@@ -5329,7 +5332,10 @@
                                                                                                 {/* CSS Speech Bubble */}
                                                                                                 <div 
                                                                                                     className="speech-bubble-left bg-gradient-to-br from-slate-700/90 to-slate-800/90 border border-slate-500/50 rounded-2xl p-4 shadow-lg backdrop-blur-sm relative"
-                                                                                                    style={{'--bubble-color': 'rgb(51 65 85 / 0.9)', '--arrow-w': '8px', '--arrow-h': '12px'}}
+                                                                                                    style={{
+                                                                                                        '--bubble-color': 'rgb(51 65 85 / 0.9)', 
+                                                                                                        '--border-color': 'rgba(100, 116, 139, 0.5)'
+                                                                                                    }}
                                                                                                 >
                                                                                                     <div className="flex items-center mb-2">
                                                                                                         <div className="w-2 h-2 bg-emerald-400 rounded-full mr-2 animate-pulse"></div>
@@ -5376,8 +5382,7 @@
                                                                                                                 } border rounded-2xl p-3 shadow-lg backdrop-blur-sm transform hover:scale-[1.02] transition-all duration-200 relative`}
                                                                                                                 style={{
                                                                                                                     '--bubble-color': isOriginalPoster ? 'rgb(16 185 129 / 0.9)' : 'rgb(59 130 246 / 0.9)',
-                                                                                                                    '--arrow-w': '8px',
-                                                                                                                    '--arrow-h': '12px'
+                                                                                                                    '--border-color': isOriginalPoster ? 'rgba(52, 211, 153, 0.5)' : 'rgba(96, 165, 250, 0.5)'
                                                                                                                 }}
                                                                                                             >
                                                                                                                 <div className="flex items-center mb-2">
