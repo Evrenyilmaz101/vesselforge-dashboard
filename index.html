@@ -3207,52 +3207,13 @@
                                         const localStorageKey = `readActions_${currentUserEmail}`;
                                         const readActions = JSON.parse(localStorage.getItem(localStorageKey) || '[]');
                                         
-                                        console.log('🔍 ACTION ALERTS DEBUG - Current user:', currentUser);
-                                        console.log('🔍 ACTION ALERTS DEBUG - Current user email:', currentUserEmail);
-                                        console.log('🔍 ACTION ALERTS DEBUG - Available enquiries:', enquiries.length);
-                                        console.log('🔍 ACTION ALERTS DEBUG - Read actions:', readActions);
+
+
                                         
-                                        // Debug the first few enquiries to see their actionFrom values
-                                        console.log('🔍 ACTION ALERTS DEBUG - Sample enquiries:', enquiries.slice(0, 3).map(enq => ({
-                                            id: enq.id,
-                                            actionFrom: enq.actionFrom,
-                                            completedBy: enq.completedBy,
-                                            tenderStatus: enq.tenderStatus
-                                        })));
-                                        
-                                        console.log('🚨 ACTION ALERTS DEBUG - Current user:', currentUser);
-                                        console.log('🚨 ACTION ALERTS DEBUG - Current user email:', currentUserEmail);
-                                        console.log('🚨 ACTION ALERTS DEBUG - Available enquiries:', enquiries.length);
-                                        console.log('🚨 ACTION ALERTS DEBUG - Sample enquiries:', enquiries.slice(0, 3).map(enq => ({
-                                            id: enq.id,
-                                            actionFrom: enq.actionFrom,
-                                            completedBy: enq.completedBy,
-                                            tenderStatus: enq.tenderStatus
-                                        })));
+
                                         
                                         const myActions = enquiries.filter(tender => {
-                                            console.log(`🚨 ACTION FILTER - Tender ${tender.id}:`, {
-                                                actionFrom: tender.actionFrom,
-                                                actionFromArray: Array.isArray(tender.actionFrom),
-                                                completedBy: tender.completedBy,
-                                                isRead: readActions.includes(tender.id),
-                                                currentUserInActions: Array.isArray(tender.actionFrom) 
-                                                    ? tender.actionFrom.includes(currentUser)
-                                                    : tender.actionFrom === currentUser,
-                                                currentUserAlsoInCompletedBy: (tender.completedBy || []).includes(currentUser),
-                                                shouldShow: (() => {
-                                                    if (!tender.actionFrom) return false;
-                                                    const completed = tender.completedBy || [];
-                                                    const isRead = readActions.includes(tender.id);
-                                                    if (isRead) return false;
-                                                    
-                                                    if (Array.isArray(tender.actionFrom)) {
-                                                        return tender.actionFrom.includes(currentUser) && !completed.includes(currentUser);
-                                                    } else {
-                                                        return tender.actionFrom === currentUser && !completed.includes(currentUser);
-                                                    }
-                                                })()
-                                            });
+
                                             
                                             if (!tender.actionFrom) return false;
                                             const completed = tender.completedBy || [];
@@ -3268,12 +3229,7 @@
                                             }
                                         });
                                         
-                                        console.log('🚨 ACTION ALERTS DEBUG - Final myActions:', myActions.length);
-                                        console.log('🚨 ACTION ALERTS DEBUG - Final myActions list:', myActions.map(action => ({
-                                            id: action.id,
-                                            actionFrom: action.actionFrom,
-                                            client: action.client
-                                        })));
+
                                         
                                         return (
                                             <div className="bg-gradient-to-br from-orange-500/40 to-red-600/40 backdrop-blur-lg rounded-xl p-6 border border-orange-500/50 shadow-xl">
@@ -3398,7 +3354,16 @@
                                                             <td className="py-3 text-white/90">{enquiry.client}</td>
                                                             <td className="py-3 text-white/80">{enquiry.project}</td>
                                                             <td className="py-3">
-                                                                {enquiry.actionFrom && enquiry.actionFrom !== 'Awaiting Assignment' && enquiry.actionFrom !== 'Unassigned' && enquiry.actionFrom !== '' ? (
+                                                                {(() => {
+                                                                    // Check if there are any real assignees (not just 'Awaiting Assignment')
+                                                                    if (!enquiry.actionFrom) return false;
+                                                                    
+                                                                    if (Array.isArray(enquiry.actionFrom)) {
+                                                                        return enquiry.actionFrom.some(name => name !== 'Awaiting Assignment' && name !== 'Unassigned' && name !== '');
+                                                                    } else {
+                                                                        return enquiry.actionFrom !== 'Awaiting Assignment' && enquiry.actionFrom !== 'Unassigned' && enquiry.actionFrom !== '';
+                                                                    }
+                                                                })() ? (
                                                                     <div className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity ${
                                                                         (() => {
                                                                             const allAssignees = Array.isArray(enquiry.actionFrom) ? enquiry.actionFrom : [enquiry.actionFrom];
@@ -3418,11 +3383,23 @@
                                                                             const allAssignees = Array.isArray(enquiry.actionFrom) ? enquiry.actionFrom : [enquiry.actionFrom];
                                                                             const completedBy = enquiry.completedBy || [];
                                                                             const allCompleted = allAssignees.every(assignee => completedBy.includes(assignee));
-                                                                            return allCompleted ? '✅ Completed' : `🚨 ${Array.isArray(enquiry.actionFrom) ? enquiry.actionFrom.join(', ') : enquiry.actionFrom}`;
+                                                                            if (allCompleted) return '✅ Completed';
+                                                                            
+                                                                            // Filter out 'Awaiting Assignment' from display
+                                                                            let displayNames;
+                                                                            if (Array.isArray(enquiry.actionFrom)) {
+                                                                                displayNames = enquiry.actionFrom
+                                                                                    .filter(name => name !== 'Awaiting Assignment' && name !== 'Unassigned' && name !== '')
+                                                                                    .join(', ');
+                                                                            } else {
+                                                                                displayNames = enquiry.actionFrom === 'Awaiting Assignment' || enquiry.actionFrom === 'Unassigned' || enquiry.actionFrom === '' ? '' : enquiry.actionFrom;
+                                                                            }
+                                                                            
+                                                                            return displayNames ? `🚨 ${displayNames}` : 'No critical actions';
                                                                         })()}
                                                                     </div>
                                                                 ) : (
-                                                                    <span className="text-white/50 text-xs">🔕 No Action Alert</span>
+                                                                    <span className="text-white/50 text-xs">📝 No critical actions</span>
                                                                 )}
                                                             </td>
                                                             <td className="py-3">
