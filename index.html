@@ -3151,6 +3151,17 @@
                                                     currentUserEmail
                                                 });
                                                 
+                                                // Firefox-specific debugging for read status
+                                                if (navigator.userAgent.includes('Firefox') && isReplyToMe && isNotFromMe) {
+                                                    console.log(`🦊 FIREFOX READ STATUS - Message ${msg.id}:`, {
+                                                        localStorageKey,
+                                                        readReplies,
+                                                        isInReadArray: readReplies.includes(msg.id),
+                                                        messageId: msg.id,
+                                                        messageIdType: typeof msg.id
+                                                    });
+                                                }
+                                                
                                                 // Only show unread replies to me from others
                                                 return isReplyToMe && isNotFromMe && !isRead;
                                             })
