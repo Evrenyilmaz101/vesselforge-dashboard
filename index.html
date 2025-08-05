@@ -3141,19 +3141,27 @@
                                                 const localStorageKey = `readReplies_${currentUserEmail}`;
                                                 const readReplies = JSON.parse(localStorage.getItem(localStorageKey) || '[]');
                                                 
-                                                // Firefox workaround: be less aggressive about marking replies as read
+                                                // Browser-specific workaround for aggressive read marking
                                                 let isRead = readReplies.includes(msg.id);
-                                                if (navigator.userAgent.includes('Firefox')) {
-                                                    // For Firefox, only consider a reply read if it was explicitly clicked
-                                                    // This prevents Firefox from auto-marking all replies as read
+                                                const isFirefox = navigator.userAgent.includes('Firefox');
+                                                const isEdge = navigator.userAgent.includes('Edg');
+                                                
+                                                if (isFirefox || isEdge) {
+                                                    // For Firefox and Edge, be less aggressive about marking replies as read
                                                     const currentTime = Date.now();
                                                     const messageAge = currentTime - (msg.timestampMs || 0);
                                                     
-                                                    // If the message is less than 30 seconds old, don't consider it read
-                                                    // This helps with Firefox's aggressive read marking
-                                                    if (messageAge < 30000) {
+                                                    // If the message is less than 60 seconds old, don't consider it read
+                                                    // This prevents browsers from auto-marking all replies as read
+                                                    if (messageAge < 60000) {
                                                         isRead = false;
                                                     }
+                                                    
+                                                    console.log(`🔧 BROWSER WORKAROUND - ${isFirefox ? 'Firefox' : 'Edge'} - Message ${msg.id}:`, {
+                                                        messageAge,
+                                                        originalIsRead: readReplies.includes(msg.id),
+                                                        finalIsRead: isRead
+                                                    });
                                                 }
                                                 
                                                 console.log(`🔍 REPLY CHECK - Message ${msg.id}:`, {
@@ -3165,14 +3173,22 @@
                                                     currentUserEmail
                                                 });
                                                 
-                                                // Firefox-specific debugging for read status
-                                                if (navigator.userAgent.includes('Firefox') && isReplyToMe && isNotFromMe) {
-                                                    console.log(`🦊 FIREFOX READ STATUS - Message ${msg.id}:`, {
+                                                // Browser-specific debugging for read status
+                                                if (isReplyToMe && isNotFromMe) {
+                                                    const browserInfo = {
+                                                        isFirefox: navigator.userAgent.includes('Firefox'),
+                                                        isEdge: navigator.userAgent.includes('Edg'),
+                                                        isChrome: navigator.userAgent.includes('Chrome') && !navigator.userAgent.includes('Edg')
+                                                    };
+                                                    
+                                                    console.log(`🌐 BROWSER READ STATUS - Message ${msg.id}:`, {
+                                                        ...browserInfo,
                                                         localStorageKey,
                                                         readReplies,
                                                         isInReadArray: readReplies.includes(msg.id),
                                                         messageId: msg.id,
-                                                        messageIdType: typeof msg.id
+                                                        messageIdType: typeof msg.id,
+                                                        messageAge: Date.now() - (msg.timestampMs || 0)
                                                     });
                                                 }
                                                 
