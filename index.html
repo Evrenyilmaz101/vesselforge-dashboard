@@ -3324,7 +3324,7 @@
                                                     : tender.actionFrom === currentUser;
                                                 const isCompleted = completed.includes(currentUser);
                                                 
-                                                console.log(`🔍 CRITICAL ACTION FILTER: ${tender.id}`, {
+                                                                                                            console.log(`🔍 CRITICAL ACTION FILTER: ${tender.id}`, {
                                                     actionFrom: tender.actionFrom,
                                                     currentUser: currentUser,
                                                     isAssigned: isAssigned,
@@ -3332,6 +3332,12 @@
                                                     isCompleted: isCompleted,
                                                     shouldShow: isAssigned && !isCompleted
                                                 });
+                                                
+                                                // ISSUE FIX: If someone is incorrectly marked as completed, show details
+                                                if (isAssigned && isCompleted) {
+                                                    console.log(`❌ CRITICAL ACTION HIDDEN: ${tender.id} - ${currentUser} is marked as completed but action should be visible!`);
+                                                    console.log('🐛 COMPLETION ARRAY:', completed);
+                                                }
                                             }
                                             
                                             // Don't filter by read status for Critical Actions - only by completion
@@ -7204,38 +7210,50 @@
                                                             ? selectedEnquiry.actionFrom 
                                                             : selectedEnquiry.actionFrom ? [selectedEnquiry.actionFrom] : [];
                                                         
+                                                        // CRITICAL FIX: Don't include newly assigned people in completedBy
                                                         const existingCompletions = selectedEnquiry.completedBy || [];
+                                                        const cleanedCompletions = existingCompletions.filter(person => 
+                                                            !actionAlertPeople.includes(person)
+                                                        );
                                                         
                                                         // Combine new people with existing ones, remove duplicates
                                                         const combinedActions = [...new Set([...existingActions, ...actionAlertPeople])];
+                                                        
+                                                        console.log('🔧 CRITICAL ACTION ASSIGNMENT:', {
+                                                            existingActions: existingActions,
+                                                            newAssignees: actionAlertPeople,
+                                                            combinedActions: combinedActions,
+                                                            existingCompletions: existingCompletions,
+                                                            cleanedCompletions: cleanedCompletions
+                                                        });
                                                         
                                                         const updatedTender = {
                                                             ...selectedEnquiry,
                                                             tenderStatus: 'Action Required',
                                                             actionFrom: combinedActions,
-                                                            completedBy: existingCompletions // Keep existing completions
+                                                            completedBy: cleanedCompletions // Use cleaned completions
                                                         };
                                                         
                                                         const tenderRef = firebase.database().ref(`tenders/${updatedTender.id}`);
                                                         tenderRef.update({
                                                             actionFrom: combinedActions,
-                                                            tenderStatus: 'Action Required'
-                                                            // Don't reset completedBy - keep existing ones
+                                                            tenderStatus: 'Action Required',
+                                                            completedBy: cleanedCompletions // Use cleaned completions
                                                         });
                                                         
                                                         // IMMEDIATELY update local state for instant UI response
                                                         setSelectedEnquiry(prev => ({
                                                             ...prev,
                                                             actionFrom: combinedActions,
-                                                            tenderStatus: 'Action Required'
-                                                            // Keep existing completedBy
+                                                            tenderStatus: 'Action Required',
+                                                            completedBy: cleanedCompletions // Use cleaned completions
                                                         }));
                                                         
                                                         // Also update the enquiries list so dashboard stays in sync
                                                         setEnquiries(prev => {
                                                             const updated = prev.map(enquiry => 
                                                                 enquiry.id === selectedEnquiry.id 
-                                                                    ? { ...enquiry, actionFrom: combinedActions, tenderStatus: 'Action Required' }
+                                                                    ? { ...enquiry, actionFrom: combinedActions, tenderStatus: 'Action Required', completedBy: cleanedCompletions }
                                                                     : enquiry
                                                             );
                                                             console.log('🔥 CRITICAL ACTION CREATED - Updated enquiries:', updated.find(e => e.id === selectedEnquiry.id));
