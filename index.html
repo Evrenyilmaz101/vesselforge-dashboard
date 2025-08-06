@@ -3304,24 +3304,9 @@
                                     {(() => {
                                         const currentUser = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
                                         const currentUserEmail = user?.email || '';
-                                        console.log('🔍 CRITICAL ACTIONS USER CHECK:', {
-                                            currentUser: currentUser,
-                                            currentUserData: currentUserData,
-                                            userEmail: user?.email
-                                        });
-                                        
-                                        // Get read action alerts from localStorage
+                                        // Get read action alerts from localStorage (kept for potential future use)
                                         const localStorageKey = `readActions_${currentUserEmail}`;
                                         const readActions = JSON.parse(localStorage.getItem(localStorageKey) || '[]');
-                                        
-                                        // Debug: Show all enquiries with actionFrom
-                                        console.log('🔍 ALL ENQUIRIES WITH ACTIONS:', 
-                                            enquiries.filter(t => t.actionFrom).map(t => ({
-                                                id: t.id,
-                                                actionFrom: t.actionFrom,
-                                                completedBy: t.completedBy
-                                            }))
-                                        );
                                         
 
 
@@ -3329,23 +3314,13 @@
 
                                         
                                         const myActions = enquiries.filter(tender => {
-                                            // Debug logging
-                                            if (tender.actionFrom) {
-                                                console.log('🔍 CRITICAL ACTION CHECK:', {
-                                                    tenderId: tender.id,
-                                                    actionFrom: tender.actionFrom,
-                                                    currentUser: currentUser,
-                                                    completed: tender.completedBy,
-                                                    isRead: readActions.includes(tender.id)
-                                                });
-                                            }
                                             
                                             if (!tender.actionFrom) return false;
                                             const completed = tender.completedBy || [];
                                             
-                                            // Check if this action alert has been read
-                                            const isRead = readActions.includes(tender.id);
-                                            if (isRead) return false; // Hide read action alerts
+                                            // Don't filter by read status for Critical Actions - only by completion
+                                            // const isRead = readActions.includes(tender.id);
+                                            // if (isRead) return false;
                                             
                                             if (Array.isArray(tender.actionFrom)) {
                                                 return tender.actionFrom.includes(currentUser) && !completed.includes(currentUser);
