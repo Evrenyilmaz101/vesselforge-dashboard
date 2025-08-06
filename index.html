@@ -3314,14 +3314,27 @@
 
                                         
                                         const myActions = enquiries.filter(tender => {
-                                            
                                             if (!tender.actionFrom) return false;
                                             const completed = tender.completedBy || [];
                                             
-                                            // Don't filter by read status for Critical Actions - only by completion
-                                            // const isRead = readActions.includes(tender.id);
-                                            // if (isRead) return false;
+                                            // Debug each tender with actionFrom
+                                            if (tender.actionFrom) {
+                                                const isAssigned = Array.isArray(tender.actionFrom) 
+                                                    ? tender.actionFrom.includes(currentUser)
+                                                    : tender.actionFrom === currentUser;
+                                                const isCompleted = completed.includes(currentUser);
+                                                
+                                                console.log(`🔍 CRITICAL ACTION FILTER: ${tender.id}`, {
+                                                    actionFrom: tender.actionFrom,
+                                                    currentUser: currentUser,
+                                                    isAssigned: isAssigned,
+                                                    completed: completed,
+                                                    isCompleted: isCompleted,
+                                                    shouldShow: isAssigned && !isCompleted
+                                                });
+                                            }
                                             
+                                            // Don't filter by read status for Critical Actions - only by completion
                                             if (Array.isArray(tender.actionFrom)) {
                                                 return tender.actionFrom.includes(currentUser) && !completed.includes(currentUser);
                                             } else {
@@ -3353,7 +3366,8 @@
                                                                 key={index} 
                                                                 className="flex items-center justify-between p-2 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors"
                                                                                                                 onClick={() => {
-                                                    // DON'T mark as read on click - only on completion
+                                                    // DON'T mark as read on click - Critical Actions stay visible until completion
+                                                    console.log('🚨 Critical Action clicked:', action.id, 'NOT marking as read');
                                                     setSelectedEnquiry(action);
                                                     setShowEnquiryDetails(true);
                                                     setActiveTab('chat');
@@ -7225,6 +7239,13 @@
                                                                     : enquiry
                                                             );
                                                             console.log('🔥 CRITICAL ACTION CREATED - Updated enquiries:', updated.find(e => e.id === selectedEnquiry.id));
+                                                            
+                                                            // Force a re-render by updating a timestamp
+                                                            setTimeout(() => {
+                                                                console.log('🔄 Forcing Critical Actions refresh...');
+                                                                setEnquiries(prev => [...prev]); // Trigger re-render
+                                                            }, 100);
+                                                            
                                                             return updated;
                                                         });
                                                         
