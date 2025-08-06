@@ -238,6 +238,13 @@
             const [actionAlertPeople, setActionAlertPeople] = useState([]);
             const [actionAlertMessage, setActionAlertMessage] = useState('');
             const [individualActionMessages, setIndividualActionMessages] = useState({});
+            
+            // To-Do system states
+            const [showTodoModal, setShowTodoModal] = useState(false);
+            const [todoPeople, setTodoPeople] = useState([]);
+            const [todoMessage, setTodoMessage] = useState('');
+            const [individualTodoMessages, setIndividualTodoMessages] = useState({});
+            
             const [allUsers, setAllUsers] = useState([]);
             const [currentUserData, setCurrentUserData] = useState(null);
             const [showImageEditor, setShowImageEditor] = useState(false);
@@ -3337,29 +3344,45 @@
                                                             <div 
                                                                 key={index} 
                                                                 className="flex items-center justify-between p-2 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors"
-                                                                onClick={() => {
-                                                                    // Mark this action alert as read
-                                                                    const localStorageKey = `readActions_${currentUserEmail}`;
-                                                                    const readActions = JSON.parse(localStorage.getItem(localStorageKey) || '[]');
-                                                                    console.log('🔍 ACTION CLICK - Marking action as read:', action.id, 'LocalStorage key:', localStorageKey);
-                                                                    if (!readActions.includes(action.id)) {
-                                                                        readActions.push(action.id);
-                                                                        localStorage.setItem(localStorageKey, JSON.stringify(readActions));
-                                                                        console.log('🔍 ACTION CLICK - Updated read actions:', readActions);
-                                                                    }
-                                                                    
-                                                                    setSelectedEnquiry(action);
-                                                                    setShowEnquiryDetails(true);
-                                                                    setActiveTab('chat');
-                                                                }}
+                                                                                                                onClick={() => {
+                                                    // DON'T mark as read on click - only on completion
+                                                    setSelectedEnquiry(action);
+                                                    setShowEnquiryDetails(true);
+                                                    setActiveTab('chat');
+                                                }}
                                                             >
                                                                 <div className="flex-1">
                                                                     <span className="text-white/90 text-sm font-medium block">{action.id}</span>
                                                                     <span className="text-orange-200/70 text-xs">{action.client}</span>
                                                                 </div>
-                                                                <div className="px-2 py-1 bg-orange-500/30 text-orange-200 text-xs rounded font-medium">
-                                                                    Click to view →
-                                                                </div>
+                                                                                                                                <div className="flex space-x-1">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            // Mark action as completed
+                                                            const currentUser = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
+                                                            const existingCompletions = action.completedBy || [];
+                                                            if (!existingCompletions.includes(currentUser)) {
+                                                                const updatedCompletions = [...existingCompletions, currentUser];
+                                                                const tenderRef = firebase.database().ref(`tenders/${action.id}`);
+                                                                tenderRef.update({ completedBy: updatedCompletions });
+                                                                
+                                                                // Update local state
+                                                                setEnquiries(prev => prev.map(enquiry => 
+                                                                    enquiry.id === action.id 
+                                                                        ? { ...enquiry, completedBy: updatedCompletions }
+                                                                        : enquiry
+                                                                ));
+                                                            }
+                                                        }}
+                                                        className="px-2 py-1 bg-green-600/80 hover:bg-green-600 text-green-100 text-xs rounded font-medium transition-colors"
+                                                    >
+                                                        ✓ Complete
+                                                    </button>
+                                                    <div className="px-2 py-1 bg-orange-500/30 text-orange-200 text-xs rounded font-medium">
+                                                        View
+                                                    </div>
+                                                </div>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -3370,8 +3393,96 @@
                                         );
                                     })()}
 
-
-
+                                    {/* To-Do's for You */}
+                                    {(() => {
+                                        const currentUser = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
+                                        const currentUserEmail = user?.email || '';
+                                        
+                                        // Get To-Do's assigned to current user
+                                        const myTodos = enquiries.filter(tender => {
+                                            if (!tender.todoAssignments || !Array.isArray(tender.todoAssignments)) return false;
+                                            
+                                            // Check if user has any uncompleted To-Do's for this tender
+                                            return tender.todoAssignments.some(todo => 
+                                                todo && todo.assignee === currentUser && !todo.completed
+                                            );
+                                        });
+                                        
+                                        return (
+                                            <div className="bg-white/15 backdrop-blur-lg rounded-xl p-6 border border-white/30 shadow-xl mb-8">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div>
+                                                        <h3 className="text-lg font-bold text-white">📋 My To-Do's</h3>
+                                                        <p className="text-white/60 text-sm">Tasks assigned to you that need completion</p>
+                                                    </div>
+                                                    <div className="text-2xl font-bold text-blue-300">{
+                                                        myTodos.reduce((count, tender) => {
+                                                            const userTodos = (tender.todoAssignments || []).filter(todo => 
+                                                                todo && todo.assignee === currentUser && !todo.completed
+                                                            );
+                                                            return count + userTodos.length;
+                                                        }, 0)
+                                                    }</div>
+                                                </div>
+                                                
+                                                {myTodos.length > 0 ? (
+                                                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                                                        {myTodos.slice(0, 3).map((tender, index) => {
+                                                            const userTodos = tender.todoAssignments?.filter(todo => 
+                                                                todo.assignee === currentUser && !todo.completed
+                                                            ) || [];
+                                                            
+                                                            return userTodos.map((todo, todoIndex) => (
+                                                                <div 
+                                                                    key={`${index}-${todoIndex}`} 
+                                                                    className="flex items-center justify-between p-2 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors"
+                                                                    onClick={() => {
+                                                                        setSelectedEnquiry(tender);
+                                                                        setShowEnquiryDetails(true);
+                                                                        setActiveTab('chat');
+                                                                    }}
+                                                                >
+                                                                    <div className="flex-1">
+                                                                        <span className="text-white/90 text-sm font-medium block">{tender.id}</span>
+                                                                        <span className="text-blue-200/70 text-xs">{todo.task}</span>
+                                                                    </div>
+                                                                    <div className="flex space-x-1">
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                // Mark To-Do as completed
+                                                                                const updatedTodoAssignments = tender.todoAssignments.map(t => 
+                                                                                    t.id === todo.id ? { ...t, completed: true, completedAt: Date.now() } : t
+                                                                                );
+                                                                                
+                                                                                const tenderRef = firebase.database().ref(`tenders/${tender.id}`);
+                                                                                tenderRef.update({ todoAssignments: updatedTodoAssignments });
+                                                                                
+                                                                                // Update local state
+                                                                                setEnquiries(prev => prev.map(enquiry => 
+                                                                                    enquiry.id === tender.id 
+                                                                                        ? { ...enquiry, todoAssignments: updatedTodoAssignments }
+                                                                                        : enquiry
+                                                                                ));
+                                                                            }}
+                                                                            className="px-2 py-1 bg-green-600/80 hover:bg-green-600 text-green-100 text-xs rounded font-medium transition-colors"
+                                                                        >
+                                                                            ✓ Done
+                                                                        </button>
+                                                                        <div className="px-2 py-1 bg-blue-500/30 text-blue-200 text-xs rounded font-medium">
+                                                                            View
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ));
+                                                        })}
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-blue-200/60 text-sm">📝 No to-do's assigned</p>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
 
                                 </div>
 
@@ -5311,7 +5422,7 @@
                                     {activeTab === 'chat' && (
                                         <div className="h-full flex">
                                             {/* Messages Area */}
-                                            <div className="flex-1 flex flex-col w-full">
+                                            <div className="flex-1 flex flex-col">
                                                 <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4 bg-slate-700/30">
                                                     {(messages[selectedEnquiry.id] || []).length === 0 ? (
                                                         <div className="text-center text-white/60 py-12">
@@ -5795,8 +5906,22 @@
                                                                 />
                                                             </label>
                                                             <button
-                                                                onClick={sendMessage}
+                                                                onClick={() => setShowTodoModal(true)}
                                                                 className="px-2 sm:px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center text-xs sm:text-sm h-[2.5rem]"
+                                                                title="Assign To-Do"
+                                                            >
+                                                                <span className="mr-1">📋</span>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setShowActionAlert(true)}
+                                                                className="px-2 sm:px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors flex items-center text-xs sm:text-sm h-[2.5rem]"
+                                                                title="Create Action Alert"
+                                                            >
+                                                                <span className="mr-1">🚨</span>
+                                                            </button>
+                                                            <button
+                                                                onClick={sendMessage}
+                                                                className="px-2 sm:px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center text-xs sm:text-sm h-[2.5rem]"
                                                                 title="Send Message"
                                                             >
                                                                 <span className="mr-1">➤</span>
@@ -5804,6 +5929,107 @@
                                                             </button>
                                                         </div>
                                                     </div>
+                                                </div>
+                                            </div>
+
+                                            {/* To-Do Sidebar */}
+                                            <div className="w-80 border-l border-white/20 bg-slate-800/30 flex flex-col">
+                                                <div className="p-4 border-b border-white/20 bg-slate-800/50">
+                                                    <h3 className="text-white font-semibold text-lg flex items-center">
+                                                        📋 To-Do's
+                                                        <span className="ml-2 px-2 py-1 bg-blue-600/30 text-blue-200 text-xs rounded font-medium">
+                                                            {(selectedEnquiry?.todoAssignments || []).filter(todo => !todo.completed).length}
+                                                        </span>
+                                                    </h3>
+                                                    <p className="text-white/60 text-sm mt-1">Tasks for this tender</p>
+                                                </div>
+                                                
+                                                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                                                    {(selectedEnquiry?.todoAssignments || []).length === 0 ? (
+                                                        <div className="text-center text-white/60 py-8">
+                                                            <div className="text-4xl mb-2">📝</div>
+                                                            <p className="text-sm">No to-do's assigned yet</p>
+                                                            <p className="text-xs text-white/40 mt-1">Use the 📋 button to assign tasks</p>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            {/* Active To-Do's */}
+                                                            {(selectedEnquiry?.todoAssignments || []).filter(todo => !todo.completed).length > 0 && (
+                                                                <div>
+                                                                    <h4 className="text-white/80 text-sm font-medium mb-3 flex items-center">
+                                                                        🟡 Active Tasks
+                                                                    </h4>
+                                                                    <div className="space-y-2">
+                                                                        {(selectedEnquiry?.todoAssignments || []).filter(todo => !todo.completed).map(todo => (
+                                                                            <div key={todo.id} className="bg-white/5 rounded-lg p-3 border border-white/10">
+                                                                                <div className="flex items-start justify-between mb-2">
+                                                                                    <div className="flex-1">
+                                                                                        <p className="text-white text-sm font-medium">{todo.task}</p>
+                                                                                        <p className="text-blue-200/70 text-xs">Assigned to: {todo.assignee}</p>
+                                                                                        <p className="text-white/50 text-xs">By: {todo.assignedBy}</p>
+                                                                                    </div>
+                                                                                    <button
+                                                                                        onClick={() => {
+                                                                                            // Mark as completed
+                                                                                            const updatedTodos = (selectedEnquiry.todoAssignments || []).map(t => 
+                                                                                                t.id === todo.id ? { ...t, completed: true, completedAt: Date.now() } : t
+                                                                                            );
+                                                                                            
+                                                                                            const tenderRef = firebase.database().ref(`tenders/${selectedEnquiry.id}`);
+                                                                                            tenderRef.update({ todoAssignments: updatedTodos });
+                                                                                            
+                                                                                            // Update local state
+                                                                                            setSelectedEnquiry(prev => ({
+                                                                                                ...prev,
+                                                                                                todoAssignments: updatedTodos
+                                                                                            }));
+                                                                                            
+                                                                                            setEnquiries(prev => prev.map(enquiry => 
+                                                                                                enquiry.id === selectedEnquiry.id 
+                                                                                                    ? { ...enquiry, todoAssignments: updatedTodos }
+                                                                                                    : enquiry
+                                                                                            ));
+                                                                                        }}
+                                                                                        className="px-2 py-1 bg-green-600/80 hover:bg-green-600 text-green-100 text-xs rounded font-medium transition-colors"
+                                                                                    >
+                                                                                        ✓
+                                                                                    </button>
+                                                                                </div>
+                                                                                <div className="text-white/40 text-xs">
+                                                                                    {new Date(todo.assignedAt).toLocaleDateString()}
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            
+                                                            {/* Completed To-Do's */}
+                                                            {(selectedEnquiry?.todoAssignments || []).filter(todo => todo.completed).length > 0 && (
+                                                                <div>
+                                                                    <h4 className="text-white/80 text-sm font-medium mb-3 flex items-center">
+                                                                        ✅ Completed
+                                                                    </h4>
+                                                                    <div className="space-y-2">
+                                                                        {(selectedEnquiry?.todoAssignments || []).filter(todo => todo.completed).map(todo => (
+                                                                            <div key={todo.id} className="bg-green-500/10 rounded-lg p-3 border border-green-500/20">
+                                                                                <div className="flex items-start justify-between mb-2">
+                                                                                    <div className="flex-1">
+                                                                                        <p className="text-white/80 text-sm line-through">{todo.task}</p>
+                                                                                        <p className="text-green-200/70 text-xs">Completed by: {todo.assignee}</p>
+                                                                                    </div>
+                                                                                    <span className="text-green-400 text-lg">✓</span>
+                                                                                </div>
+                                                                                <div className="text-white/40 text-xs">
+                                                                                    Completed: {new Date(todo.completedAt || todo.assignedAt).toLocaleDateString()}
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
 
@@ -7012,6 +7238,146 @@
                                                 className="flex-1 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
                                             >
                                                 🚨 Create Alert
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* To-Do Assignment Modal */}
+                    {showTodoModal && (
+                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                            <div className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-md border border-white/20">
+                                <div className="p-6">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h3 className="text-xl font-bold text-blue-400">📋 Assign To-Do</h3>
+                                        <button
+                                            onClick={() => {
+                                                setShowTodoModal(false);
+                                                setTodoPeople([]);
+                                                setTodoMessage('');
+                                                setIndividualTodoMessages({});
+                                            }}
+                                            className="text-white/60 hover:text-white text-2xl font-bold"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-white font-medium text-sm mb-3">
+                                                Assign to:
+                                            </label>
+                                            <div className="space-y-2">
+                                                {allUsers.map(person => {
+                                                    const personName = person.fullName || person.email?.split('@')[0] || person.name || 'Unknown';
+                                                    return (
+                                                        <label key={person.email} className="flex items-center space-x-3 p-2 hover:bg-white/5 rounded">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={todoPeople.includes(personName)}
+                                                                onChange={(e) => {
+                                                                    if (e.target.checked) {
+                                                                        setTodoPeople(prev => [...prev, personName]);
+                                                                    } else {
+                                                                        setTodoPeople(prev => prev.filter(p => p !== personName));
+                                                                    }
+                                                                }}
+                                                                className="rounded text-blue-600 focus:ring-blue-500 bg-white/10 border-white/20"
+                                                            />
+                                                            <span className="text-white text-sm">{personName}</span>
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-white font-medium text-sm mb-3">
+                                                Task Description:
+                                            </label>
+                                            <textarea
+                                                value={todoMessage}
+                                                onChange={(e) => setTodoMessage(e.target.value)}
+                                                placeholder="Describe the task that needs to be completed..."
+                                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-400 text-sm"
+                                                rows="3"
+                                            />
+                                        </div>
+
+                                        <div className="flex space-x-3 pt-4">
+                                            <button
+                                                onClick={() => {
+                                                    setShowTodoModal(false);
+                                                    setTodoPeople([]);
+                                                    setTodoMessage('');
+                                                    setIndividualTodoMessages({});
+                                                }}
+                                                className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    if (todoPeople.length > 0 && todoMessage.trim()) {
+                                                        // Create To-Do assignments
+                                                        const newTodoAssignments = todoPeople.map(person => ({
+                                                            id: Date.now() + Math.floor(Math.random() * 1000),
+                                                            assignee: person,
+                                                            task: todoMessage.trim(),
+                                                            assignedBy: currentUserData?.fullName || user?.email?.split('@')[0] || 'User',
+                                                            assignedAt: Date.now(),
+                                                            completed: false
+                                                        }));
+                                                        
+                                                        // Update tender with new To-Do assignments
+                                                        const existingTodos = selectedEnquiry.todoAssignments || [];
+                                                        const updatedTodos = [...existingTodos, ...newTodoAssignments];
+                                                        
+                                                        const tenderRef = firebase.database().ref(`tenders/${selectedEnquiry.id}`);
+                                                        tenderRef.update({ todoAssignments: updatedTodos });
+                                                        
+                                                        // Update local state
+                                                        setSelectedEnquiry(prev => ({
+                                                            ...prev,
+                                                            todoAssignments: updatedTodos
+                                                        }));
+                                                        
+                                                        setEnquiries(prev => prev.map(enquiry => 
+                                                            enquiry.id === selectedEnquiry.id 
+                                                                ? { ...enquiry, todoAssignments: updatedTodos }
+                                                                : enquiry
+                                                        ));
+                                                        
+                                                        // Create chat message about the To-Do assignment
+                                                        const todoText = `📋 TO-DO ASSIGNED\n\n${todoPeople.map(person => `👤 ${person}`).join('\n')}\n📝 ${todoMessage}`;
+                                                        
+                                                        const message = {
+                                                            id: Date.now() + Math.floor(Math.random() * 1000),
+                                                            text: todoText,
+                                                            sender: currentUserData?.fullName || user?.email?.split('@')[0] || 'User',
+                                                            senderEmail: user?.email,
+                                                            timestamp: new Date().toLocaleString(),
+                                                            timestampMs: Date.now(),
+                                                            type: 'todo-assignment'
+                                                        };
+                                                        
+                                                        const messagesRef = firebase.database().ref(`tender-messages/${selectedEnquiry.id}/${message.id}`);
+                                                        messagesRef.set(message);
+                                                        
+                                                        setShowTodoModal(false);
+                                                        setTodoPeople([]);
+                                                        setTodoMessage('');
+                                                        setIndividualTodoMessages({});
+                                                    }
+                                                }}
+                                                disabled={todoPeople.length === 0 || !todoMessage.trim()}
+                                                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                                            >
+                                                📋 Assign Task
                                             </button>
                                         </div>
                                     </div>
