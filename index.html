@@ -3300,7 +3300,7 @@
                                         );
                                     })()}
 
-                                    {/* Action Alerts for You */}
+                                    {/* Critical Actions for You */}
                                     {(() => {
                                         const currentUser = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
                                         const currentUserEmail = user?.email || '';
@@ -3341,7 +3341,7 @@
                                                             <span className="text-xl">🚨</span>
                                                         </div>
                                                         <div>
-                                                            <h3 className="text-white font-bold">Action Alerts for You</h3>
+                                                            <h3 className="text-white font-bold">Critical Actions for You</h3>
                                                             <p className="text-orange-200 text-sm">{myActions.length} pending actions</p>
                                                         </div>
                                                     </div>
@@ -3397,7 +3397,7 @@
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <p className="text-orange-200/60 text-sm">📝 No actions required</p>
+                                                    <p className="text-orange-200/60 text-sm">📝 No critical actions required</p>
                                                 )}
                                             </div>
                                         );
@@ -3548,9 +3548,7 @@
                                                                         >
                                                                             ✓ Done
                                                                         </button>
-                                                                        <div className="px-2 py-1 bg-blue-500/30 text-blue-200 text-xs rounded font-medium">
-                                                                            View
-                                                                        </div>
+
                                                                     </div>
                                                                 </div>
                                                             ));
@@ -5994,7 +5992,7 @@
                                                             <button
                                                                 onClick={() => setShowActionAlert(true)}
                                                                 className="px-2 sm:px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors flex items-center text-xs sm:text-sm h-[2.5rem]"
-                                                                title="Create Action Alert"
+                                                                title="Create Critical Action"
                                                             >
                                                                 <span className="mr-1">🚨</span>
                                                             </button>
@@ -7117,7 +7115,7 @@
                             <div className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-md border border-white/20">
                                 <div className="p-6">
                                     <div className="flex items-center justify-between mb-6">
-                                        <h3 className="text-xl font-bold text-orange-400">🚨 Create Action Alert</h3>
+                                        <h3 className="text-xl font-bold text-orange-400">🚨 Create Critical Action</h3>
                                         <button
                                             onClick={() => {
                                                 setShowActionAlert(false);
@@ -7293,7 +7291,7 @@
                                                 disabled={actionAlertPeople.length === 0}
                                                 className="flex-1 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
                                             >
-                                                🚨 Create Alert
+                                                🚨 Create Critical Action
                                             </button>
                                         </div>
                                     </div>
