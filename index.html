@@ -3363,34 +3363,9 @@
                                                                     <span className="text-white/90 text-sm font-medium block">{action.id}</span>
                                                                     <span className="text-orange-200/70 text-xs">{action.client}</span>
                                                                 </div>
-                                                                                                                                <div className="flex space-x-1">
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            // Mark action as completed
-                                                            const currentUser = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
-                                                            const existingCompletions = action.completedBy || [];
-                                                            if (!existingCompletions.includes(currentUser)) {
-                                                                const updatedCompletions = [...existingCompletions, currentUser];
-                                                                const tenderRef = firebase.database().ref(`tenders/${action.id}`);
-                                                                tenderRef.update({ completedBy: updatedCompletions });
-                                                                
-                                                                // Update local state
-                                                                setEnquiries(prev => prev.map(enquiry => 
-                                                                    enquiry.id === action.id 
-                                                                        ? { ...enquiry, completedBy: updatedCompletions }
-                                                                        : enquiry
-                                                                ));
-                                                            }
-                                                        }}
-                                                        className="px-2 py-1 bg-green-600/80 hover:bg-green-600 text-green-100 text-xs rounded font-medium transition-colors"
-                                                    >
-                                                        ✓ Complete
-                                                    </button>
-                                                    <div className="px-2 py-1 bg-orange-500/30 text-orange-200 text-xs rounded font-medium">
-                                                        View
-                                                    </div>
-                                                </div>
+                                                                                                                                <div className="px-2 py-1 bg-orange-500/30 text-orange-200 text-xs rounded font-medium">
+                                                                    Complete in chat →
+                                                                </div>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -7243,11 +7218,15 @@
                                                         }));
                                                         
                                                         // Also update the enquiries list so dashboard stays in sync
-                                                        setEnquiries(prev => prev.map(enquiry => 
-                                                            enquiry.id === selectedEnquiry.id 
-                                                                ? { ...enquiry, actionFrom: combinedActions, tenderStatus: 'Action Required' }
-                                                                : enquiry
-                                                        ));
+                                                        setEnquiries(prev => {
+                                                            const updated = prev.map(enquiry => 
+                                                                enquiry.id === selectedEnquiry.id 
+                                                                    ? { ...enquiry, actionFrom: combinedActions, tenderStatus: 'Action Required' }
+                                                                    : enquiry
+                                                            );
+                                                            console.log('🔥 CRITICAL ACTION CREATED - Updated enquiries:', updated.find(e => e.id === selectedEnquiry.id));
+                                                            return updated;
+                                                        });
                                                         
                                                         // Send message about the action assignment
                                                         let alertText = '';
