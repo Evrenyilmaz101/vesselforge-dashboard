@@ -239,11 +239,11 @@
             const [actionAlertMessage, setActionAlertMessage] = useState('');
             const [individualActionMessages, setIndividualActionMessages] = useState({});
             
-            // To-Do system states
-            const [showTodoModal, setShowTodoModal] = useState(false);
-            const [todoPeople, setTodoPeople] = useState([]);
-            const [todoMessage, setTodoMessage] = useState('');
-            const [individualTodoMessages, setIndividualTodoMessages] = useState({});
+            // Actions system states
+            const [showActionsModal, setShowActionsModal] = useState(false);
+            const [actionsPeople, setActionsPeople] = useState([]);
+            const [actionsMessage, setActionsMessage] = useState('');
+            const [individualActionsMessages, setIndividualActionsMessages] = useState({});
             
             const [allUsers, setAllUsers] = useState([]);
             const [currentUserData, setCurrentUserData] = useState(null);
@@ -259,6 +259,7 @@
                 typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
             );
             const [highlightedMessageId, setHighlightedMessageId] = useState(null);
+            const [notifications, setNotifications] = useState([]);
             const [showEmojiPicker, setShowEmojiPicker] = useState(false);
             const [replyingTo, setReplyingTo] = useState(null);
             
@@ -1474,6 +1475,15 @@
                                         console.log('User data already set, keeping existing data to avoid signup override');
                                         setUserRole(userData.role); // Still update role in case it changed
                                     }
+                                    
+                                    // Load notifications for this user
+                                    const notificationsRef = database.ref(`notifications/${user.email?.replace(/[.#$\[\]]/g, '_')}`);
+                                    notificationsRef.on('value', (snapshot) => {
+                                        const notificationsData = snapshot.val() || {};
+                                        const notificationsList = Object.values(notificationsData)
+                                            .sort((a, b) => b.completedAt - a.completedAt);
+                                        setNotifications(notificationsList);
+                                    });
                                 }
                             } else {
                                 console.log('No user data found, creating default...');
@@ -3393,18 +3403,72 @@
                                         );
                                     })()}
 
-                                    {/* To-Do's for You */}
+                                    {/* Action Completion Notifications */}
+                                    {(() => {
+                                        const currentUserEmail = user?.email || '';
+                                        const unreadNotifications = notifications.filter(n => !n.read);
+                                        
+                                        if (unreadNotifications.length === 0) return null;
+                                        
+                                        return (
+                                            <div className="bg-green-500/10 backdrop-blur-lg rounded-xl p-6 border border-green-500/30 shadow-xl mb-8">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div>
+                                                        <h3 className="text-lg font-bold text-green-300">🔔 Action Notifications</h3>
+                                                        <p className="text-green-200/60 text-sm">Actions completed by your team</p>
+                                                    </div>
+                                                    <div className="text-2xl font-bold text-green-300">{unreadNotifications.length}</div>
+                                                </div>
+                                                
+                                                <div className="space-y-2 max-h-32 overflow-y-auto">
+                                                    {unreadNotifications.slice(0, 3).map((notification, index) => (
+                                                        <div 
+                                                            key={notification.id} 
+                                                            className="flex items-center justify-between p-3 bg-green-500/10 rounded-lg border border-green-500/20"
+                                                        >
+                                                            <div className="flex-1">
+                                                                <p className="text-green-100 text-sm font-medium">
+                                                                    ✅ {notification.assigneeName} completed: {notification.actionTask}
+                                                                </p>
+                                                                <p className="text-green-200/70 text-xs">
+                                                                    Tender: {notification.tenderRef} • {new Date(notification.completedAt).toLocaleDateString()}
+                                                                </p>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => {
+                                                                    // Mark notification as read
+                                                                    const notificationRef = firebase.database().ref(`notifications/${currentUserEmail?.replace(/[.#$\[\]]/g, '_')}/${notification.id}`);
+                                                                    notificationRef.update({ read: true });
+                                                                }}
+                                                                className="px-2 py-1 bg-green-600/80 hover:bg-green-600 text-green-100 text-xs rounded font-medium transition-colors ml-3"
+                                                            >
+                                                                ✓ Mark Read
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                
+                                                {unreadNotifications.length > 3 && (
+                                                    <p className="text-green-200/60 text-xs mt-3 text-center">
+                                                        +{unreadNotifications.length - 3} more notifications
+                                                    </p>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {/* Actions for You */}
                                     {(() => {
                                         const currentUser = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
                                         const currentUserEmail = user?.email || '';
                                         
-                                        // Get To-Do's assigned to current user
-                                        const myTodos = enquiries.filter(tender => {
-                                            if (!tender.todoAssignments || !Array.isArray(tender.todoAssignments)) return false;
+                                        // Get Actions assigned to current user
+                                        const myActions = enquiries.filter(tender => {
+                                            if (!tender.actionAssignments || !Array.isArray(tender.actionAssignments)) return false;
                                             
-                                            // Check if user has any uncompleted To-Do's for this tender
-                                            return tender.todoAssignments.some(todo => 
-                                                todo && todo.assignee === currentUser && !todo.completed
+                                            // Check if user has any uncompleted Actions for this tender
+                                            return tender.actionAssignments.some(action => 
+                                                action && action.assignee === currentUser && !action.completed
                                             );
                                         });
                                         
@@ -3412,29 +3476,29 @@
                                             <div className="bg-white/15 backdrop-blur-lg rounded-xl p-6 border border-white/30 shadow-xl mb-8">
                                                 <div className="flex items-center justify-between mb-4">
                                                     <div>
-                                                        <h3 className="text-lg font-bold text-white">📋 My To-Do's</h3>
+                                                        <h3 className="text-lg font-bold text-white">⚡ My Actions</h3>
                                                         <p className="text-white/60 text-sm">Tasks assigned to you that need completion</p>
                                                     </div>
                                                     <div className="text-2xl font-bold text-blue-300">{
-                                                        myTodos.reduce((count, tender) => {
-                                                            const userTodos = (tender.todoAssignments || []).filter(todo => 
-                                                                todo && todo.assignee === currentUser && !todo.completed
+                                                        myActions.reduce((count, tender) => {
+                                                            const userActions = (tender.actionAssignments || []).filter(action => 
+                                                                action && action.assignee === currentUser && !action.completed
                                                             );
-                                                            return count + userTodos.length;
+                                                            return count + userActions.length;
                                                         }, 0)
                                                     }</div>
                                                 </div>
                                                 
-                                                {myTodos.length > 0 ? (
+                                                {myActions.length > 0 ? (
                                                     <div className="space-y-2 max-h-32 overflow-y-auto">
-                                                        {myTodos.slice(0, 3).map((tender, index) => {
-                                                            const userTodos = tender.todoAssignments?.filter(todo => 
-                                                                todo.assignee === currentUser && !todo.completed
+                                                        {myActions.slice(0, 3).map((tender, index) => {
+                                                            const userActions = tender.actionAssignments?.filter(action => 
+                                                                action.assignee === currentUser && !action.completed
                                                             ) || [];
                                                             
-                                                            return userTodos.map((todo, todoIndex) => (
+                                                            return userActions.map((action, actionIndex) => (
                                                                 <div 
-                                                                    key={`${index}-${todoIndex}`} 
+                                                                    key={`${index}-${actionIndex}`} 
                                                                     className="flex items-center justify-between p-2 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors"
                                                                     onClick={() => {
                                                                         setSelectedEnquiry(tender);
@@ -3444,26 +3508,41 @@
                                                                 >
                                                                     <div className="flex-1">
                                                                         <span className="text-white/90 text-sm font-medium block">{tender.id}</span>
-                                                                        <span className="text-blue-200/70 text-xs">{todo.task}</span>
+                                                                        <span className="text-blue-200/70 text-xs">{action.task}</span>
                                                                     </div>
                                                                     <div className="flex space-x-1">
                                                                         <button
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
-                                                                                // Mark To-Do as completed
-                                                                                const updatedTodoAssignments = tender.todoAssignments.map(t => 
-                                                                                    t.id === todo.id ? { ...t, completed: true, completedAt: Date.now() } : t
+                                                                                // Mark Action as completed
+                                                                                const updatedActionAssignments = tender.actionAssignments.map(a => 
+                                                                                    a.id === action.id ? { ...a, completed: true, completedAt: Date.now() } : a
                                                                                 );
                                                                                 
                                                                                 const tenderRef = firebase.database().ref(`tenders/${tender.id}`);
-                                                                                tenderRef.update({ todoAssignments: updatedTodoAssignments });
+                                                                                tenderRef.update({ actionAssignments: updatedActionAssignments });
                                                                                 
                                                                                 // Update local state
                                                                                 setEnquiries(prev => prev.map(enquiry => 
                                                                                     enquiry.id === tender.id 
-                                                                                        ? { ...enquiry, todoAssignments: updatedTodoAssignments }
+                                                                                        ? { ...enquiry, actionAssignments: updatedActionAssignments }
                                                                                         : enquiry
                                                                                 ));
+                                                                                
+                                                                                // Notify the assigner that this action was completed
+                                                                                const notification = {
+                                                                                    id: Date.now() + Math.floor(Math.random() * 1000),
+                                                                                    type: 'action-completed',
+                                                                                    assignerEmail: allUsers.find(u => u.fullName === action.assignedBy)?.email || action.assignedBy,
+                                                                                    assigneeName: currentUser,
+                                                                                    actionTask: action.task,
+                                                                                    tenderRef: tender.id,
+                                                                                    completedAt: Date.now(),
+                                                                                    read: false
+                                                                                };
+                                                                                
+                                                                                const notificationRef = firebase.database().ref(`notifications/${notification.assignerEmail?.replace(/[.#$\[\]]/g, '_')}/${notification.id}`);
+                                                                                notificationRef.set(notification);
                                                                             }}
                                                                             className="px-2 py-1 bg-green-600/80 hover:bg-green-600 text-green-100 text-xs rounded font-medium transition-colors"
                                                                         >
@@ -3478,7 +3557,7 @@
                                                         })}
                                                     </div>
                                                 ) : (
-                                                    <p className="text-blue-200/60 text-sm">📝 No to-do's assigned</p>
+                                                    <p className="text-blue-200/60 text-sm">⚡ No actions assigned</p>
                                                 )}
                                             </div>
                                         );
@@ -5906,11 +5985,11 @@
                                                                 />
                                                             </label>
                                                             <button
-                                                                onClick={() => setShowTodoModal(true)}
+                                                                onClick={() => setShowActionsModal(true)}
                                                                 className="px-2 sm:px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center text-xs sm:text-sm h-[2.5rem]"
-                                                                title="Assign To-Do"
+                                                                title="Assign Action"
                                                             >
-                                                                <span className="mr-1">📋</span>
+                                                                <span className="mr-1">⚡</span>
                                                             </button>
                                                             <button
                                                                 onClick={() => setShowActionAlert(true)}
@@ -5932,71 +6011,48 @@
                                                 </div>
                                             </div>
 
-                                            {/* To-Do Sidebar */}
+                                            {/* Actions Sidebar */}
                                             <div className="w-80 border-l border-white/20 bg-slate-800/30 flex flex-col">
                                                 <div className="p-4 border-b border-white/20 bg-slate-800/50">
                                                     <h3 className="text-white font-semibold text-lg flex items-center">
-                                                        📋 To-Do's
+                                                        ⚡ Actions
                                                         <span className="ml-2 px-2 py-1 bg-blue-600/30 text-blue-200 text-xs rounded font-medium">
-                                                            {(selectedEnquiry?.todoAssignments || []).filter(todo => !todo.completed).length}
+                                                            {(selectedEnquiry?.actionAssignments || []).filter(action => !action.completed).length}
                                                         </span>
                                                     </h3>
                                                     <p className="text-white/60 text-sm mt-1">Tasks for this tender</p>
                                                 </div>
                                                 
                                                 <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                                                    {(selectedEnquiry?.todoAssignments || []).length === 0 ? (
+                                                    {(selectedEnquiry?.actionAssignments || []).length === 0 ? (
                                                         <div className="text-center text-white/60 py-8">
-                                                            <div className="text-4xl mb-2">📝</div>
-                                                            <p className="text-sm">No to-do's assigned yet</p>
-                                                            <p className="text-xs text-white/40 mt-1">Use the 📋 button to assign tasks</p>
+                                                            <div className="text-4xl mb-2">⚡</div>
+                                                            <p className="text-sm">No actions assigned yet</p>
+                                                            <p className="text-xs text-white/40 mt-1">Use the ⚡ button to assign tasks</p>
                                                         </div>
                                                     ) : (
                                                         <>
-                                                            {/* Active To-Do's */}
-                                                            {(selectedEnquiry?.todoAssignments || []).filter(todo => !todo.completed).length > 0 && (
+                                                            {/* Active Actions */}
+                                                            {(selectedEnquiry?.actionAssignments || []).filter(action => !action.completed).length > 0 && (
                                                                 <div>
                                                                     <h4 className="text-white/80 text-sm font-medium mb-3 flex items-center">
                                                                         🟡 Active Tasks
                                                                     </h4>
                                                                     <div className="space-y-2">
-                                                                        {(selectedEnquiry?.todoAssignments || []).filter(todo => !todo.completed).map(todo => (
-                                                                            <div key={todo.id} className="bg-white/5 rounded-lg p-3 border border-white/10">
+                                                                        {(selectedEnquiry?.actionAssignments || []).filter(action => !action.completed).map(action => (
+                                                                            <div key={action.id} className="bg-white/5 rounded-lg p-3 border border-white/10">
                                                                                 <div className="flex items-start justify-between mb-2">
                                                                                     <div className="flex-1">
-                                                                                        <p className="text-white text-sm font-medium">{todo.task}</p>
-                                                                                        <p className="text-blue-200/70 text-xs">Assigned to: {todo.assignee}</p>
-                                                                                        <p className="text-white/50 text-xs">By: {todo.assignedBy}</p>
+                                                                                        <p className="text-white text-sm font-medium">{action.task}</p>
+                                                                                        <p className="text-blue-200/70 text-xs">Assigned to: {action.assignee}</p>
+                                                                                        <p className="text-white/50 text-xs">By: {action.assignedBy}</p>
                                                                                     </div>
-                                                                                    <button
-                                                                                        onClick={() => {
-                                                                                            // Mark as completed
-                                                                                            const updatedTodos = (selectedEnquiry.todoAssignments || []).map(t => 
-                                                                                                t.id === todo.id ? { ...t, completed: true, completedAt: Date.now() } : t
-                                                                                            );
-                                                                                            
-                                                                                            const tenderRef = firebase.database().ref(`tenders/${selectedEnquiry.id}`);
-                                                                                            tenderRef.update({ todoAssignments: updatedTodos });
-                                                                                            
-                                                                                            // Update local state
-                                                                                            setSelectedEnquiry(prev => ({
-                                                                                                ...prev,
-                                                                                                todoAssignments: updatedTodos
-                                                                                            }));
-                                                                                            
-                                                                                            setEnquiries(prev => prev.map(enquiry => 
-                                                                                                enquiry.id === selectedEnquiry.id 
-                                                                                                    ? { ...enquiry, todoAssignments: updatedTodos }
-                                                                                                    : enquiry
-                                                                                            ));
-                                                                                        }}
-                                                                                        className="px-2 py-1 bg-green-600/80 hover:bg-green-600 text-green-100 text-xs rounded font-medium transition-colors"
-                                                                                    >
-                                                                                        ✓
-                                                                                    </button>
+                                                                                    <div className="text-blue-200/50 text-xs">
+                                                                                        Only assignee can complete
+                                                                                    </div>
                                                                                 </div>
                                                                                 <div className="text-white/40 text-xs">
-                                                                                    {new Date(todo.assignedAt).toLocaleDateString()}
+                                                                                    {new Date(action.assignedAt).toLocaleDateString()}
                                                                                 </div>
                                                                             </div>
                                                                         ))}
@@ -6004,24 +6060,24 @@
                                                                 </div>
                                                             )}
                                                             
-                                                            {/* Completed To-Do's */}
-                                                            {(selectedEnquiry?.todoAssignments || []).filter(todo => todo.completed).length > 0 && (
+                                                            {/* Completed Actions */}
+                                                            {(selectedEnquiry?.actionAssignments || []).filter(action => action.completed).length > 0 && (
                                                                 <div>
                                                                     <h4 className="text-white/80 text-sm font-medium mb-3 flex items-center">
                                                                         ✅ Completed
                                                                     </h4>
                                                                     <div className="space-y-2">
-                                                                        {(selectedEnquiry?.todoAssignments || []).filter(todo => todo.completed).map(todo => (
-                                                                            <div key={todo.id} className="bg-green-500/10 rounded-lg p-3 border border-green-500/20">
+                                                                        {(selectedEnquiry?.actionAssignments || []).filter(action => action.completed).map(action => (
+                                                                            <div key={action.id} className="bg-green-500/10 rounded-lg p-3 border border-green-500/20">
                                                                                 <div className="flex items-start justify-between mb-2">
                                                                                     <div className="flex-1">
-                                                                                        <p className="text-white/80 text-sm line-through">{todo.task}</p>
-                                                                                        <p className="text-green-200/70 text-xs">Completed by: {todo.assignee}</p>
+                                                                                        <p className="text-white/80 text-sm line-through">{action.task}</p>
+                                                                                        <p className="text-green-200/70 text-xs">Completed by: {action.assignee}</p>
                                                                                     </div>
                                                                                     <span className="text-green-400 text-lg">✓</span>
                                                                                 </div>
                                                                                 <div className="text-white/40 text-xs">
-                                                                                    Completed: {new Date(todo.completedAt || todo.assignedAt).toLocaleDateString()}
+                                                                                    Completed: {new Date(action.completedAt || action.assignedAt).toLocaleDateString()}
                                                                                 </div>
                                                                             </div>
                                                                         ))}
@@ -7246,19 +7302,19 @@
                         </div>
                     )}
 
-                    {/* To-Do Assignment Modal */}
-                    {showTodoModal && (
+                    {/* Actions Assignment Modal */}
+                    {showActionsModal && (
                         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                             <div className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-md border border-white/20">
                                 <div className="p-6">
                                     <div className="flex items-center justify-between mb-6">
-                                        <h3 className="text-xl font-bold text-blue-400">📋 Assign To-Do</h3>
+                                        <h3 className="text-xl font-bold text-blue-400">⚡ Assign Action</h3>
                                         <button
                                             onClick={() => {
-                                                setShowTodoModal(false);
-                                                setTodoPeople([]);
-                                                setTodoMessage('');
-                                                setIndividualTodoMessages({});
+                                                setShowActionsModal(false);
+                                                setActionsPeople([]);
+                                                setActionsMessage('');
+                                                setIndividualActionsMessages({});
                                             }}
                                             className="text-white/60 hover:text-white text-2xl font-bold"
                                         >
@@ -7278,12 +7334,12 @@
                                                         <label key={person.email} className="flex items-center space-x-3 p-2 hover:bg-white/5 rounded">
                                                             <input
                                                                 type="checkbox"
-                                                                checked={todoPeople.includes(personName)}
+                                                                checked={actionsPeople.includes(personName)}
                                                                 onChange={(e) => {
                                                                     if (e.target.checked) {
-                                                                        setTodoPeople(prev => [...prev, personName]);
+                                                                        setActionsPeople(prev => [...prev, personName]);
                                                                     } else {
-                                                                        setTodoPeople(prev => prev.filter(p => p !== personName));
+                                                                        setActionsPeople(prev => prev.filter(p => p !== personName));
                                                                     }
                                                                 }}
                                                                 className="rounded text-blue-600 focus:ring-blue-500 bg-white/10 border-white/20"
@@ -7300,8 +7356,8 @@
                                                 Task Description:
                                             </label>
                                             <textarea
-                                                value={todoMessage}
-                                                onChange={(e) => setTodoMessage(e.target.value)}
+                                                value={actionsMessage}
+                                                onChange={(e) => setActionsMessage(e.target.value)}
                                                 placeholder="Describe the task that needs to be completed..."
                                                 className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-400 text-sm"
                                                 rows="3"
@@ -7311,10 +7367,10 @@
                                         <div className="flex space-x-3 pt-4">
                                             <button
                                                 onClick={() => {
-                                                    setShowTodoModal(false);
-                                                    setTodoPeople([]);
-                                                    setTodoMessage('');
-                                                    setIndividualTodoMessages({});
+                                                    setShowActionsModal(false);
+                                                    setActionsPeople([]);
+                                                    setActionsMessage('');
+                                                    setIndividualActionsMessages({});
                                                 }}
                                                 className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
                                             >
@@ -7322,62 +7378,48 @@
                                             </button>
                                             <button
                                                 onClick={() => {
-                                                    if (todoPeople.length > 0 && todoMessage.trim()) {
-                                                        // Create To-Do assignments
-                                                        const newTodoAssignments = todoPeople.map(person => ({
+                                                    if (actionsPeople.length > 0 && actionsMessage.trim()) {
+                                                        // Create Action assignments
+                                                        const newActionAssignments = actionsPeople.map(person => ({
                                                             id: Date.now() + Math.floor(Math.random() * 1000),
                                                             assignee: person,
-                                                            task: todoMessage.trim(),
+                                                            task: actionsMessage.trim(),
                                                             assignedBy: currentUserData?.fullName || user?.email?.split('@')[0] || 'User',
                                                             assignedAt: Date.now(),
                                                             completed: false
                                                         }));
                                                         
-                                                        // Update tender with new To-Do assignments
-                                                        const existingTodos = selectedEnquiry.todoAssignments || [];
-                                                        const updatedTodos = [...existingTodos, ...newTodoAssignments];
+                                                        // Update tender with new Action assignments
+                                                        const existingActions = selectedEnquiry.actionAssignments || [];
+                                                        const updatedActions = [...existingActions, ...newActionAssignments];
                                                         
                                                         const tenderRef = firebase.database().ref(`tenders/${selectedEnquiry.id}`);
-                                                        tenderRef.update({ todoAssignments: updatedTodos });
+                                                        tenderRef.update({ actionAssignments: updatedActions });
                                                         
                                                         // Update local state
                                                         setSelectedEnquiry(prev => ({
                                                             ...prev,
-                                                            todoAssignments: updatedTodos
+                                                            actionAssignments: updatedActions
                                                         }));
                                                         
                                                         setEnquiries(prev => prev.map(enquiry => 
                                                             enquiry.id === selectedEnquiry.id 
-                                                                ? { ...enquiry, todoAssignments: updatedTodos }
+                                                                ? { ...enquiry, actionAssignments: updatedActions }
                                                                 : enquiry
                                                         ));
                                                         
-                                                        // Create chat message about the To-Do assignment
-                                                        const todoText = `📋 TO-DO ASSIGNED\n\n${todoPeople.map(person => `👤 ${person}`).join('\n')}\n📝 ${todoMessage}`;
+                                                        // NO chat message creation - actions appear silently in sidebar
                                                         
-                                                        const message = {
-                                                            id: Date.now() + Math.floor(Math.random() * 1000),
-                                                            text: todoText,
-                                                            sender: currentUserData?.fullName || user?.email?.split('@')[0] || 'User',
-                                                            senderEmail: user?.email,
-                                                            timestamp: new Date().toLocaleString(),
-                                                            timestampMs: Date.now(),
-                                                            type: 'todo-assignment'
-                                                        };
-                                                        
-                                                        const messagesRef = firebase.database().ref(`tender-messages/${selectedEnquiry.id}/${message.id}`);
-                                                        messagesRef.set(message);
-                                                        
-                                                        setShowTodoModal(false);
-                                                        setTodoPeople([]);
-                                                        setTodoMessage('');
-                                                        setIndividualTodoMessages({});
+                                                        setShowActionsModal(false);
+                                                        setActionsPeople([]);
+                                                        setActionsMessage('');
+                                                        setIndividualActionsMessages({});
                                                     }
                                                 }}
-                                                disabled={todoPeople.length === 0 || !todoMessage.trim()}
+                                                disabled={actionsPeople.length === 0 || !actionsMessage.trim()}
                                                 className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
                                             >
-                                                📋 Assign Task
+                                                ⚡ Assign Action
                                             </button>
                                         </div>
                                     </div>
