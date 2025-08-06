@@ -3304,10 +3304,24 @@
                                     {(() => {
                                         const currentUser = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
                                         const currentUserEmail = user?.email || '';
+                                        console.log('🔍 CRITICAL ACTIONS USER CHECK:', {
+                                            currentUser: currentUser,
+                                            currentUserData: currentUserData,
+                                            userEmail: user?.email
+                                        });
                                         
                                         // Get read action alerts from localStorage
                                         const localStorageKey = `readActions_${currentUserEmail}`;
                                         const readActions = JSON.parse(localStorage.getItem(localStorageKey) || '[]');
+                                        
+                                        // Debug: Show all enquiries with actionFrom
+                                        console.log('🔍 ALL ENQUIRIES WITH ACTIONS:', 
+                                            enquiries.filter(t => t.actionFrom).map(t => ({
+                                                id: t.id,
+                                                actionFrom: t.actionFrom,
+                                                completedBy: t.completedBy
+                                            }))
+                                        );
                                         
 
 
@@ -3315,7 +3329,16 @@
 
                                         
                                         const myActions = enquiries.filter(tender => {
-
+                                            // Debug logging
+                                            if (tender.actionFrom) {
+                                                console.log('🔍 CRITICAL ACTION CHECK:', {
+                                                    tenderId: tender.id,
+                                                    actionFrom: tender.actionFrom,
+                                                    currentUser: currentUser,
+                                                    completed: tender.completedBy,
+                                                    isRead: readActions.includes(tender.id)
+                                                });
+                                            }
                                             
                                             if (!tender.actionFrom) return false;
                                             const completed = tender.completedBy || [];
@@ -3476,7 +3499,7 @@
                                             <div className="bg-white/15 backdrop-blur-lg rounded-xl p-6 border border-white/30 shadow-xl mb-8">
                                                 <div className="flex items-center justify-between mb-4">
                                                     <div>
-                                                        <h3 className="text-lg font-bold text-white">⚡ My Actions</h3>
+                                                        <h3 className="text-lg font-bold text-white">⚡ Your Tasks</h3>
                                                         <p className="text-white/60 text-sm">Tasks assigned to you that need completion</p>
                                                     </div>
                                                     <div className="text-2xl font-bold text-blue-300">{
