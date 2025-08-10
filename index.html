@@ -3009,9 +3009,15 @@
                                                                         key={item.key}
                                                                         className="flex items-center justify-between p-2 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors"
                                                                         onClick={() => {
+                                                                            // Navigate to tender and highlight the exact action-alert message
                                                                             setSelectedEnquiry(item.tender);
                                                                             setShowEnquiryDetails(true);
                                                                             setActiveTab('chat');
+                                                                            setHighlightedMessageId(item.message.id);
+                                                                            setTimeout(() => {
+                                                                                const el = document.getElementById(`message-${item.message.id}`);
+                                                                                el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                            }, 800);
                                                                         }}
                                                                     >
                                                                         <div className="flex-1">
