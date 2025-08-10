@@ -244,6 +244,10 @@
             const [actionsPeople, setActionsPeople] = useState([]);
             const [actionsMessage, setActionsMessage] = useState('');
             const [individualActionsMessages, setIndividualActionsMessages] = useState({});
+            // Task discussion modal state
+            const [showTaskDiscussion, setShowTaskDiscussion] = useState(false);
+            const [taskDiscussionContext, setTaskDiscussionContext] = useState(null); // { tenderId, actionId }
+            const [taskDiscussionText, setTaskDiscussionText] = useState('');
             
             const [allUsers, setAllUsers] = useState([]);
             const [currentUserData, setCurrentUserData] = useState(null);
@@ -1552,6 +1556,79 @@
                             <div className="animate-spin h-12 w-12 border-b-2 border-blue-400 rounded-full mx-auto mb-4"></div>
                             <p className="text-white">Loading...</p>
                         </div>
+
+            {/* Task Discussion Modal */}
+            {showTaskDiscussion && taskDiscussionContext && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/50" onClick={() => setShowTaskDiscussion(false)}></div>
+                    <div className="relative bg-slate-800 rounded-xl border border-white/20 w-[90vw] max-w-2xl p-6 shadow-2xl">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-white font-semibold">Task Discussion</h3>
+                            <button className="text-white/60 hover:text-white" onClick={() => setShowTaskDiscussion(false)}>✕</button>
+                        </div>
+                        {(() => {
+                            const tender = enquiries.find(e => e.id === taskDiscussionContext.tenderId) || selectedEnquiry;
+                            const action = (tender?.actionAssignments || []).find(a => a.id === taskDiscussionContext.actionId);
+                            if (!action) return <p className="text-white/70">Task not found.</p>;
+                            const comments = action.comments || [];
+                            return (
+                                <div>
+                                    <div className="mb-3">
+                                        <p className="text-white text-sm font-medium">{action.task}</p>
+                                        <p className="text-white/60 text-xs">Assignee: {action.assignee} • By: {action.assignedBy}</p>
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto space-y-2 mb-4">
+                                        {comments.length === 0 ? (
+                                            <p className="text-white/50 text-sm">No discussion yet.</p>
+                                        ) : (
+                                            comments.map((c, idx) => (
+                                                <div key={idx} className="bg-white/5 border border-white/10 rounded p-2">
+                                                    <div className="text-white/80 text-xs mb-1">{c.author} • {new Date(c.createdAt).toLocaleString()}</div>
+                                                    <div className="text-white/90 text-sm whitespace-pre-wrap">{c.text}</div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                    <div className="flex items-end space-x-2">
+                                        <textarea
+                                            value={taskDiscussionText}
+                                            onChange={e => setTaskDiscussionText(e.target.value)}
+                                            placeholder="Add a comment to this task..."
+                                            className="flex-1 bg-slate-700 text-white rounded p-2 border border-white/20 min-h-[60px]"
+                                        />
+                                        <button
+                                            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
+                                            onClick={() => {
+                                                const text = taskDiscussionText.trim();
+                                                if (!text) return;
+                                                const tenderId = taskDiscussionContext.tenderId;
+                                                const actionId = taskDiscussionContext.actionId;
+                                                const tender = enquiries.find(e => e.id === tenderId) || selectedEnquiry;
+                                                const existing = tender.actionAssignments || [];
+                                                const updated = existing.map(a => a.id === actionId ? {
+                                                    ...a,
+                                                    comments: [...(a.comments || []), {
+                                                        text,
+                                                        author: currentUserData?.fullName || user?.email?.split('@')[0] || 'User',
+                                                        createdAt: Date.now()
+                                                    }]
+                                                } : a);
+                                                // Persist
+                                                const tenderRef = firebase.database().ref(`tenders/${tenderId}`);
+                                                tenderRef.update({ actionAssignments: updated });
+                                                // Local state updates
+                                                setSelectedEnquiry(prev => prev && prev.id === tenderId ? { ...prev, actionAssignments: updated } : prev);
+                                                setEnquiries(prev => prev.map(e => e.id === tenderId ? { ...e, actionAssignments: updated } : e));
+                                                setTaskDiscussionText('');
+                                            }}
+                                        >Send</button>
+                                    </div>
+                                </div>
+                            );
+                        })()}
+                    </div>
+                </div>
+            )}
                     </div>
                 );
             }
@@ -6350,8 +6427,17 @@
                                                                                         <p className="text-blue-200/70 text-xs">Assigned to: {action.assignee}</p>
                                                                                         <p className="text-white/50 text-xs">By: {action.assignedBy}</p>
                                                                                     </div>
-                                                                                    <div className="text-blue-200/50 text-xs">
-                                                                                        Only assignee can complete
+                                                                                    <div className="flex items-center space-x-2">
+                                                                                        <button
+                                                                                            className="px-2 py-1 bg-white/10 hover:bg-white/20 text-white/80 text-xs rounded"
+                                                                                            onClick={() => {
+                                                                                                setTaskDiscussionContext({ tenderId: selectedEnquiry.id, actionId: action.id });
+                                                                                                setShowTaskDiscussion(true);
+                                                                                            }}
+                                                                                        >
+                                                                                            Discuss
+                                                                                        </button>
+                                                                                        <span className="text-blue-200/50 text-xs">Only assignee can complete</span>
                                                                                     </div>
                                                                                 </div>
                                                                                 <div className="text-white/40 text-xs">
