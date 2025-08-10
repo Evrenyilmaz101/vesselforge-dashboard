@@ -3360,12 +3360,14 @@
                                                         <div>
                                                             <h3 className="text-white font-bold">Critical Actions for You</h3>
                                                             <p className="text-orange-200 text-sm">{(() => {
-                                                                // Count total individual assignments for current user
+                                                                // Count total individual, uncompleted assignments for current user across all enquiries
                                                                 let totalAssignments = 0;
-                                                                myActions.forEach(tender => {
+                                                                enquiries.forEach(tender => {
+                                                                    if (!tender || !tender.actionFrom) return;
+                                                                    const completed = tender.completedBy || [];
                                                                     if (Array.isArray(tender.actionFrom)) {
-                                                                        totalAssignments += tender.actionFrom.filter(person => person === currentUser).length;
-                                                                    } else if (tender.actionFrom === currentUser) {
+                                                                        totalAssignments += tender.actionFrom.filter(person => person === currentUser && !completed.includes(currentUser)).length;
+                                                                    } else if (tender.actionFrom === currentUser && !completed.includes(currentUser)) {
                                                                         totalAssignments += 1;
                                                                     }
                                                                 });
@@ -3374,12 +3376,14 @@
                                                         </div>
                                                     </div>
                                                     <div className="text-2xl font-bold text-orange-300">{(() => {
-                                                        // Count total individual assignments for current user
+                                                        // Count total individual, uncompleted assignments for current user across all enquiries
                                                         let totalAssignments = 0;
-                                                        myActions.forEach(tender => {
+                                                        enquiries.forEach(tender => {
+                                                            if (!tender || !tender.actionFrom) return;
+                                                            const completed = tender.completedBy || [];
                                                             if (Array.isArray(tender.actionFrom)) {
-                                                                totalAssignments += tender.actionFrom.filter(person => person === currentUser).length;
-                                                            } else if (tender.actionFrom === currentUser) {
+                                                                totalAssignments += tender.actionFrom.filter(person => person === currentUser && !completed.includes(currentUser)).length;
+                                                            } else if (tender.actionFrom === currentUser && !completed.includes(currentUser)) {
                                                                 totalAssignments += 1;
                                                             }
                                                         });
@@ -3390,10 +3394,11 @@
                                                                                                 {(() => {
                                                     // Create individual Critical Action items (not grouped by tender)
                                                     const allCriticalActions = [];
-                                                    myActions.forEach(tender => {
+                                                    enquiries.forEach(tender => {
+                                                        if (!tender || !tender.actionFrom) return;
+                                                        const completed = tender.completedBy || [];
                                                         if (Array.isArray(tender.actionFrom)) {
-                                                            // Count how many times current user appears in actionFrom
-                                                            const userAssignments = tender.actionFrom.filter(person => person === currentUser);
+                                                            const userAssignments = tender.actionFrom.filter(person => person === currentUser && !completed.includes(currentUser));
                                                             userAssignments.forEach((assignment, assignmentIndex) => {
                                                                 allCriticalActions.push({
                                                                     tender: tender,
@@ -3403,7 +3408,7 @@
                                                                     client: tender.client
                                                                 });
                                                             });
-                                                        } else if (tender.actionFrom === currentUser) {
+                                                        } else if (tender.actionFrom === currentUser && !completed.includes(currentUser)) {
                                                             allCriticalActions.push({
                                                                 tender: tender,
                                                                 assignmentIndex: 0,
@@ -3445,11 +3450,10 @@
                                                                 </div>
                                                             ))}
                                                         </div>
-                                                    ) : null;
+                                                    ) : (
+                                                        <p className="text-orange-200/60 text-sm">📝 No critical actions required</p>
+                                                    );
                                                 })()}
-                                                ) : (
-                                                    <p className="text-orange-200/60 text-sm">📝 No critical actions required</p>
-                                                )}
                                             </div>
                                         );
                                     })()}
