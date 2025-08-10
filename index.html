@@ -2997,7 +2997,7 @@
 
                                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                                                     {/* Left: Tasks in order of Priority */}
-                                                    <div className="md:col-span-2">
+                                                    <div className="md:col-span-2 bg-white/5 rounded-lg border border-white/10 p-3">
                                                         <div className="flex items-center justify-between mb-2">
                                                             <span className="text-blue-200 text-sm font-semibold">Tasks in order of Priority</span>
                                                             <span className="text-blue-300 text-sm font-bold">{totalTasks}</span>
@@ -3028,7 +3028,7 @@
                                                     </div>
 
                                                     {/* Right: Critical Tasks */}
-                                                    <div className="md:col-span-1">
+                                                    <div className="md:col-span-1 bg-white/5 rounded-lg border border-white/10 p-3">
                                                         <div className="flex items-center justify-between mb-2">
                                                             <span className="text-orange-200 text-sm font-semibold">Critical Tasks</span>
                                                             <span className="text-orange-300 text-sm font-bold">{criticalItems.length}</span>
@@ -3124,7 +3124,7 @@
 
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                                                     {/* Mentions subsection */}
-                                                    <div>
+                                                    <div className="bg-white/5 rounded-lg border border-white/10 p-3">
                                                     <div className="flex items-center justify-between mb-2">
                                                         <span className="text-blue-200 text-sm font-semibold">@ You</span>
                                                         <span className="text-blue-300 text-sm font-bold">{myMentions.length}</span>
@@ -3169,7 +3169,7 @@
                                                     </div>
 
                                                     {/* Replies subsection */}
-                                                    <div>
+                                                    <div className="bg-white/5 rounded-lg border border-white/10 p-3">
                                                     <div className="flex items-center justify-between mb-2">
                                                         <span className="text-purple-200 text-sm font-semibold">Replies to You</span>
                                                         <span className="text-purple-300 text-sm font-bold">{myReplies.length}</span>
