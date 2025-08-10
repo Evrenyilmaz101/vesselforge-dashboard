@@ -3653,11 +3653,27 @@
                                                                     key={actionItem.id} 
                                                                     className="flex items-center justify-between p-2 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors"
                                                                     onClick={() => {
-                                                                        // DON'T mark as read on click - Critical Actions stay visible until completion
-                                                                        console.log('🚨 Critical Action clicked:', actionItem.tenderId, 'NOT marking as read');
+                                                                        // Navigate to tender chat and highlight the latest action-alert message
+                                                                        console.log('🚨 Critical Action clicked:', actionItem.tenderId);
                                                                         setSelectedEnquiry(actionItem.tender);
                                                                         setShowEnquiryDetails(true);
                                                                         setActiveTab('chat');
+                                                                        // Find the latest action-alert message in this tender and highlight it
+                                                                        setTimeout(() => {
+                                                                            try {
+                                                                                const tenderMsgs = (messages && messages[actionItem.tenderId]) || [];
+                                                                                const alertMsgs = tenderMsgs.filter(m => m && m.type === 'action-alert');
+                                                                                if (alertMsgs.length > 0) {
+                                                                                    // Prefer the message id that this dashboard entry came from if present
+                                                                                    const latest = alertMsgs.find(m => m.id === actionItem.id.split('-')[1]) || alertMsgs[alertMsgs.length - 1];
+                                                                                    setHighlightedMessageId(latest.id);
+                                                                                    const el = document.getElementById(`message-${latest.id}`);
+                                                                                    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                                }
+                                                                            } catch (e) {
+                                                                                console.warn('Could not highlight action alert message', e);
+                                                                            }
+                                                                        }, 600);
                                                                     }}
                                                                 >
                                                                     <div className="flex-1">
