@@ -3313,40 +3313,37 @@
                                         
 
                                         
-                                        const myActions = enquiries.filter(tender => {
-                                            if (!tender.actionFrom) return false;
-                                            const completed = tender.completedBy || [];
-                                            
-                                            // Debug each tender with actionFrom
-                                            if (tender.actionFrom) {
-                                                const isAssigned = Array.isArray(tender.actionFrom) 
-                                                    ? tender.actionFrom.includes(currentUser)
-                                                    : tender.actionFrom === currentUser;
-                                                const isCompleted = completed.includes(currentUser);
-                                                
-                                                                                                            console.log(`🔍 CRITICAL ACTION FILTER: ${tender.id}`, {
-                                                    actionFrom: tender.actionFrom,
-                                                    currentUser: currentUser,
-                                                    isAssigned: isAssigned,
-                                                    completed: completed,
-                                                    isCompleted: isCompleted,
-                                                    shouldShow: isAssigned && !isCompleted
+                                        // Build a flat list of message-based Critical Actions (per message assignment),
+                                        // so multiple alerts for the same tender count separately
+                                        const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
+                                        const currentUserHandle = user?.email?.split('@')[0] || 'User';
+                                        const myActionMessages = (() => {
+                                            const items = [];
+                                            (enquiries || []).forEach(tender => {
+                                                const tenderMessages = (messages && messages[tender.id]) || [];
+                                                tenderMessages.forEach(msg => {
+                                                    if (!msg || msg.type !== 'action-alert') return;
+                                                    const text = msg.text || '';
+                                                    const assignees = text.split('\n')
+                                                        .filter(line => line.includes('👤'))
+                                                        .map(line => {
+                                                            const m = line.match(/👤\s*([^:]+)/);
+                                                            return m ? m[1].trim() : null;
+                                                        })
+                                                        .filter(Boolean);
+                                                    const assignedToUser = assignees.some(a => a === currentUserName || a === currentUserHandle);
+                                                    if (!assignedToUser) return;
+                                                    const completions = msg.completedBy || [];
+                                                    const completedForUser = completions.some(c => c === currentUserName || c === currentUserHandle);
+                                                    if (!completedForUser) {
+                                                        items.push({ tender, message: msg, tenderId: tender.id, client: tender.client, timestampMs: msg.timestampMs || 0 });
+                                                    }
                                                 });
-                                                
-                                                // ISSUE FIX: If someone is incorrectly marked as completed, show details
-                                                if (isAssigned && isCompleted) {
-                                                    console.log(`❌ CRITICAL ACTION HIDDEN: ${tender.id} - ${currentUser} is marked as completed but action should be visible!`);
-                                                    console.log('🐛 COMPLETION ARRAY:', completed);
-                                                }
-                                            }
-                                            
-                                            // Don't filter by read status for Critical Actions - only by completion
-                                            if (Array.isArray(tender.actionFrom)) {
-                                                return tender.actionFrom.includes(currentUser) && !completed.includes(currentUser);
-                                            } else {
-                                                return tender.actionFrom === currentUser && !completed.includes(currentUser);
-                                            }
-                                        });
+                                            });
+                                            // Sort latest first
+                                            items.sort((a, b) => b.timestampMs - a.timestampMs);
+                                            return items;
+                                        })();
                                         
 
                                         
@@ -3359,65 +3356,21 @@
                                                         </div>
                                                         <div>
                                                             <h3 className="text-white font-bold">Critical Actions for You</h3>
-                                                            <p className="text-orange-200 text-sm">{(() => {
-                                                                // Count total individual, uncompleted assignments for current user across all enquiries
-                                                                let totalAssignments = 0;
-                                                                enquiries.forEach(tender => {
-                                                                    if (!tender || !tender.actionFrom) return;
-                                                                    const completed = tender.completedBy || [];
-                                                                    if (Array.isArray(tender.actionFrom)) {
-                                                                        totalAssignments += tender.actionFrom.filter(person => person === currentUser && !completed.includes(currentUser)).length;
-                                                                    } else if (tender.actionFrom === currentUser && !completed.includes(currentUser)) {
-                                                                        totalAssignments += 1;
-                                                                    }
-                                                                });
-                                                                return totalAssignments;
-                                                            })()} pending actions</p>
+                                                            <p className="text-orange-200 text-sm">{myActionMessages.length} pending actions</p>
                                                         </div>
                                                     </div>
-                                                    <div className="text-2xl font-bold text-orange-300">{(() => {
-                                                        // Count total individual, uncompleted assignments for current user across all enquiries
-                                                        let totalAssignments = 0;
-                                                        enquiries.forEach(tender => {
-                                                            if (!tender || !tender.actionFrom) return;
-                                                            const completed = tender.completedBy || [];
-                                                            if (Array.isArray(tender.actionFrom)) {
-                                                                totalAssignments += tender.actionFrom.filter(person => person === currentUser && !completed.includes(currentUser)).length;
-                                                            } else if (tender.actionFrom === currentUser && !completed.includes(currentUser)) {
-                                                                totalAssignments += 1;
-                                                            }
-                                                        });
-                                                        return totalAssignments;
-                                                    })()}</div>
+                                                    <div className="text-2xl font-bold text-orange-300">{myActionMessages.length}</div>
                                                 </div>
                                                 
                                                                                                 {(() => {
-                                                    // Create individual Critical Action items (not grouped by tender)
-                                                    const allCriticalActions = [];
-                                                    enquiries.forEach(tender => {
-                                                        if (!tender || !tender.actionFrom) return;
-                                                        const completed = tender.completedBy || [];
-                                                        if (Array.isArray(tender.actionFrom)) {
-                                                            const userAssignments = tender.actionFrom.filter(person => person === currentUser && !completed.includes(currentUser));
-                                                            userAssignments.forEach((assignment, assignmentIndex) => {
-                                                                allCriticalActions.push({
-                                                                    tender: tender,
-                                                                    assignmentIndex: assignmentIndex,
-                                                                    id: `${tender.id}-${assignmentIndex}`,
-                                                                    tenderId: tender.id,
-                                                                    client: tender.client
-                                                                });
-                                                            });
-                                                        } else if (tender.actionFrom === currentUser && !completed.includes(currentUser)) {
-                                                            allCriticalActions.push({
-                                                                tender: tender,
-                                                                assignmentIndex: 0,
-                                                                id: `${tender.id}-0`,
-                                                                tenderId: tender.id,
-                                                                client: tender.client
-                                                            });
-                                                        }
-                                                    });
+                                                    // Create individual Critical Action items from messages (not grouped by tender)
+                                                    const allCriticalActions = myActionMessages.map((item, idx) => ({
+                                                        tender: item.tender,
+                                                        assignmentIndex: 0,
+                                                        id: `${item.tenderId}-${item.message.id}`,
+                                                        tenderId: item.tenderId,
+                                                        client: item.client
+                                                    }));
                                                     
                                                     console.log('📊 TOTAL CRITICAL ACTIONS FOR USER:', allCriticalActions.length, allCriticalActions);
                                                     
@@ -3438,9 +3391,10 @@
                                                                     <div className="flex-1">
                                                                         <span className="text-white/90 text-sm font-medium block">{actionItem.tenderId}</span>
                                                                         <span className="text-orange-200/70 text-xs">{actionItem.client}</span>
+                                                                        {/* Show count if multiple for same tender */}
                                                                         {allCriticalActions.filter(a => a.tenderId === actionItem.tenderId).length > 1 && (
                                                                             <span className="text-orange-300/80 text-xs block">
-                                                                                Action #{actionItem.assignmentIndex + 1}
+                                                                                {allCriticalActions.filter(a => a.tenderId === actionItem.tenderId).length} actions
                                                                             </span>
                                                                         )}
                                                                     </div>
