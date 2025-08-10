@@ -2942,10 +2942,268 @@
                                 </div>
 
                                 {/* Personalized Action Blocks */}
-                                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-                                    
-                                    {/* @ Mentions for You */}
+                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
+                                    {/* Actions Overview (Critical + Tasks) */}
                                     {(() => {
+                                        const currentUser = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
+                                        const currentUserEmail = user?.email || '';
+
+                                        // Build Critical Actions list from action-alert messages
+                                        const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
+                                        const currentUserHandle = user?.email?.split('@')[0] || 'User';
+                                        const criticalItems = (() => {
+                                            const items = [];
+                                            (enquiries || []).forEach(tender => {
+                                                const tenderMessages = (messages && messages[tender.id]) || [];
+                                                tenderMessages.forEach(msg => {
+                                                    if (!msg || msg.type !== 'action-alert') return;
+                                                    const assignees = (msg.text || '').split('\n')
+                                                        .filter(line => line.includes('👤'))
+                                                        .map(line => (line.match(/👤\s*([^:]+)/)?.[1] || '').trim())
+                                                        .filter(Boolean);
+                                                    const assigned = assignees.some(a => a === currentUserName || a === currentUserHandle);
+                                                    if (!assigned) return;
+                                                    const completedList = msg.completedBy || [];
+                                                    const isCompleted = completedList.some(c => c === currentUserName || c === currentUserHandle);
+                                                    if (!isCompleted) items.push({ tender, message: msg, tenderId: tender.id, client: tender.client, timestampMs: msg.timestampMs || 0 });
+                                                });
+                                            });
+                                            items.sort((a, b) => b.timestampMs - a.timestampMs);
+                                            return items;
+                                        })();
+
+                                        // Build Actions (tasks) list assigned to current user
+                                        const taskTenders = (enquiries || []).filter(t => Array.isArray(t.actionAssignments) && t.actionAssignments.some(a => a && a.assignee === currentUser && !a.completed));
+
+                                        const totalTasks = taskTenders.reduce((count, t) => count + (t.actionAssignments || []).filter(a => a.assignee === currentUser && !a.completed).length, 0);
+
+                                        return (
+                                            <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 shadow-xl">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h3 className="text-white font-bold">Actions</h3>
+                                                </div>
+
+                                                {/* Critical Actions subsection */}
+                                                <div className="mb-5">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-orange-200 text-sm font-semibold">Critical Actions</span>
+                                                        <span className="text-orange-300 text-sm font-bold">{criticalItems.length}</span>
+                                                    </div>
+                                                    {criticalItems.length > 0 ? (
+                                                        <div className="space-y-2 max-h-36 overflow-y-auto">
+                                                            {criticalItems.slice(0, 5).map((item) => (
+                                                                <div
+                                                                    key={`${item.tenderId}-${item.message.id}`}
+                                                                    className="flex items-center justify-between p-2 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors"
+                                                                    onClick={() => {
+                                                                        setSelectedEnquiry(item.tender);
+                                                                        setShowEnquiryDetails(true);
+                                                                        setActiveTab('chat');
+                                                                    }}
+                                                                >
+                                                                    <div className="flex-1">
+                                                                        <span className="text-white/90 text-sm font-medium block">{item.tenderId}</span>
+                                                                        <span className="text-orange-200/70 text-xs">{item.client}</span>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-orange-200/60 text-sm">No critical actions</p>
+                                                    )}
+                                                </div>
+
+                                                {/* Tasks subsection */}
+                                                <div>
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-blue-200 text-sm font-semibold">Your Tasks</span>
+                                                        <span className="text-blue-300 text-sm font-bold">{totalTasks}</span>
+                                                    </div>
+                                                    {taskTenders.length > 0 ? (
+                                                        <div className="space-y-2 max-h-36 overflow-y-auto">
+                                                            {taskTenders.slice(0, 3).flatMap((tender, idx) => {
+                                                                const userActions = (tender.actionAssignments || []).filter(a => a.assignee === currentUser && !a.completed);
+                                                                return userActions.map((action, actionIdx) => (
+                                                                    <div
+                                                                        key={`${tender.id}-${action.id || actionIdx}`}
+                                                                        className="flex items-center justify-between p-2 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors"
+                                                                        onClick={() => {
+                                                                            setSelectedEnquiry(tender);
+                                                                            setShowEnquiryDetails(true);
+                                                                            setActiveTab('chat');
+                                                                        }}
+                                                                    >
+                                                                        <div className="flex-1">
+                                                                            <span className="text-white/90 text-sm font-medium block">{tender.id}</span>
+                                                                            <span className="text-blue-200/70 text-xs">{action.task}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                ));
+                                                            })}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-blue-200/60 text-sm">No actions assigned</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {/* Messages Overview (@Mentions + Replies) */}
+                                    {(() => {
+                                        const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
+                                        const currentUserEmail = user?.email || '';
+
+                                        // Build mentions list
+                                        const allMessagesForMentions = [];
+                                        enquiries.forEach(tender => {
+                                            if (isUserInTenderTeam(tender)) {
+                                                const tenderMessages = messages[tender.id] || [];
+                                                tenderMessages.forEach(msg => allMessagesForMentions.push({ ...msg, tenderId: tender.id }));
+                                            }
+                                        });
+                                        const myMentions = allMessagesForMentions
+                                            .filter(msg => msg?.type === 'mention' && Array.isArray(msg?.mentions))
+                                            .filter(msg => {
+                                                const localStorageKey = `readMentions_${currentUserEmail}`;
+                                                const readMentions = JSON.parse(localStorage.getItem(localStorageKey) || '[]');
+                                                if (readMentions.includes(msg.id)) return false;
+                                                return msg.mentions.some(m => (
+                                                    m.email?.toLowerCase() === currentUserEmail.toLowerCase() ||
+                                                    m.fullName === currentUserName ||
+                                                    m.name === currentUserName ||
+                                                    m.name?.toLowerCase() === currentUserName.toLowerCase() ||
+                                                    currentUserName.toLowerCase().includes(m.name?.toLowerCase() || '') ||
+                                                    (m.name || '').toLowerCase().includes(currentUserName.toLowerCase())
+                                                ));
+                                            })
+                                            .sort((a, b) => (b.timestampMs || 0) - (a.timestampMs || 0))
+                                            .slice(0, 5);
+
+                                        // Build replies list
+                                        const allMessages = enquiries
+                                            .filter(tender => isUserInTenderTeam(tender))
+                                            .flatMap(tender => Object.values(messages[tender.id] || {}))
+                                            .filter(msg => msg && msg.id);
+                                        const myReplies = allMessages
+                                            .filter(msg => {
+                                                if (!msg?.replyTo || !msg?.replyTo?.senderEmail) return false;
+                                                const isReplyToMe = msg.replyTo.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase();
+                                                const isNotFromMe = msg.senderEmail?.toLowerCase() !== currentUserEmail.toLowerCase();
+                                                const localStorageKey = `readReplies_${currentUserEmail}`;
+                                                const readReplies = JSON.parse(localStorage.getItem(localStorageKey) || '[]');
+                                                let isRead = readReplies.includes(msg.id);
+                                                const isFirefox = navigator.userAgent.includes('Firefox');
+                                                const isEdge = navigator.userAgent.includes('Edg');
+                                                if (isFirefox || isEdge) {
+                                                    const currentTime = Date.now();
+                                                    const messageAge = currentTime - (msg.timestampMs || 0);
+                                                    if (messageAge < 60000) isRead = false;
+                                                }
+                                                return isReplyToMe && isNotFromMe && !isRead;
+                                            })
+                                            .slice(0, 5);
+
+                                        return (
+                                            <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 shadow-xl">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h3 className="text-white font-bold">Messages</h3>
+                                                </div>
+
+                                                {/* Mentions subsection */}
+                                                <div className="mb-5">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-blue-200 text-sm font-semibold">@ You</span>
+                                                        <span className="text-blue-300 text-sm font-bold">{myMentions.length}</span>
+                                                    </div>
+                                                    {myMentions.length > 0 ? (
+                                                        <div className="space-y-2 max-h-36 overflow-y-auto">
+                                                            {myMentions.map((mention, index) => (
+                                                                <div
+                                                                    key={index}
+                                                                    className="flex items-center space-x-2 p-2 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors"
+                                                                    onClick={() => {
+                                                                        const localStorageKey = `readMentions_${currentUserEmail}`;
+                                                                        const readMentions = JSON.parse(localStorage.getItem(localStorageKey) || '[]');
+                                                                        if (!readMentions.includes(mention.id)) {
+                                                                            readMentions.push(mention.id);
+                                                                            localStorage.setItem(localStorageKey, JSON.stringify(readMentions));
+                                                                        }
+                                                                        const tenderWithMessage = enquiries.find(tender => tender.id === mention.tenderId);
+                                                                        if (tenderWithMessage) {
+                                                                            setSelectedEnquiry(tenderWithMessage);
+                                                                            setShowEnquiryDetails(true);
+                                                                            setActiveTab('chat');
+                                                                            setHighlightedMessageId(mention.id);
+                                                                            setTimeout(() => {
+                                                                                const el = document.getElementById(`message-${mention.id}`);
+                                                                                el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                            }, 500);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <span className="text-blue-300 text-xs">💬</span>
+                                                                    <div className="text-white/80 text-sm flex-1 truncate">
+                                                                        <span className="font-medium text-blue-200">{mention.sender}</span>
+                                                                        <span className="ml-1 text-blue-200/80">mentioned you</span>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-blue-200/60 text-sm">No recent mentions</p>
+                                                    )}
+                                                </div>
+
+                                                {/* Replies subsection */}
+                                                <div>
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-purple-200 text-sm font-semibold">Replies to You</span>
+                                                        <span className="text-purple-300 text-sm font-bold">{myReplies.length}</span>
+                                                    </div>
+                                                    {myReplies.length > 0 ? (
+                                                        <div className="space-y-2 max-h-36 overflow-y-auto">
+                                                            {myReplies.map((reply, index) => (
+                                                                <div
+                                                                    key={index}
+                                                                    className="flex items-center space-x-2 p-2 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors"
+                                                                    onClick={() => {
+                                                                        const localStorageKey = `readReplies_${currentUserEmail}`;
+                                                                        const readReplies = JSON.parse(localStorage.getItem(localStorageKey) || '[]');
+                                                                        if (!readReplies.includes(reply.id)) {
+                                                                            readReplies.push(reply.id);
+                                                                            localStorage.setItem(localStorageKey, JSON.stringify(readReplies));
+                                                                        }
+                                                                        const tenderWithReply = enquiries.find(tender => Object.values(messages[tender.id] || {}).some(msg => msg.id === reply.id));
+                                                                        if (tenderWithReply) {
+                                                                            setSelectedEnquiry(tenderWithReply);
+                                                                            setShowEnquiryDetails(true);
+                                                                            setActiveTab('chat');
+                                                                            setHighlightedMessageId(reply.id);
+                                                                            setTimeout(() => {
+                                                                                const el = document.getElementById(`message-${reply.id}`);
+                                                                                el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                            }, 500);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <div className="text-white/80 text-sm flex-1 truncate">
+                                                                        <span className="font-medium text-purple-200">{reply.sender}</span>
+                                                                        <span className="ml-1 text-purple-200/80">replied to your message</span>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-purple-200/60 text-sm">No recent replies</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+                                    
+                                    {/* @ Mentions for You (hidden - replaced by Messages Overview) */}
+                                    {false && (() => {
                                         const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
                                         const currentUserEmail = user?.email || '';
                                         
@@ -3112,8 +3370,8 @@
                                         );
                                     })()}
 
-                                    {/* Replies to You */}
-                                    {(() => {
+                                    {/* Replies to You (hidden - replaced by Messages Overview) */}
+                                    {false && (() => {
                                         const currentUserName = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
                                         const currentUserEmail = user?.email || '';
                                         
@@ -3300,8 +3558,8 @@
                                         );
                                     })()}
 
-                                    {/* Critical Actions for You */}
-                                    {(() => {
+                                    {/* Critical Actions for You (hidden - replaced by Actions Overview) */}
+                                    {false && (() => {
                                         const currentUser = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
                                         const currentUserEmail = user?.email || '';
                                         // Get read action alerts from localStorage (kept for potential future use)
@@ -3458,8 +3716,8 @@
                                         );
                                     })()}
 
-                                    {/* Actions for You */}
-                                    {(() => {
+                                    {/* Actions for You (hidden - replaced by Actions Overview) */}
+                                    {false && (() => {
                                         const currentUser = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
                                         const currentUserEmail = user?.email || '';
                                         
