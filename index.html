@@ -3639,7 +3639,8 @@
                                                     const allCriticalActions = myActionMessages.map((item, idx) => ({
                                                         tender: item.tender,
                                                         assignmentIndex: 0,
-                                                        id: `${item.tenderId}-${item.message.id}`,
+                                                        listId: `${item.tenderId}-${item.message.id}`,
+                                                        messageId: item.message.id,
                                                         tenderId: item.tenderId,
                                                         client: item.client
                                                     }));
@@ -3650,7 +3651,7 @@
                                                         <div className="space-y-2 max-h-32 overflow-y-auto">
                                                             {allCriticalActions.slice(0, 5).map((actionItem, index) => (
                                                                 <div 
-                                                                    key={actionItem.id} 
+                                                                    key={actionItem.listId} 
                                                                     className="flex items-center justify-between p-2 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors"
                                                                     onClick={() => {
                                                                         // Navigate to tender chat and highlight the latest action-alert message
@@ -3658,14 +3659,16 @@
                                                                         setSelectedEnquiry(actionItem.tender);
                                                                         setShowEnquiryDetails(true);
                                                                         setActiveTab('chat');
+                                                                        // Set highlight immediately so the chat applies the style when it mounts
+                                                                        setHighlightedMessageId(actionItem.messageId);
                                                                         // Find the latest action-alert message in this tender and highlight it
                                                                         setTimeout(() => {
                                                                             try {
                                                                                 const tenderMsgs = (messages && messages[actionItem.tenderId]) || [];
                                                                                 const alertMsgs = tenderMsgs.filter(m => m && m.type === 'action-alert');
                                                                                 if (alertMsgs.length > 0) {
-                                                                                    // Prefer the message id that this dashboard entry came from if present
-                                                                                    const latest = alertMsgs.find(m => m.id === actionItem.id.split('-')[1]) || alertMsgs[alertMsgs.length - 1];
+                                                                                    // Prefer the specific message this item represents
+                                                                                    const latest = alertMsgs.find(m => m.id === actionItem.messageId) || alertMsgs[alertMsgs.length - 1];
                                                                                     setHighlightedMessageId(latest.id);
                                                                                     const el = document.getElementById(`message-${latest.id}`);
                                                                                     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -3673,7 +3676,7 @@
                                                                             } catch (e) {
                                                                                 console.warn('Could not highlight action alert message', e);
                                                                             }
-                                                                        }, 600);
+                                                                        }, 800);
                                                                     }}
                                                                 >
                                                                     <div className="flex-1">
