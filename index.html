@@ -3094,20 +3094,3 @@
                 </div>
                 </>
             );
-        }
-
-        // Mount React app
-        const rootElement = document.getElementById('root');
-        if (rootElement) {
-            if (ReactDOM.createRoot) {
-                const root = ReactDOM.createRoot(rootElement);
-                root.render(<VesselForge />);
-            } else {
-                ReactDOM.render(<VesselForge />, rootElement);
-            }
-        } else {
-            console.error('Root element not found');
-        }
-    </script>
-</body>
-</html>
