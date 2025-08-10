@@ -311,12 +311,18 @@
             
             // Auto-remove message highlight after 3 seconds
             useEffect(() => {
-                if (highlightedMessageId) {
-                    const timer = setTimeout(() => {
-                        setHighlightedMessageId(null);
-                    }, 3000);
-                    return () => clearTimeout(timer);
-                }
+                if (!highlightedMessageId) return;
+                // Attempt to scroll to the highlighted message whenever the id changes
+                setTimeout(() => {
+                    const el = document.getElementById(`message-${highlightedMessageId}`);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 300);
+                const timer = setTimeout(() => {
+                    setHighlightedMessageId(null);
+                }, 3000);
+                return () => clearTimeout(timer);
             }, [highlightedMessageId]);
             
             // Close emoji picker when clicking outside
@@ -3049,6 +3055,7 @@
                                                                             setSelectedEnquiry(item.tender);
                                                                             setShowEnquiryDetails(true);
                                                                             setActiveTab('chat');
+                                                                            setTimeout(() => setHighlightedMessageId(item.message.id), 100);
                                                                         }}
                                                                     >
                                                                         <div className="flex-1">
@@ -3665,8 +3672,8 @@
                                                                         setSelectedEnquiry(actionItem.tender);
                                                                         setShowEnquiryDetails(true);
                                                                         setActiveTab('chat');
-                                                                        // Set highlight immediately so the chat applies the style when it mounts
-                                                                        setHighlightedMessageId(actionItem.messageId);
+                                                                        // Delay highlight slightly so chat DOM is mounted
+                                                                        setTimeout(() => setHighlightedMessageId(actionItem.messageId), 100);
                                                                         // Find the latest action-alert message in this tender and highlight it
                                                                         setTimeout(() => {
                                                                             try {
