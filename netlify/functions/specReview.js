@@ -44,26 +44,45 @@ exports.handler = async (event) => {
           if (!text || text.trim().length < 50) {
             const ocrKey = process.env.OCR_SPACE_API_KEY || 'helloworld';
             try {
-              const form = new URLSearchParams();
-              form.append('url', f.url);
-              form.append('filetype', 'PDF');
-              form.append('isCreateSearchablePdf', 'false');
-              form.append('isTable', 'false');
-              form.append('OCREngine', '2');
-              const ocrRes = await fetch('https://api.ocr.space/parse/image', {
+              // First try remote URL mode
+              const formUrl = new URLSearchParams();
+              formUrl.append('url', f.url);
+              formUrl.append('filetype', 'PDF');
+              formUrl.append('isCreateSearchablePdf', 'false');
+              formUrl.append('isTable', 'false');
+              formUrl.append('OCREngine', '2');
+              let ocrRes = await fetch('https://api.ocr.space/parse/image', {
                 method: 'POST',
                 headers: { 'apikey': ocrKey, 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: form.toString(),
+                body: formUrl.toString(),
               });
-              const ocrJson = await ocrRes.json();
-              const ocrText = (ocrJson?.ParsedResults || [])
+              let ocrJson = await ocrRes.json();
+              let ocrText = (ocrJson?.ParsedResults || [])
                 .map(r => r?.ParsedText || '')
                 .join('\n');
+              if (!ocrText || ocrText.trim().length < 50) {
+                // Try base64 upload mode (works when remote URL access is blocked)
+                const b64 = `data:application/pdf;base64,${buffer.toString('base64')}`;
+                const formB64 = new URLSearchParams();
+                formB64.append('base64Image', b64);
+                formB64.append('filetype', 'PDF');
+                formB64.append('isCreateSearchablePdf', 'false');
+                formB64.append('isTable', 'false');
+                formB64.append('OCREngine', '2');
+                ocrRes = await fetch('https://api.ocr.space/parse/image', {
+                  method: 'POST',
+                  headers: { 'apikey': ocrKey, 'Content-Type': 'application/x-www-form-urlencoded' },
+                  body: formB64.toString(),
+                });
+                ocrJson = await ocrRes.json();
+                ocrText = (ocrJson?.ParsedResults || [])
+                  .map(r => r?.ParsedText || '')
+                  .join('\n');
+              }
               if (ocrText && ocrText.trim().length > 50) {
                 text = ocrText;
               }
             } catch (ocrErr) {
-              // Continue without OCR result
               console.warn('OCR fallback failed for', f.name, ocrErr.message);
             }
           }
