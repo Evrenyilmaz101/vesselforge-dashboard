@@ -248,6 +248,9 @@
             const [showTaskDiscussion, setShowTaskDiscussion] = useState(false);
             const [taskDiscussionContext, setTaskDiscussionContext] = useState(null); // { tenderId, actionId }
             const [taskDiscussionText, setTaskDiscussionText] = useState('');
+            const [taskMentionSuggestions, setTaskMentionSuggestions] = useState([]);
+            const [taskShowMentionSuggestions, setTaskShowMentionSuggestions] = useState(false);
+            const [taskReplyingTo, setTaskReplyingTo] = useState(null);
             
             const [allUsers, setAllUsers] = useState([]);
             const [currentUserData, setCurrentUserData] = useState(null);
@@ -5745,7 +5748,7 @@
                                 {showTaskDiscussion && taskDiscussionContext && (
                                     <div className="fixed inset-0 z-[60] flex items-center justify-center">
                                         <div className="absolute inset-0 bg-black/50" onClick={() => setShowTaskDiscussion(false)}></div>
-                                        <div className="relative bg-slate-800 rounded-xl border border-white/20 w-[90vw] max-w-2xl p-6 shadow-2xl">
+                                        <div className="relative bg-slate-800 rounded-xl border border-white/20 w-[90vw] max-w-2xl p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
                                             <div className="flex items-center justify-between mb-4">
                                                 <h3 className="text-white font-semibold">Task Discussion</h3>
                                                 <button className="text-white/60 hover:text-white" onClick={() => setShowTaskDiscussion(false)}>✕</button>
@@ -5767,19 +5770,79 @@
                                                             ) : (
                                                                 comments.map((c, idx) => (
                                                                     <div key={idx} className="bg-white/5 border border-white/10 rounded p-2">
-                                                                        <div className="text-white/80 text-xs mb-1">{c.author} • {new Date(c.createdAt).toLocaleString()}</div>
+                                                                        <div className="flex items-center justify-between mb-1">
+                                                                            <div className="text-white/80 text-xs">{c.author} • {new Date(c.createdAt).toLocaleString()}</div>
+                                                                            <button className="text-xs text-blue-400 hover:text-blue-300" onClick={() => setTaskReplyingTo({ author: c.author, text: c.text })}>Reply</button>
+                                                                        </div>
                                                                         <div className="text-white/90 text-sm whitespace-pre-wrap">{c.text}</div>
+                                                                        {c.replyTo && (
+                                                                            <div className="mt-2 pl-3 border-l border-white/10 text-white/70 text-xs">Replying to {c.replyTo.author}: {c.replyTo.text}</div>
+                                                                        )}
                                                                     </div>
                                                                 ))
                                                             )}
                                                         </div>
-                                                        <div className="flex items-end space-x-2">
+                                                        {taskReplyingTo && (
+                                                            <div className="mb-2 p-2 bg-blue-500/10 border border-blue-400/30 rounded text-xs text-blue-200">
+                                                                Replying to {taskReplyingTo.author}: <span className="italic">{taskReplyingTo.text?.slice(0, 100)}{(taskReplyingTo.text||'').length>100?'...':''}</span>
+                                                                <button className="ml-2 text-blue-300 hover:text-blue-200" onClick={() => setTaskReplyingTo(null)}>Cancel</button>
+                                                            </div>
+                                                        )}
+                                                        <div className="relative flex items-end space-x-2">
                                                             <textarea
                                                                 value={taskDiscussionText}
-                                                                onChange={e => setTaskDiscussionText(e.target.value)}
+                                                                onChange={e => {
+                                                                    const value = e.target.value;
+                                                                    setTaskDiscussionText(value);
+                                                                    // auto-grow
+                                                                    e.target.style.height = 'auto';
+                                                                    e.target.style.height = Math.min(180, e.target.scrollHeight) + 'px';
+                                                                    // @ suggestions
+                                                                    const lastAt = value.lastIndexOf('@');
+                                                                    if (lastAt !== -1) {
+                                                                        const after = value.substring(lastAt + 1);
+                                                                        if (!after.includes(' ')) {
+                                                                            const filter = after.toLowerCase();
+                                                                            const team = selectedEnquiry ? getTenderTeamMembers(selectedEnquiry) : [];
+                                                                            const me = currentUserData?.fullName || user?.email?.split('@')[0] || 'User';
+                                                                            const suggestions = team.filter(n => n !== me && n.toLowerCase().includes(filter)).slice(0,8).map(name => {
+                                                                                const u = allUsers.find(x => (x.fullName || x.email.split('@')[0]) === name || x.email.split('@')[0] === name);
+                                                                                return { name, avatar: u?.profilePictureUrl };
+                                                                            });
+                                                                            setTaskMentionSuggestions(suggestions);
+                                                                            setTaskShowMentionSuggestions(suggestions.length > 0);
+                                                                        } else {
+                                                                            setTaskShowMentionSuggestions(false);
+                                                                        }
+                                                                    } else {
+                                                                        setTaskShowMentionSuggestions(false);
+                                                                    }
+                                                                }}
                                                                 placeholder="Add a comment to this task..."
-                                                                className="flex-1 bg-slate-700 text-white rounded p-2 border border-white/20 min-h-[60px]"
+                                                                className="flex-1 bg-slate-700 text-white rounded p-2 border border-white/20 min-h-[40px] max-h-[180px] resize-none overflow-y-auto"
+                                                                style={{ height: '40px' }}
                                                             />
+                                                            {taskShowMentionSuggestions && taskMentionSuggestions.length > 0 && (
+                                                                <div className="absolute bottom-14 left-0 bg-slate-700 border border-white/20 rounded-md shadow-xl w-64 max-h-48 overflow-auto z-[70]">
+                                                                    {taskMentionSuggestions.map((s, i) => (
+                                                                        <div key={i} className="flex items-center gap-2 p-2 hover:bg-white/10 cursor-pointer" onClick={() => {
+                                                                            const lastAt = taskDiscussionText.lastIndexOf('@');
+                                                                            const before = taskDiscussionText.substring(0, lastAt);
+                                                                            const after = taskDiscussionText.substring(lastAt + 1);
+                                                                            const spaceIdx = after.indexOf(' ');
+                                                                            const rest = spaceIdx !== -1 ? after.substring(spaceIdx) : '';
+                                                                            const newText = `${before}@${s.name}${rest ? ' ' + rest.trim() : ' '}`;
+                                                                            setTaskDiscussionText(newText);
+                                                                            setTaskShowMentionSuggestions(false);
+                                                                        }}>
+                                                                            <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white/80 text-xs">
+                                                                                {s.avatar ? <img src={s.avatar} alt={s.name} className="w-6 h-6 rounded-full object-cover" /> : s.name.charAt(0).toUpperCase()}
+                                                                            </div>
+                                                                            <div className="text-white text-sm">{s.name}</div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                             <button
                                                                 className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
                                                                 onClick={() => {
@@ -5794,7 +5857,8 @@
                                                                         comments: [...(a.comments || []), {
                                                                             text,
                                                                             author: currentUserData?.fullName || user?.email?.split('@')[0] || 'User',
-                                                                            createdAt: Date.now()
+                                                                            createdAt: Date.now(),
+                                                                            replyTo: taskReplyingTo ? { author: taskReplyingTo.author, text: (taskReplyingTo.text||'').slice(0,120) } : null
                                                                         }]
                                                                     } : a);
                                                                     const tenderRef = firebase.database().ref(`tenders/${tenderId}`);
@@ -5802,6 +5866,7 @@
                                                                     setSelectedEnquiry(prev => prev && prev.id === tenderId ? { ...prev, actionAssignments: updated } : prev);
                                                                     setEnquiries(prev => prev.map(e => e.id === tenderId ? { ...e, actionAssignments: updated } : e));
                                                                     setTaskDiscussionText('');
+                                                                    setTaskReplyingTo(null);
                                                                 }}
                                                             >Send</button>
                                                         </div>
