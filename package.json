@@ -1,0 +1,16 @@
+{
+  "name": "vesselforge-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "VesselForge dashboard with Netlify Functions for AI Spec Review",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.21.1",
+    "mammoth": "^1.6.0",
+    "pdf-parse": "^1.1.1"
+  }
+}
+
+
