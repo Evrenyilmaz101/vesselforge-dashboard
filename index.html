@@ -251,6 +251,11 @@
             const [taskMentionSuggestions, setTaskMentionSuggestions] = useState([]);
             const [taskShowMentionSuggestions, setTaskShowMentionSuggestions] = useState(false);
             const [taskReplyingTo, setTaskReplyingTo] = useState(null);
+            // Spec Review state
+            const [specFiles, setSpecFiles] = useState({}); // { tenderId: [ {id,name,url,type} ] }
+            const [specResults, setSpecResults] = useState({}); // { tenderId: [results] }
+            const [specRunning, setSpecRunning] = useState(false);
+            const [specError, setSpecError] = useState('');
             
             const [allUsers, setAllUsers] = useState([]);
             const [currentUserData, setCurrentUserData] = useState(null);
@@ -5926,6 +5931,21 @@
                                     </button>
                                     <button
                                         onClick={() => {
+                                            setActiveTab('spec');
+                                            setPreviewDocument(null);
+                                        }}
+                                        className={`px-4 py-3 text-sm font-medium transition-colors relative ${
+                                            activeTab === 'spec' 
+                                                ? 'text-blue-400 bg-white/5' 
+                                                : 'text-white/60 hover:text-white hover:bg-white/5'
+                                        }`}
+                                    >
+                                        <i data-lucide="file-text" className="h-4 w-4 inline mr-2"></i>
+                                        Spec Review
+                                        {activeTab === 'spec' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-400"></div>}
+                                    </button>
+                                    <button
+                                        onClick={() => {
                                             setActiveTab('notes');
                                             setPreviewDocument(null);
                                         }}
@@ -7085,6 +7105,91 @@
                                                         <i data-lucide="save" className="h-3 w-3 inline mr-1"></i>
                                                         Notes are automatically saved as you type
                                                     </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {activeTab === 'spec' && selectedEnquiry && (
+                                        <div className="p-4 space-y-4 overflow-auto h-full">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-white font-semibold text-lg">AI Spec Review</h3>
+                                                <div className="text-white/60 text-sm">Tender: {selectedEnquiry.id}</div>
+                                            </div>
+                                            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                                                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                                    <div>
+                                                        <div className="text-white/80 text-sm mb-1">Upload client specs or code</div>
+                                                        <input type="file" multiple accept=".pdf,.doc,.docx,.txt,.md,.rtf,.csv,.json,.yaml,.yml,.xml,.ini,.cfg,.py,.js,.ts,.java,.cs,.cpp,.c,.go,.rb,.rs"
+                                                            className="text-white/80" onChange={async (e) => {
+                                                                const files = Array.from(e.target.files || []);
+                                                                if (files.length === 0) return;
+                                                                const tenderId = selectedEnquiry.id;
+                                                                const folderRef = storage.ref(`specs/${tenderId}`);
+                                                                const uploaded = [];
+                                                                for (const file of files) {
+                                                                    const ref = folderRef.child(`${Date.now()}_${file.name}`);
+                                                                    await ref.put(file);
+                                                                    const url = await ref.getDownloadURL();
+                                                                    uploaded.push({ id: `${Date.now()}_${file.name}`, name: file.name, url, type: file.type || 'application/octet-stream' });
+                                                                }
+                                                                setSpecFiles(prev => ({ ...prev, [tenderId]: [ ...(prev[tenderId]||[]), ...uploaded ] }));
+                                                            }} />
+                                                    </div>
+                                                    <button
+                                                        className={`px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white ${specRunning ? 'opacity-70 cursor-wait' : ''}`}
+                                                        disabled={specRunning || !(specFiles[selectedEnquiry.id]||[]).length}
+                                                        onClick={async () => {
+                                                            try {
+                                                                setSpecError('');
+                                                                setSpecRunning(true);
+                                                                const tenderId = selectedEnquiry.id;
+                                                                // Cloud Function endpoint (to be implemented separately)
+                                                                const endpoint = (window.__CF_SPEC_ENDPOINT__) || '/.netlify/functions/specReview';
+                                                                const body = {
+                                                                    tenderId,
+                                                                    files: (specFiles[tenderId]||[]).map(f => ({ name: f.name, url: f.url })),
+                                                                    model: 'claude-3-5-sonnet-2024-xx',
+                                                                };
+                                                                const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                                                                if (!res.ok) throw new Error(`Spec review failed (${res.status})`);
+                                                                const data = await res.json();
+                                                                setSpecResults(prev => ({ ...prev, [tenderId]: data.results || [] }));
+                                                            } catch (err) {
+                                                                console.error('Spec review error:', err);
+                                                                setSpecError(err.message || 'Spec review failed');
+                                                            } finally {
+                                                                setSpecRunning(false);
+                                                            }
+                                                        }}
+                                                    >{specRunning ? 'Analyzing…' : 'Run Review'}</button>
+                                                </div>
+                                                {(specFiles[selectedEnquiry.id]||[]).length > 0 && (
+                                                    <div className="mt-3 text-white/70 text-sm">
+                                                        Files: {(specFiles[selectedEnquiry.id]||[]).map(f => f.name).join(', ')}
+                                                    </div>
+                                                )}
+                                                {specError && <div className="mt-3 text-red-300 text-sm">{specError}</div>}
+                                            </div>
+                                            <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="text-white/80 text-sm">Results</div>
+                                                    <div className="text-white/60 text-xs">{(specResults[selectedEnquiry.id]||[]).length} items</div>
+                                                </div>
+                                                <div className="space-y-2 max-h-[48vh] overflow-y-auto">
+                                                    {(specResults[selectedEnquiry.id]||[]).map((r, i) => (
+                                                        <div key={i} className="p-2 rounded border border-white/10 bg-white/5">
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="text-white text-sm font-medium">{r.requirement}</div>
+                                                                <span className={`text-xs px-2 py-0.5 rounded ${r.severity==='High'?'bg-red-500/20 text-red-300':r.severity==='Medium'?'bg-yellow-500/20 text-yellow-300':'bg-green-500/20 text-green-300'}`}>{r.severity||'Unrated'}</span>
+                                                            </div>
+                                                            {r.category && <div className="text-white/60 text-xs mt-1">{r.category}</div>}
+                                                            {r.rationale && <div className="text-white/70 text-xs mt-1">{r.rationale}</div>}
+                                                            {r.source && <div className="text-white/50 text-xs mt-1">Source: {r.source.fileName}{r.source.page?`, p.${r.source.page}`:''}</div>}
+                                                        </div>
+                                                    ))}
+                                                    {!(specResults[selectedEnquiry.id]||[]).length && (
+                                                        <div className="text-white/60 text-sm">No results yet. Upload specs and Run Review.</div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
