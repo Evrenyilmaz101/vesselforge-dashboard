@@ -7,4 +7,10 @@
   node_bundler = "esbuild"
   external_node_modules = ["@anthropic-ai/sdk", "pdf-parse", "mammoth"]
 
+[template.environment]
+# Claude API key (required)
+ANTHROPIC_API_KEY = ""
+# Optional OCR key for better scanned PDF support. If empty, free demo key is used with strict rate limits.
+OCR_SPACE_API_KEY = ""
+
 

@@ -40,6 +40,33 @@ exports.handler = async (event) => {
           const pdfParse = (await import('pdf-parse')).default;
           const out = await pdfParse(buffer);
           text = out.text || '';
+          // OCR fallback for scanned/image PDFs
+          if (!text || text.trim().length < 50) {
+            const ocrKey = process.env.OCR_SPACE_API_KEY || 'helloworld';
+            try {
+              const form = new URLSearchParams();
+              form.append('url', f.url);
+              form.append('filetype', 'PDF');
+              form.append('isCreateSearchablePdf', 'false');
+              form.append('isTable', 'false');
+              form.append('OCREngine', '2');
+              const ocrRes = await fetch('https://api.ocr.space/parse/image', {
+                method: 'POST',
+                headers: { 'apikey': ocrKey, 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: form.toString(),
+              });
+              const ocrJson = await ocrRes.json();
+              const ocrText = (ocrJson?.ParsedResults || [])
+                .map(r => r?.ParsedText || '')
+                .join('\n');
+              if (ocrText && ocrText.trim().length > 50) {
+                text = ocrText;
+              }
+            } catch (ocrErr) {
+              // Continue without OCR result
+              console.warn('OCR fallback failed for', f.name, ocrErr.message);
+            }
+          }
         } else if (contentType.includes('officedocument.wordprocessingml') || f.name.toLowerCase().endsWith('.docx')) {
           const mammoth = await import('mammoth');
           const out = await mammoth.extractRawText({ buffer });
