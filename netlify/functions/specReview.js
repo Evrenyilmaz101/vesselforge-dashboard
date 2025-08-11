@@ -69,13 +69,19 @@ exports.handler = async (event) => {
     // Call Anthropic
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     const anthropic = new Anthropic({ apiKey });
-    const completion = await anthropic.messages.create({
-      model: model || DEFAULT_MODEL,
-      max_tokens: 1400,
-      temperature: 0,
-      system,
-      messages: [{ role: 'user', content: user }],
-    });
+    let completion;
+    try {
+      completion = await anthropic.messages.create({
+        model: model || DEFAULT_MODEL,
+        max_tokens: 1400,
+        temperature: 0,
+        system,
+        messages: [{ role: 'user', content: user }],
+      });
+    } catch (e) {
+      console.error('Anthropic API error', e?.response?.data || e.message);
+      return { statusCode: 502, body: JSON.stringify({ error: 'Claude API error', details: e.message }) };
+    }
 
     // Extract text from blocks
     const textBlocks = (completion.content || [])

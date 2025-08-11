@@ -7147,8 +7147,7 @@
                                                                 const endpoint = (window.__CF_SPEC_ENDPOINT__) || '/.netlify/functions/specReview';
                                                                 const body = {
                                                                     tenderId,
-                                                                    files: (specFiles[tenderId]||[]).map(f => ({ name: f.name, url: f.url })),
-                                                                    model: 'claude-3-5-sonnet-2024-xx',
+                                                                    files: (specFiles[tenderId]||[]).map(f => ({ name: f.name, url: f.url }))
                                                                 };
                                                                 const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
                                                                 if (!res.ok) throw new Error(`Spec review failed (${res.status})`);
