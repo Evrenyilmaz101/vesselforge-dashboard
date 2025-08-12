@@ -42,6 +42,52 @@ exports.handler = async (event) => {
           text = out.text || '';
           // OCR fallback for scanned/image PDFs
           if (!text || text.trim().length < 50) {
+            // Preferred OCR: Azure Computer Vision Read API (reliable, large limits)
+            const azureEndpoint = process.env.AZURE_CV_ENDPOINT;
+            const azureKey = process.env.AZURE_CV_KEY;
+            if (azureEndpoint && azureKey) {
+              try {
+                console.log('AZURE OCR: starting', { file: f.name, len: buffer.length });
+                const analyzeUrl = `${azureEndpoint.replace(/\/$/, '')}/vision/v3.2/read/analyze`;
+                // Send binary PDF
+                const analyzeRes = await fetch(analyzeUrl, {
+                  method: 'POST',
+                  headers: {
+                    'Ocp-Apim-Subscription-Key': azureKey,
+                    'Content-Type': 'application/octet-stream'
+                  },
+                  body: buffer
+                });
+                if (!analyzeRes.ok) throw new Error(`Azure analyze status ${analyzeRes.status}`);
+                const opLoc = analyzeRes.headers.get('operation-location');
+                if (!opLoc) throw new Error('Azure operation-location header missing');
+                // Poll for result
+                let ocrText = '';
+                for (let i = 0; i < 30; i++) { // up to ~30s
+                  await new Promise(r => setTimeout(r, 1000));
+                  const rRes = await fetch(opLoc, { headers: { 'Ocp-Apim-Subscription-Key': azureKey } });
+                  const rJson = await rRes.json();
+                  const status = rJson.status || rJson.statusCode || rJson.analyzeResult?.status;
+                  console.log('AZURE OCR: poll', { i, status });
+                  if (status === 'succeeded') {
+                    const lines = (rJson.analyzeResult?.readResults || rJson.analyzeResult?.pages || rJson.analyzeResult?.pages)?.flatMap(p => p.lines || []) || [];
+                    if (lines.length > 0) {
+                      ocrText = lines.map(l => l.text || '').join('\n');
+                    } else if (rJson.analyzeResult?.content) {
+                      ocrText = rJson.analyzeResult.content;
+                    }
+                    break;
+                  }
+                  if (status === 'failed') break;
+                }
+                if (ocrText && ocrText.trim().length > 50) {
+                  text = ocrText;
+                  console.log('AZURE OCR: success', { chars: text.length });
+                }
+              } catch (azErr) {
+                console.warn('AZURE OCR: failed', f.name, azErr.message);
+              }
+            }
             const ocrKey = process.env.OCR_SPACE_API_KEY || 'helloworld';
             try {
               // First try remote URL mode
@@ -81,9 +127,10 @@ exports.handler = async (event) => {
               }
               if (ocrText && ocrText.trim().length > 50) {
                 text = ocrText;
+                console.log('OCR.SPACE: success', { chars: text.length });
               }
             } catch (ocrErr) {
-              console.warn('OCR fallback failed for', f.name, ocrErr.message);
+              console.warn('OCR.SPACE: failed', f.name, ocrErr.message);
             }
           }
         } else if (contentType.includes('officedocument.wordprocessingml') || f.name.toLowerCase().endsWith('.docx')) {
