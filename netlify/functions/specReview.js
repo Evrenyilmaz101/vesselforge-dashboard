@@ -26,6 +26,7 @@ exports.handler = async (event) => {
 
     // Fetch and extract text from supported files (PDF/DOCX/TXT/MD/CSV/JSON/Code)
     const docs = [];
+    const diagnostics = [];
     for (const f of files) {
       try {
         const res = await fetch(f.url);
@@ -47,6 +48,7 @@ exports.handler = async (event) => {
             const azureKey = process.env.AZURE_CV_KEY;
             if (azureEndpoint && azureKey) {
               try {
+                diagnostics.push(`AZURE: start for ${f.name} (${buffer.length} bytes)`);
                 console.log('AZURE OCR: starting', { file: f.name, len: buffer.length });
                 const analyzeUrl = `${azureEndpoint.replace(/\/$/, '')}/vision/v3.2/read/analyze`;
                 // Send binary PDF
@@ -58,9 +60,15 @@ exports.handler = async (event) => {
                   },
                   body: buffer
                 });
-                if (!analyzeRes.ok) throw new Error(`Azure analyze status ${analyzeRes.status}`);
+                if (!analyzeRes.ok) {
+                  diagnostics.push(`AZURE: analyze HTTP ${analyzeRes.status}`);
+                  throw new Error(`Azure analyze status ${analyzeRes.status}`);
+                }
                 const opLoc = analyzeRes.headers.get('operation-location');
-                if (!opLoc) throw new Error('Azure operation-location header missing');
+                if (!opLoc) {
+                  diagnostics.push('AZURE: operation-location header missing');
+                  throw new Error('Azure operation-location header missing');
+                }
                 // Poll for result
                 let ocrText = '';
                 for (let i = 0; i < 30; i++) { // up to ~30s
@@ -69,6 +77,7 @@ exports.handler = async (event) => {
                   const rJson = await rRes.json();
                   const status = rJson.status || rJson.statusCode || rJson.analyzeResult?.status;
                   console.log('AZURE OCR: poll', { i, status });
+                  if (i === 0) diagnostics.push(`AZURE: first poll status ${status}`);
                   if (status === 'succeeded') {
                     const lines = (rJson.analyzeResult?.readResults || rJson.analyzeResult?.pages || rJson.analyzeResult?.pages)?.flatMap(p => p.lines || []) || [];
                     if (lines.length > 0) {
@@ -82,9 +91,11 @@ exports.handler = async (event) => {
                 }
                 if (ocrText && ocrText.trim().length > 50) {
                   text = ocrText;
+                  diagnostics.push(`AZURE: success, ${text.length} chars`);
                   console.log('AZURE OCR: success', { chars: text.length });
                 }
               } catch (azErr) {
+                diagnostics.push(`AZURE: failed - ${azErr.message}`);
                 console.warn('AZURE OCR: failed', f.name, azErr.message);
               }
             }
@@ -127,9 +138,11 @@ exports.handler = async (event) => {
               }
               if (ocrText && ocrText.trim().length > 50) {
                 text = ocrText;
+                diagnostics.push(`OCR.SPACE: success, ${text.length} chars`);
                 console.log('OCR.SPACE: success', { chars: text.length });
               }
             } catch (ocrErr) {
+              diagnostics.push(`OCR.SPACE: failed - ${ocrErr.message}`);
               console.warn('OCR.SPACE: failed', f.name, ocrErr.message);
             }
           }
@@ -149,7 +162,9 @@ exports.handler = async (event) => {
         if (text.length > maxChars) text = text.slice(0, maxChars);
 
         docs.push({ name: f.name, text });
+        if (!text || text.trim().length < 50) diagnostics.push(`EMPTY TEXT after all attempts for ${f.name}`);
       } catch (err) {
+        diagnostics.push(`FETCH ERROR for ${f.name} - ${err.message}`);
         docs.push({ name: f.name, text: `Failed to load ${f.name}: ${err.message}` });
       }
     }
@@ -209,7 +224,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tenderId, results }),
+      body: JSON.stringify({ tenderId, results, diagnostics }),
     };
   } catch (error) {
     console.error('specReview error', error);
