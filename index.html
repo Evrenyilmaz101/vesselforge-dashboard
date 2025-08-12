@@ -254,6 +254,9 @@
             // Spec Review state
             const [specFiles, setSpecFiles] = useState({}); // { tenderId: [ {id,name,url,type} ] }
             const [specResults, setSpecResults] = useState({}); // { tenderId: [results] }
+            const [specRuns, setSpecRuns] = useState({}); // { tenderId: [{id, createdAt, items, diagnostics, files}] }
+            const [specSelectedRunId, setSpecSelectedRunId] = useState(null);
+            const [specSeverityFilter, setSpecSeverityFilter] = useState('All');
             const [specRunning, setSpecRunning] = useState(false);
             const [specError, setSpecError] = useState('');
             
@@ -7156,7 +7159,24 @@
                                                                     console.log('🔎 SpecReview diagnostics:', data.diagnostics);
                                                                     alert('SpecReview diagnostics:\n' + data.diagnostics.join('\n'));
                                                                 }
+                                                                // Update current view
                                                                 setSpecResults(prev => ({ ...prev, [tenderId]: data.results || [] }));
+                                                                // Persist a run snapshot to Firebase under tender
+                                                                try {
+                                                                    const runId = `run_${Date.now()}`;
+                                                                    const runRecord = {
+                                                                        id: runId,
+                                                                        createdAt: new Date().toISOString(),
+                                                                        items: data.results || [],
+                                                                        diagnostics: data.diagnostics || [],
+                                                                        files: (specFiles[tenderId]||[]).map(f => ({ name: f.name, url: f.url }))
+                                                                    };
+                                                                    database.ref(`tenders/${tenderId}/specReviews/${runId}`).set(runRecord);
+                                                                    setSpecRuns(prev => ({ ...prev, [tenderId]: [runRecord, ...(prev[tenderId]||[])] }));
+                                                                    setSpecSelectedRunId(runId);
+                                                                } catch (e) {
+                                                                    console.warn('Failed to persist spec review run:', e);
+                                                                }
                                                             } catch (err) {
                                                                 console.error('Spec review error:', err);
                                                                 setSpecError(err.message || 'Spec review failed');
@@ -7165,6 +7185,32 @@
                                                             }
                                                         }}
                                                     >{specRunning ? 'Analyzing…' : 'Run Review'}</button>
+                                                </div>
+                                                {/* Previous runs selector */}
+                                                <div className="mt-4 flex flex-wrap items-center gap-2">
+                                                    <span className="text-white/70 text-sm mr-2">Previous runs:</span>
+                                                    {((specRuns[selectedEnquiry.id])||[]).length === 0 ? (
+                                                        <span className="text-white/50 text-sm">None yet</span>
+                                                    ) : (
+                                                        <select className="bg-slate-700 text-white text-sm rounded px-2 py-1 border border-white/20" value={specSelectedRunId || ''} onChange={(e)=>{
+                                                            const rid = e.target.value;
+                                                            setSpecSelectedRunId(rid);
+                                                            const run = (specRuns[selectedEnquiry.id]||[]).find(r=>r.id===rid);
+                                                            if (run) setSpecResults(prev=>({...prev,[selectedEnquiry.id]:run.items}));
+                                                        }}>
+                                                            <option value="">Current</option>
+                                                            {(specRuns[selectedEnquiry.id]||[]).map(r=> (
+                                                                <option key={r.id} value={r.id}>{new Date(r.createdAt).toLocaleString()}</option>
+                                                            ))}
+                                                        </select>
+                                                    )}
+                                                    <span className="ml-4 text-white/70 text-sm">Severity:</span>
+                                                    <select className="bg-slate-700 text-white text-sm rounded px-2 py-1 border border-white/20" value={specSeverityFilter} onChange={(e)=>setSpecSeverityFilter(e.target.value)}>
+                                                        <option>All</option>
+                                                        <option>High</option>
+                                                        <option>Medium</option>
+                                                        <option>Low</option>
+                                                    </select>
                                                 </div>
                                                 {(specFiles[selectedEnquiry.id]||[]).length > 0 && (
                                                     <div className="mt-3 text-white/70 text-sm">
@@ -7176,18 +7222,22 @@
                                             <div className="bg-white/5 border border-white/10 rounded-lg p-3">
                                                 <div className="flex items-center justify-between mb-2">
                                                     <div className="text-white/80 text-sm">Results</div>
-                                                    <div className="text-white/60 text-xs">{(specResults[selectedEnquiry.id]||[]).length} items</div>
+                                                    <div className="text-white/60 text-xs">{(specResults[selectedEnquiry.id]||[]).filter(r => specSeverityFilter==='All' || (r.severity||'').toLowerCase()===specSeverityFilter.toLowerCase()).length} items</div>
                                                 </div>
                                                 <div className="space-y-2 max-h-[48vh] overflow-y-auto">
-                                                    {(specResults[selectedEnquiry.id]||[]).map((r, i) => (
-                                                        <div key={i} className="p-2 rounded border border-white/10 bg-white/5">
-                                                            <div className="flex items-center justify-between">
-                                                                <div className="text-white text-sm font-medium">{r.requirement}</div>
-                                                                <span className={`text-xs px-2 py-0.5 rounded ${r.severity==='High'?'bg-red-500/20 text-red-300':r.severity==='Medium'?'bg-yellow-500/20 text-yellow-300':'bg-green-500/20 text-green-300'}`}>{r.severity||'Unrated'}</span>
+                                                    {(specResults[selectedEnquiry.id]||[])
+                                                      .filter(r => specSeverityFilter==='All' || (r.severity||'').toLowerCase()===specSeverityFilter.toLowerCase())
+                                                      .map((r, i) => (
+                                                        <div key={i} className="p-3 rounded border border-white/10 bg-white/5">
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <div>
+                                                                    <div className="text-white text-sm font-semibold">{r.requirement}</div>
+                                                                    <div className="text-white/60 text-xs mt-1">{r.category || 'General'}</div>
+                                                                    {r.rationale && <div className="text-white/70 text-xs mt-2 leading-5">{r.rationale}</div>}
+                                                                    {r.source && <div className="text-white/50 text-xs mt-2">Source: {r.source.fileName}{r.source.page?`, p.${r.source.page}`:''}</div>}
+                                                                </div>
+                                                                <span className={`h-fit text-xs px-2 py-0.5 rounded ${r.severity==='High'?'bg-red-500/20 text-red-300':r.severity==='Medium'?'bg-yellow-500/20 text-yellow-300':'bg-green-500/20 text-green-300'}`}>{r.severity||'Unrated'}</span>
                                                             </div>
-                                                            {r.category && <div className="text-white/60 text-xs mt-1">{r.category}</div>}
-                                                            {r.rationale && <div className="text-white/70 text-xs mt-1">{r.rationale}</div>}
-                                                            {r.source && <div className="text-white/50 text-xs mt-1">Source: {r.source.fileName}{r.source.page?`, p.${r.source.page}`:''}</div>}
                                                         </div>
                                                     ))}
                                                     {!(specResults[selectedEnquiry.id]||[]).length && (
