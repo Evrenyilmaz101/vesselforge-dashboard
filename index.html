@@ -7228,7 +7228,7 @@
                                                 </div>
                                                 {/* Previous runs selector */}
                                                 <div className="mt-4 flex flex-wrap items-center gap-2">
-                                                    <span className="text-white/70 text-sm mr-2">Previous runs:</span>
+                                                    <span className="text-white/70 text-sm mr-2">Spec reviews:</span>
                                                     {((specRuns[selectedEnquiry.id])||[]).length === 0 ? (
                                                         <span className="text-white/50 text-sm">None yet</span>
                                                     ) : (
@@ -7240,7 +7240,7 @@
                                                         }}>
                                                             <option value="">Current</option>
                                                             {(specRuns[selectedEnquiry.id]||[]).map(r=> (
-                                                                <option key={r.id} value={r.id}>{new Date(r.createdAt).toLocaleString()}</option>
+                                                                <option key={r.id} value={r.id}>{(r.files&&r.files[0]?.name) || new Date(r.createdAt).toLocaleString()}</option>
                                                             ))}
                                                         </select>
                                                     )}
@@ -7251,7 +7251,31 @@
                                                         <option>Medium</option>
                                                         <option>Low</option>
                                                     </select>
-                                                    <button onClick={downloadCurrentSpecRun} className="ml-4 px-2 py-1 text-xs rounded bg-white/10 hover:bg-white/20 text-white border border-white/20">Download JSON</button>
+                                                    {/* Excel export */}
+                                                    <button onClick={() => {
+                                                        if (!selectedEnquiry?.id) return;
+                                                        const tenderId = selectedEnquiry.id;
+                                                        const rows = (specResults[tenderId]||[]).map((r,i)=>({
+                                                            No: i+1,
+                                                            Severity: r.severity||'',
+                                                            Category: r.category||'',
+                                                            Requirement: r.requirement||'',
+                                                            Rationale: r.rationale||'',
+                                                            Source: r.source ? `${r.source.fileName||''}${r.source.page?`, p.${r.source.page}`:''}` : ''
+                                                        }));
+                                                        // Simple CSV (Excel compatible)
+                                                        const header = Object.keys(rows[0]||{No:'',Severity:'',Category:'',Requirement:'',Rationale:'',Source:''}).join(',');
+                                                        const csv = [header, ...rows.map(r=> Object.values(r).map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','))].join('\n');
+                                                        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                                                        const url = URL.createObjectURL(blob);
+                                                        const a = document.createElement('a');
+                                                        a.href = url;
+                                                        a.download = `${tenderId}_${specSelectedRunId||'current'}.csv`;
+                                                        document.body.appendChild(a);
+                                                        a.click();
+                                                        a.remove();
+                                                        URL.revokeObjectURL(url);
+                                                    }} className="ml-4 px-2 py-1 text-xs rounded bg-white/10 hover:bg-white/20 text-white border border-white/20">Download Excel</button>
                                                 </div>
                                                 {(specFiles[selectedEnquiry.id]||[]).length > 0 && (
                                                     <div className="mt-3 text-white/70 text-sm">
