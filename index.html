@@ -257,6 +257,46 @@
             const [specRuns, setSpecRuns] = useState({}); // { tenderId: [{id, createdAt, items, diagnostics, files}] }
             const [specSelectedRunId, setSpecSelectedRunId] = useState(null);
             const [specSeverityFilter, setSpecSeverityFilter] = useState('All');
+
+            // Load persisted spec review runs when tender changes
+            useEffect(() => {
+                if (!selectedEnquiry?.id) return;
+                const tenderId = selectedEnquiry.id;
+                const ref = database.ref(`tenders/${tenderId}/specReviews`);
+                const handler = (snap) => {
+                    const val = snap.val() || {};
+                    const runs = Object.values(val).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+                    setSpecRuns(prev => ({ ...prev, [tenderId]: runs }));
+                    // Default to latest run if none selected or selection no longer exists
+                    if (runs.length > 0 && (!specSelectedRunId || !runs.find(r => r.id === specSelectedRunId))) {
+                        setSpecSelectedRunId(runs[0].id);
+                        setSpecResults(prev => ({ ...prev, [tenderId]: runs[0].items || [] }));
+                    }
+                };
+                ref.on('value', handler);
+                return () => ref.off('value', handler);
+            }, [selectedEnquiry?.id]);
+
+            const downloadCurrentSpecRun = () => {
+                if (!selectedEnquiry?.id) return;
+                const tenderId = selectedEnquiry.id;
+                const currentRun = (specRuns[tenderId] || []).find(r => r.id === specSelectedRunId) || {
+                    id: 'current',
+                    createdAt: new Date().toISOString(),
+                    items: specResults[tenderId] || [],
+                    diagnostics: [],
+                    files: (specFiles[tenderId] || []).map(f => ({ name: f.name, url: f.url }))
+                };
+                const blob = new Blob([JSON.stringify(currentRun, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${tenderId}_${currentRun.id}.json`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+            };
             const [specRunning, setSpecRunning] = useState(false);
             const [specError, setSpecError] = useState('');
             
@@ -7211,6 +7251,7 @@
                                                         <option>Medium</option>
                                                         <option>Low</option>
                                                     </select>
+                                                    <button onClick={downloadCurrentSpecRun} className="ml-4 px-2 py-1 text-xs rounded bg-white/10 hover:bg-white/20 text-white border border-white/20">Download JSON</button>
                                                 </div>
                                                 {(specFiles[selectedEnquiry.id]||[]).length > 0 && (
                                                     <div className="mt-3 text-white/70 text-sm">
