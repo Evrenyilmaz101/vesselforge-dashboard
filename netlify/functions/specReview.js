@@ -38,9 +38,14 @@ exports.handler = async (event) => {
 
         if (contentType.includes('pdf') || f.name.toLowerCase().endsWith('.pdf')) {
           // Lazy import to reduce cold start
-          const pdfParse = (await import('pdf-parse')).default;
-          const out = await pdfParse(buffer);
-          text = out.text || '';
+          try {
+            const pdfParse = (await import('pdf-parse')).default;
+            const out = await pdfParse(buffer);
+            text = out.text || '';
+          } catch (e) {
+            diagnostics.push(`PDF-PARSE: failed - ${e.message}`);
+            text = '';
+          }
           // OCR fallback for scanned/image PDFs
           if (!text || text.trim().length < 50) {
             // Preferred OCR: Azure Computer Vision Read API (reliable, large limits)
@@ -103,7 +108,9 @@ exports.handler = async (event) => {
             try {
               // First try remote URL mode
               const formUrl = new URLSearchParams();
-              formUrl.append('url', f.url);
+              // Use base64 upload mode first to avoid remote URL fetch restrictions
+              const b64 = `data:application/pdf;base64,${buffer.toString('base64')}`;
+              formUrl.append('base64Image', b64);
               formUrl.append('filetype', 'PDF');
               formUrl.append('isCreateSearchablePdf', 'false');
               formUrl.append('isTable', 'false');
@@ -117,25 +124,6 @@ exports.handler = async (event) => {
               let ocrText = (ocrJson?.ParsedResults || [])
                 .map(r => r?.ParsedText || '')
                 .join('\n');
-              if (!ocrText || ocrText.trim().length < 50) {
-                // Try base64 upload mode (works when remote URL access is blocked)
-                const b64 = `data:application/pdf;base64,${buffer.toString('base64')}`;
-                const formB64 = new URLSearchParams();
-                formB64.append('base64Image', b64);
-                formB64.append('filetype', 'PDF');
-                formB64.append('isCreateSearchablePdf', 'false');
-                formB64.append('isTable', 'false');
-                formB64.append('OCREngine', '2');
-                ocrRes = await fetch('https://api.ocr.space/parse/image', {
-                  method: 'POST',
-                  headers: { 'apikey': ocrKey, 'Content-Type': 'application/x-www-form-urlencoded' },
-                  body: formB64.toString(),
-                });
-                ocrJson = await ocrRes.json();
-                ocrText = (ocrJson?.ParsedResults || [])
-                  .map(r => r?.ParsedText || '')
-                  .join('\n');
-              }
               if (ocrText && ocrText.trim().length > 50) {
                 text = ocrText;
                 diagnostics.push(`OCR.SPACE: success, ${text.length} chars`);
