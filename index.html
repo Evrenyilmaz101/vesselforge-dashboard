@@ -7152,6 +7152,10 @@
                                                                 const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
                                                                 if (!res.ok) throw new Error(`Spec review failed (${res.status})`);
                                                                 const data = await res.json();
+                                                                if (data.diagnostics && Array.isArray(data.diagnostics) && data.diagnostics.length > 0) {
+                                                                    console.log('🔎 SpecReview diagnostics:', data.diagnostics);
+                                                                    alert('SpecReview diagnostics:\n' + data.diagnostics.join('\n'));
+                                                                }
                                                                 setSpecResults(prev => ({ ...prev, [tenderId]: data.results || [] }));
                                                             } catch (err) {
                                                                 console.error('Spec review error:', err);
