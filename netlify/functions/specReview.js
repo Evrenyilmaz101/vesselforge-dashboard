@@ -183,56 +183,35 @@ exports.handler = async (event) => {
     diagnostics.push(`Processing ${doc.name} - ${text.length} characters`);
     
     try {
-      const prompt = `PERFORM A COMPREHENSIVE, LINE-BY-LINE SPECIFICATION REVIEW. You must extract EVERY single requirement, parameter, tolerance, procedure, standard, and compliance item from this document. Read through the ENTIRE document systematically and capture ALL technical details.
+      const prompt = `Extract ALL technical requirements from this specification document. Be thorough and systematic.
 
-MANDATORY REVIEW AREAS - Extract EVERYTHING you find:
+EXTRACT:
+- Design parameters (pressure, temperature, dimensions, tolerances)
+- Material specifications and properties  
+- Code references (ASME, API, etc)
+- Testing and inspection requirements
+- Fabrication procedures and tolerances
+- Documentation requirements
+- Quality control procedures
 
-1. DESIGN PARAMETERS: Operating pressure, temperature, flow rates, dimensions, wall thickness, corrosion allowance, stress limits, fatigue requirements, seismic design, wind loads, foundation requirements, piping connections, nozzle details, support configurations
+${text}
 
-2. MATERIALS: Exact material grades, chemical composition limits, mechanical properties, impact test temperatures, heat treatment requirements, material certificates (MTCs), traceability, welding consumables, bolting materials, gasket specifications
+Return JSON array:
+[{
+  "id": "req_1", 
+  "category": "Design|Materials|Code|Testing|Fabrication|Documentation|Quality|Safety",
+  "requirement": "specific requirement with values/tolerances",
+  "rationale": "why this matters",
+  "source": {"fileName": "${doc.name}"}
+}]
 
-3. CODES & STANDARDS: ASME Section VIII Div 1/2, ASME B31.3, API standards, AWS welding codes, ASTM material specs, local regulations, exemptions, special design cases, code edition years
-
-4. FABRICATION: Welding procedures (WPS), welder qualifications, joint designs, weld profiles, fit-up tolerances, heat treatment procedures, forming methods, machining requirements, assembly sequences
-
-5. TESTING & INSPECTION: Hydrostatic test pressure and duration, pneumatic test requirements, radiographic testing (RT) requirements and acceptance, ultrasonic testing (UT), magnetic particle testing (MT), liquid penetrant testing (PT), visual inspection criteria, hardness testing, impact testing, dimensional inspection
-
-6. QUALITY ASSURANCE: Quality control procedures, hold points, witness points, third-party inspection requirements, NDE procedures, calibration requirements, documentation requirements
-
-7. DOCUMENTATION: Material test certificates, welding records, NDE reports, test certificates, data reports, nameplates, drawings, operation manuals, spare parts lists
-
-8. DELIVERY & INSTALLATION: Shipping requirements, preservation methods, storage requirements, installation procedures, commissioning requirements, training requirements
-
-9. TOLERANCES: Manufacturing tolerances, assembly tolerances, straightness, roundness, surface finish, machining tolerances, welding tolerances
-
-10. OPERATIONAL REQUIREMENTS: Operating procedures, maintenance requirements, inspection schedules, safety procedures, emergency procedures
-
-READ EVERY SECTION, TABLE, NOTE, APPENDIX, AND REFERENCE. Extract specific values, not generalities.
-
-DOCUMENT: ${text}
-
-Return a comprehensive JSON array with this exact structure:
-[
-  {
-    "id": "unique_id",
-    "category": "Design|Materials|Code|Fabrication|Testing|Documentation|Quality|Delivery|Safety|Operational",
-    "requirement": "SPECIFIC requirement with exact values, tolerances, procedures",
-    "rationale": "detailed explanation of why this requirement exists and its impact",
-    "source": {"fileName": "${doc.name}", "section": "section if identifiable"},
-    "details": "additional technical details, referenced standards, or related requirements",
-    "compliance_ref": "specific code section, standard, or regulation if mentioned"
-  }
-]
-
-BE EXHAUSTIVE. Extract 50-200+ requirements depending on document complexity. Include every specification detail, every tolerance, every test requirement, every material property, every procedure. This should be a COMPLETE engineering review.
-
-Return ONLY the JSON array.`;
+Extract 30-50 key requirements. Focus on critical technical specifications. JSON only.`;
 
       const completion = await anthropic.messages.create({
         model: model || DEFAULT_MODEL,
-        max_tokens: 4000,
+        max_tokens: 2500,
         temperature: 0,
-        system: 'You are a senior mechanical engineer and ASME code expert performing a comprehensive specification review. Extract EVERY requirement from the document. Be extremely thorough and detailed. Return only valid JSON.',
+        system: 'You are a mechanical engineer. Extract technical requirements from specifications. Return valid JSON only.',
         messages: [{ role: 'user', content: prompt }],
       });
       
