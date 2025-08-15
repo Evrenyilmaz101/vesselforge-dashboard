@@ -256,7 +256,7 @@
             const [specResults, setSpecResults] = useState({}); // { tenderId: [results] }
             const [specRuns, setSpecRuns] = useState({}); // { tenderId: [{id, createdAt, items, diagnostics, files}] }
             const [specSelectedRunId, setSpecSelectedRunId] = useState(null);
-            const [specSeverityFilter, setSpecSeverityFilter] = useState('All');
+            // const [specSeverityFilter, setSpecSeverityFilter] = useState('All'); // Removed severity filter
 
             // Load persisted spec review runs when tender changes
             useEffect(() => {
@@ -7157,10 +7157,10 @@
                                             <div className="flex items-center justify-between">
                                                 <div>
                                                     <h3 className="text-white font-bold text-xl flex items-center">
-                                                        <span className="mr-3 text-2xl">🤖</span>
-                                                        AI Spec Review
+                                                        <span className="mr-3 text-2xl">🔍</span>
+                                                        Spec Review
                                                     </h3>
-                                                    <p className="text-slate-300 text-sm mt-1">Intelligent analysis of specifications and requirements</p>
+                                                    <p className="text-slate-300 text-sm mt-1">Comprehensive analysis of specifications and requirements</p>
                                                 </div>
                                                 <div className="text-slate-400 text-sm bg-slate-700/30 px-3 py-1 rounded-full border border-slate-600/30">
                                                     {selectedEnquiry.id}
@@ -7288,7 +7288,7 @@
                                                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                                     <div className="flex-1">
                                                         <h4 className="text-white font-semibold mb-2">🔍 Analysis Controls</h4>
-                                                        <p className="text-slate-400 text-sm">Run comprehensive AI analysis on uploaded specifications</p>
+                                                        <p className="text-slate-400 text-sm">Run comprehensive analysis on uploaded specifications</p>
                                                     </div>
                                                     <button
                                                         className={`px-8 py-3 rounded-xl font-semibold text-white shadow-lg transition-all duration-300 ${
@@ -7351,7 +7351,7 @@
                                                         ) : (
                                                             <>
                                                                 <span className="mr-2">🚀</span>
-                                                                Run AI Review
+                                                                Run Review
                                                             </>
                                                         )}
                                                     </button>
@@ -7374,13 +7374,7 @@
                                                             ))}
                                                         </select>
                                                     )}
-                                                    <span className="ml-4 text-white/70 text-sm">Severity:</span>
-                                                    <select className="bg-slate-700 text-white text-sm rounded px-2 py-1 border border-white/20" value={specSeverityFilter} onChange={(e)=>setSpecSeverityFilter(e.target.value)}>
-                                                        <option>All</option>
-                                                        <option>High</option>
-                                                        <option>Medium</option>
-                                                        <option>Low</option>
-                                                    </select>
+
                                                     {/* Excel export */}
                                                     <button onClick={() => {
                                                         if (!selectedEnquiry?.id) return;
@@ -7419,12 +7413,11 @@
                                             <div className="bg-white/5 border border-white/10 rounded-lg p-3">
                                                 <div className="flex items-center justify-between mb-2">
                                                     <div className="text-white/80 text-sm">Results</div>
-                                                    <div className="text-white/60 text-xs">{(specResults[selectedEnquiry.id]||[]).filter(r => specSeverityFilter==='All' || (r.severity||'').toLowerCase()===specSeverityFilter.toLowerCase()).length} items</div>
+                                                    <div className="text-white/60 text-xs">{(specResults[selectedEnquiry.id]||[]).length} items</div>
                                                 </div>
                                                 <div className="space-y-4 max-h-[48vh] overflow-y-auto">
                                                     {(() => {
-                                                        const results = (specResults[selectedEnquiry.id]||[])
-                                                            .filter(r => specSeverityFilter==='All' || (r.severity||'').toLowerCase()===specSeverityFilter.toLowerCase());
+                                                        const results = (specResults[selectedEnquiry.id]||[]);
                                                         
                                                         if (!results.length) {
                                                             return <div className="text-white/60 text-sm">No results yet. Upload specs and Run Review.</div>;
