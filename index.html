@@ -7454,7 +7454,17 @@
                                                         Files: {(specFiles[selectedEnquiry.id]||[]).map(f => f.name).join(', ')}
                                                     </div>
                                                 )}
-                                                {specError && <div className="mt-3 text-red-300 text-sm">{specError}</div>}
+                                                {specError && (
+                                                    <div className="mt-3 text-red-300 text-sm">
+                                                        {specError}
+                                                        {specError.includes('504') && (
+                                                            <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-yellow-300 text-xs">
+                                                                💡 <strong>Tip:</strong> 504 errors are caused by Netlify function timeout limits (10-26 seconds). 
+                                                                For large documents, consider using Claude directly or converting to text format first.
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="bg-white/5 border border-white/10 rounded-lg p-3">
                                                 <div className="flex items-center justify-between mb-2">
