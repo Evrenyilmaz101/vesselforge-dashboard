@@ -163,150 +163,91 @@ exports.handler = async (event) => {
     
     const system = `You are a senior mechanical engineer and ASME code expert specializing in pressure vessel design, fabrication, and inspection. You must perform an exhaustive, line-by-line specification review extracting every single requirement, parameter, code reference, material property, dimensional tolerance, testing procedure, and compliance item. Be extremely detailed and thorough. Return strict JSON only.`;
     
+    // Simplified approach - just send the FIRST document directly to Claude like you do
     let results = [];
     
-    for (const doc of docs) {
-      const text = doc.text || '';
-      if (!text || text.trim().length < 50) continue;
+    if (docs.length === 0) {
+      diagnostics.push('No documents to analyze');
+      return { statusCode: 400, body: JSON.stringify({ error: 'No documents provided', diagnostics }) };
+    }
+    
+    // Take only the first document to avoid timeouts
+    const doc = docs[0];
+    const text = doc.text || '';
+    
+    if (!text || text.trim().length < 50) {
+      diagnostics.push(`Document ${doc.name} has insufficient text content`);
+      return { statusCode: 400, body: JSON.stringify({ error: 'Document has no readable text', diagnostics }) };
+    }
+    
+    diagnostics.push(`Processing ${doc.name} - ${text.length} characters`);
+    
+    try {
+      const prompt = `Analyze this specification document and extract all critical requirements:
+
+${text}
+
+Return a JSON array of requirements with this structure:
+[
+  {
+    "id": "req_1",
+    "category": "Design|Materials|Code|Testing|Documentation|Safety",
+    "requirement": "specific requirement text",
+    "rationale": "why this matters",
+    "source": {"fileName": "${doc.name}"}
+  }
+]
+
+Focus on:
+- Design parameters and tolerances
+- Material specifications  
+- Code compliance (ASME, API, etc)
+- Testing and inspection requirements
+- Documentation requirements
+- Safety requirements
+
+Only return the JSON array, nothing else.`;
+
+      const completion = await anthropic.messages.create({
+        model: model || DEFAULT_MODEL,
+        max_tokens: 3000,
+        temperature: 0,
+        system: 'You are a spec review expert. Return only valid JSON.',
+        messages: [{ role: 'user', content: prompt }],
+      });
       
-      // Ultra-minimal chunking to prevent any timeouts
-      const isLarge = text.length > 8000; // Extremely tiny threshold
-      diagnostics.push(`CLAUDE: ${doc.name} - ${text.length} chars - ${isLarge ? 'CHUNKED' : 'FULL'} analysis`);
+      const response = (completion.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
       
-      if (!isLarge) {
-        // Small/medium docs - analyze in full
-        try {
-          const prompt = `Perform an EXHAUSTIVE, line-by-line specification review of: ${doc.name}
-
-Extract EVERY requirement, specification, parameter, tolerance, procedure, and compliance item. Be extremely detailed and granular.
-
-MANDATORY EXTRACTION AREAS:
-1. DESIGN PARAMETERS: Operating pressure, temperature, flow rates, vessel dimensions, wall thickness, corrosion allowance, stress analysis requirements, fatigue analysis, seismic considerations
-2. MATERIAL SPECIFICATIONS: Material grades, heat treatment requirements, chemical composition limits, mechanical property requirements, impact testing temperatures, material certifications (MTRs), traceability requirements
-3. CODE COMPLIANCE: ASME Section VIII Div 1/2, ASME B31.3, API standards, local codes, exemptions, special requirements, code stamping requirements
-4. FABRICATION REQUIREMENTS: Welding procedures (WPS), welder qualifications, joint efficiency, weld inspection requirements, fit-up tolerances, heat treatment procedures, forming requirements
-5. TESTING & INSPECTION: Hydrostatic test pressure, pneumatic test requirements, radiographic testing (RT), ultrasonic testing (UT), magnetic particle testing (MT), liquid penetrant testing (PT), visual inspection criteria, acceptance standards
-6. DOCUMENTATION: Mill test certificates, welding documentation, NDE reports, hydrostatic test certificates, code compliance certificates, fabrication drawings, quality plans
-7. DELIVERY & LOGISTICS: Shipping requirements, preservation, marking, documentation packages, delivery schedules, installation requirements
-8. QUALITY ASSURANCE: QC procedures, hold points, witness points, third-party inspection requirements, quality plans, non-conformance procedures
-9. DIMENSIONAL TOLERANCES: Fabrication tolerances, assembly tolerances, straightness, roundness, dimensional inspection requirements
-10. SURFACE FINISH: Surface preparation, coating requirements, surface roughness, cleanliness requirements
-
-For each requirement found, return:
-- id: string (unique identifier)
-- severity: High | Medium | Low (High=safety/code/critical, Medium=quality/performance, Low=documentation/administrative)
-- category: Design | Materials | Fabrication | Testing | Documentation | Delivery | Safety | Code | Quality | Dimensional
-- requirement: very specific, detailed requirement statement with exact values, tolerances, procedures
-- rationale: detailed explanation of why this requirement exists and its impact on safety, quality, or compliance
-- source: { fileName: "${doc.name}", page?: number, section?: string, paragraph?: string }
-- details: additional technical details, referenced standards, or related requirements
-- compliance_ref: specific code section, standard, or regulation if mentioned
-
-Be exhaustive - extract requirements from:
-- Main text and specifications
-- Tables and charts  
-- Drawing notes and details
-- Referenced standards
-- Footnotes and appendices
-- Material property tables
-- Dimensional tolerances
-- Test procedures
-- Quality requirements
-
-Only output JSON array.
-
-Document:
-${text}`;
-
-          const completion = await anthropic.messages.create({
-            model: model || DEFAULT_MODEL,
-            max_tokens: 4000,
-            temperature: 0,
-            system,
-            messages: [{ role: 'user', content: prompt }],
-          });
-          
-          const response = (completion.content || []).filter(b=>b.type==='text').map(b=>b.text).join('\n');
-          let parsed = [];
-          try {
-            parsed = JSON.parse(response);
-          } catch {
-            const s = response.indexOf('['), e = response.lastIndexOf(']');
-            if (s!==-1 && e!==-1 && e>s) parsed = JSON.parse(response.slice(s,e+1));
-          }
-          results.push(...(Array.isArray(parsed) ? parsed : []));
-          
-        } catch (e) {
-          diagnostics.push(`CLAUDE: ${doc.name} full analysis failed - ${e.message}`);
-        }
-        
-      } else {
-        // Large docs - ultra-small chunks to prevent timeouts
-        const chunkSize = 6000; // Ultra-tiny chunks
-        const overlap = 500; // Absolute minimal overlap
-        
-        for (let i = 0; i < text.length; i += chunkSize - overlap) {
-          const chunk = text.slice(i, i + chunkSize);
-          const chunkNum = Math.floor(i / (chunkSize - overlap)) + 1;
-          const totalChunks = Math.ceil(text.length / (chunkSize - overlap));
-          
-          try {
-            const prompt = `EXHAUSTIVE analysis of chunk ${chunkNum}/${totalChunks} from specification: ${doc.name}
-
-Extract EVERY requirement, parameter, tolerance, procedure, and compliance item from this section. Be extremely detailed.
-
-EXTRACT FROM THIS CHUNK:
-- Design parameters with exact values and tolerances
-- Material specifications and properties  
-- Code references and compliance requirements
-- Fabrication procedures and tolerances
-- Testing and inspection requirements with acceptance criteria
-- Documentation and certification requirements
-- Quality assurance procedures
-- Dimensional requirements and tolerances
-- Surface finish and coating requirements
-- Any referenced standards or procedures
-
-For each requirement return:
-- id: string (unique identifier)
-- severity: High | Medium | Low (High=safety/code/critical, Medium=quality/performance, Low=documentation/administrative)  
-- category: Design | Materials | Fabrication | Testing | Documentation | Delivery | Safety | Code | Quality | Dimensional
-- requirement: very specific, detailed requirement with exact values, tolerances, procedures
-- rationale: detailed explanation of why this requirement exists and its impact
-- source: { fileName: "${doc.name}", page?: number, section?: string, paragraph?: string }
-- details: additional technical details, referenced standards, or related requirements
-- compliance_ref: specific code section, standard, or regulation if mentioned
-
-Be exhaustive - examine every sentence, table entry, note, and specification detail.
-
-Only output JSON array.
-
-Text:
-${chunk}`;
-
-            const completion = await anthropic.messages.create({
-              model: model || DEFAULT_MODEL,
-              max_tokens: 3000,
-              temperature: 0,
-              system,
-              messages: [{ role: 'user', content: prompt }],
-            });
-            
-            const response = (completion.content || []).filter(b=>b.type==='text').map(b=>b.text).join('\n');
-            let parsed = [];
-            try {
-              parsed = JSON.parse(response);
-            } catch {
-              const s = response.indexOf('['), e = response.lastIndexOf(']');
-              if (s!==-1 && e!==-1 && e>s) parsed = JSON.parse(response.slice(s,e+1));
-            }
-            results.push(...(Array.isArray(parsed) ? parsed : []));
-            
-          } catch (e) {
-            diagnostics.push(`CLAUDE: ${doc.name} chunk ${chunkNum}/${totalChunks} failed - ${e.message}`);
-          }
+      try {
+        results = JSON.parse(response);
+      } catch {
+        // Extract JSON array from response
+        const start = response.indexOf('[');
+        const end = response.lastIndexOf(']');
+        if (start !== -1 && end !== -1 && end > start) {
+          results = JSON.parse(response.slice(start, end + 1));
+        } else {
+          results = [];
         }
       }
+      
+      if (!Array.isArray(results)) {
+        results = [];
+      }
+      
+      diagnostics.push(`Successfully extracted ${results.length} requirements`);
+      
+    } catch (e) {
+      console.error('Claude API error:', e);
+      diagnostics.push(`Analysis failed: ${e.message}`);
+      return { 
+        statusCode: 502, 
+        body: JSON.stringify({ 
+          error: 'Analysis failed', 
+          details: e.message,
+          diagnostics 
+        }) 
+      };
     }
     
     // Deduplicate by requirement similarity
