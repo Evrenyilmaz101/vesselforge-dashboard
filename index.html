@@ -7153,33 +7153,151 @@
                                         </div>
                                     )}
                                     {activeTab === 'spec' && selectedEnquiry && (
-                                        <div className="p-4 space-y-4 overflow-auto h-full">
+                                        <div className="p-6 space-y-6 overflow-auto h-full bg-gradient-to-br from-slate-900/50 to-slate-800/30">
                                             <div className="flex items-center justify-between">
-                                                <h3 className="text-white font-semibold text-lg">AI Spec Review</h3>
-                                                <div className="text-white/60 text-sm">Tender: {selectedEnquiry.id}</div>
+                                                <div>
+                                                    <h3 className="text-white font-bold text-xl flex items-center">
+                                                        <span className="mr-3 text-2xl">🤖</span>
+                                                        AI Spec Review
+                                                    </h3>
+                                                    <p className="text-slate-300 text-sm mt-1">Intelligent analysis of specifications and requirements</p>
+                                                </div>
+                                                <div className="text-slate-400 text-sm bg-slate-700/30 px-3 py-1 rounded-full border border-slate-600/30">
+                                                    {selectedEnquiry.id}
+                                                </div>
                                             </div>
-                                            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                                                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                                                    <div>
-                                                        <div className="text-white/80 text-sm mb-1">Upload client specs or code</div>
-                                                        <input type="file" multiple accept=".pdf,.doc,.docx,.txt,.md,.rtf,.csv,.json,.yaml,.yml,.xml,.ini,.cfg,.py,.js,.ts,.java,.cs,.cpp,.c,.go,.rb,.rs"
-                                                            className="text-white/80" onChange={async (e) => {
-                                                                const files = Array.from(e.target.files || []);
-                                                                if (files.length === 0) return;
-                                                                const tenderId = selectedEnquiry.id;
-                                                                const folderRef = storage.ref(`specs/${tenderId}`);
-                                                                const uploaded = [];
-                                                                for (const file of files) {
-                                                                    const ref = folderRef.child(`${Date.now()}_${file.name}`);
-                                                                    await ref.put(file);
-                                                                    const url = await ref.getDownloadURL();
-                                                                    uploaded.push({ id: `${Date.now()}_${file.name}`, name: file.name, url, type: file.type || 'application/octet-stream' });
-                                                                }
-                                                                setSpecFiles(prev => ({ ...prev, [tenderId]: [ ...(prev[tenderId]||[]), ...uploaded ] }));
-                                                            }} />
+
+                                            {/* Drag and Drop Upload Area */}
+                                            <div className="relative">
+                                                <div 
+                                                    className="border-2 border-dashed border-slate-500/50 rounded-xl p-12 text-center bg-slate-800/20 hover:border-blue-400/60 hover:bg-slate-700/30 transition-all duration-300 group cursor-pointer"
+                                                    onDragOver={(e) => {
+                                                        e.preventDefault();
+                                                        e.currentTarget.classList.add('border-blue-400', 'bg-blue-500/10', 'scale-105');
+                                                    }}
+                                                    onDragLeave={(e) => {
+                                                        e.preventDefault();
+                                                        e.currentTarget.classList.remove('border-blue-400', 'bg-blue-500/10', 'scale-105');
+                                                    }}
+                                                    onDrop={async (e) => {
+                                                        e.preventDefault();
+                                                        e.currentTarget.classList.remove('border-blue-400', 'bg-blue-500/10', 'scale-105');
+                                                        const files = Array.from(e.dataTransfer.files);
+                                                        if (!files.length || !selectedEnquiry?.id) return;
+                                                        
+                                                        const tenderId = selectedEnquiry.id;
+                                                        const folderRef = storage.ref(`specs/${tenderId}`);
+                                                        const uploaded = [];
+                                                        for (const file of files) {
+                                                            const ref = folderRef.child(`${Date.now()}_${file.name}`);
+                                                            await ref.put(file);
+                                                            const url = await ref.getDownloadURL();
+                                                            uploaded.push({ id: `${Date.now()}_${file.name}`, name: file.name, url, type: file.type || 'application/octet-stream' });
+                                                        }
+                                                        setSpecFiles(prev => ({ ...prev, [tenderId]: [ ...(prev[tenderId]||[]), ...uploaded ] }));
+                                                    }}
+                                                    onClick={() => document.getElementById('spec-file-input').click()}
+                                                >
+                                                    <div className="space-y-6">
+                                                        <div className="text-6xl group-hover:scale-110 transition-transform duration-300">
+                                                            📁
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-white font-semibold text-xl mb-2">Drop files here or click to upload</div>
+                                                            <div className="text-slate-400 text-sm">
+                                                                Supports: PDF, DOCX, TXT, Code files, and more
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex justify-center">
+                                                            <div className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-8 py-3 rounded-xl font-medium transition-all duration-300 shadow-lg">
+                                                                <span className="mr-2">📤</span>
+                                                                Choose Files
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <input
+                                                    id="spec-file-input"
+                                                    type="file"
+                                                    multiple 
+                                                    accept=".pdf,.doc,.docx,.txt,.md,.rtf,.csv,.json,.yaml,.yml,.xml,.ini,.cfg,.py,.js,.ts,.java,.cs,.cpp,.c,.go,.rb,.rs"
+                                                    className="hidden"
+                                                    onChange={async (e) => {
+                                                        const files = Array.from(e.target.files || []);
+                                                        if (files.length === 0) return;
+                                                        const tenderId = selectedEnquiry.id;
+                                                        const folderRef = storage.ref(`specs/${tenderId}`);
+                                                        const uploaded = [];
+                                                        for (const file of files) {
+                                                            const ref = folderRef.child(`${Date.now()}_${file.name}`);
+                                                            await ref.put(file);
+                                                            const url = await ref.getDownloadURL();
+                                                            uploaded.push({ id: `${Date.now()}_${file.name}`, name: file.name, url, type: file.type || 'application/octet-stream' });
+                                                        }
+                                                        setSpecFiles(prev => ({ ...prev, [tenderId]: [ ...(prev[tenderId]||[]), ...uploaded ] }));
+                                                    }}
+                                                />
+                                            </div>
+
+                                            {/* Uploaded Files Display */}
+                                            {(specFiles[selectedEnquiry.id] || []).length > 0 && (
+                                                <div className="bg-slate-800/40 border border-slate-600/40 rounded-xl p-5 backdrop-blur-sm">
+                                                    <h4 className="text-white font-semibold mb-4 flex items-center">
+                                                        <span className="mr-2 text-xl">📄</span>
+                                                        Uploaded Files ({(specFiles[selectedEnquiry.id] || []).length})
+                                                    </h4>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                        {(specFiles[selectedEnquiry.id] || []).map((file, i) => (
+                                                            <div key={i} className="bg-slate-700/50 border border-slate-600/50 rounded-lg p-4 flex items-center justify-between hover:bg-slate-700/70 transition-colors">
+                                                                <div className="flex items-center space-x-3">
+                                                                    <div className="text-3xl">
+                                                                        {file.name.endsWith('.pdf') ? '📄' : 
+                                                                         file.name.endsWith('.docx') ? '📝' : 
+                                                                         file.name.endsWith('.txt') ? '📃' : 
+                                                                         file.name.match(/\.(js|py|java|cpp|cs)$/) ? '💻' : '📋'}
+                                                                    </div>
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <div className="text-white text-sm font-medium truncate">
+                                                                            {file.name}
+                                                                        </div>
+                                                                        <div className="text-slate-400 text-xs">
+                                                                            {(file.type || 'Unknown').split('/').pop()?.toUpperCase() || 'FILE'}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const tenderId = selectedEnquiry.id;
+                                                                        setSpecFiles(prev => ({
+                                                                            ...prev,
+                                                                            [tenderId]: (prev[tenderId] || []).filter((_, idx) => idx !== i)
+                                                                        }));
+                                                                    }}
+                                                                    className="text-red-400 hover:text-red-300 hover:bg-red-500/20 p-1 rounded transition-colors"
+                                                                >
+                                                                    ✕
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Review Controls */}
+                                            <div className="bg-gradient-to-r from-slate-800/40 to-slate-700/40 border border-slate-600/40 rounded-xl p-6">
+                                                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                                    <div className="flex-1">
+                                                        <h4 className="text-white font-semibold mb-2">🔍 Analysis Controls</h4>
+                                                        <p className="text-slate-400 text-sm">Run comprehensive AI analysis on uploaded specifications</p>
                                                     </div>
                                                     <button
-                                                        className={`px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white ${specRunning ? 'opacity-70 cursor-wait' : ''}`}
+                                                        className={`px-8 py-3 rounded-xl font-semibold text-white shadow-lg transition-all duration-300 ${
+                                                            specRunning 
+                                                                ? 'bg-yellow-600 cursor-wait animate-pulse' 
+                                                                : !(specFiles[selectedEnquiry.id]||[]).length
+                                                                    ? 'bg-slate-600 cursor-not-allowed opacity-50'
+                                                                    : 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 hover:scale-105'
+                                                        }`}
                                                         disabled={specRunning || !(specFiles[selectedEnquiry.id]||[]).length}
                                                         onClick={async () => {
                                                             try {
@@ -7224,7 +7342,19 @@
                                                                 setSpecRunning(false);
                                                             }
                                                         }}
-                                                    >{specRunning ? 'Analyzing…' : 'Run Review'}</button>
+                                                    >
+                                                        {specRunning ? (
+                                                            <>
+                                                                <span className="mr-2">⚡</span>
+                                                                Analyzing...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <span className="mr-2">🚀</span>
+                                                                Run AI Review
+                                                            </>
+                                                        )}
+                                                    </button>
                                                 </div>
                                                 {/* Previous runs selector */}
                                                 <div className="mt-4 flex flex-wrap items-center gap-2">
