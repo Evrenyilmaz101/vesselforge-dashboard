@@ -7351,7 +7351,7 @@
                                                                 setSpecRunning(true);
                                                                 const tenderId = selectedEnquiry.id;
                                                                 // Cloud Function endpoint (to be implemented separately)
-                                                                const endpoint = (window.__CF_SPEC_ENDPOINT__) || '/.netlify/functions/specReview';
+                                                                const endpoint = (window.__CF_SPEC_ENDPOINT__) || '/api/specReview';
                                                                 const body = {
                                                                     tenderId,
                                                                     files: (specFiles[tenderId]||[]).map(f => ({ name: f.name, url: f.url }))

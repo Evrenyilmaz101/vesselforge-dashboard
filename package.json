@@ -1,16 +1,17 @@
 {
   "name": "vesselforge-dashboard",
   "version": "1.0.0",
-  "private": true,
-  "description": "VesselForge dashboard with Netlify Functions for AI Spec Review",
-  "engines": {
-    "node": ">=18"
+  "description": "Professional tendering platform with AI spec review",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'No build step required for static site'",
+    "deploy": "vercel --prod"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.21.1",
-    "mammoth": "^1.6.0",
-    "pdf-parse": "^1.1.1"
+    "@anthropic-ai/sdk": "^0.20.0"
+  },
+  "devDependencies": {
+    "vercel": "^33.0.0"
   }
 }
-
-
