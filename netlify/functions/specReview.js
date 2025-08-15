@@ -157,62 +157,87 @@ exports.handler = async (event) => {
       }
     }
 
-    // Prepare Claude client
+    // Build comprehensive prompt with all documents
+    const combined = docs.map(d => `=== FILE: ${d.name} ===\n${d.text || ''}`).join('\n\n');
+    
+    const system = `You are an expert mechanical/process engineering spec reviewer for pressure vessels and related equipment. You must thoroughly analyze the ENTIRE specification document(s) provided and extract ALL critical requirements, specifications, and compliance items. Be comprehensive and meticulous - review every section, table, drawing reference, code requirement, material specification, testing requirement, and delivery criterion. Return strict JSON only.`;
+    
+    const userPrompt = `Perform a comprehensive spec review of the following complete document(s). Extract ALL requirements and checks that impact design, materials, code compliance, testing/inspection, documentation, and delivery. Be thorough and include items from every section of the document(s).
+
+For each requirement found, return:
+- id: string (stable identifier)
+- severity: High | Medium | Low (High=critical/safety/code, Medium=important/quality, Low=documentation/minor)
+- category: Design | Materials | Fabrication | Testing | Documentation | Delivery | Safety | Code
+- requirement: clear, specific requirement statement
+- rationale: why this matters and downstream impact
+- source: { fileName: string, page?: number, section?: string } (identify location in document)
+
+Focus on:
+- Pressure vessel design codes (ASME, etc.)
+- Material specifications and certifications
+- Welding and fabrication requirements
+- Testing and inspection requirements (NDT, pressure testing, etc.)
+- Documentation and certification requirements
+- Delivery and shipping specifications
+- Safety and operational requirements
+- Design parameters (pressure, temperature, corrosion allowance, etc.)
+
+Only output JSON array. Documents:
+
+${combined}`;
+
+    // Call Claude with full document
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     const anthropic = new Anthropic({ apiKey });
-    const system = `You are an expert mechanical/process engineering spec reviewer for pressure vessels and related equipment. Return strict JSON only.`;
-
-    async function analyzeChunk(fileName, text, idx, total) {
-      const prompt = `You are reviewing chunk ${idx+1}/${total} of the specification file: ${fileName}. From ONLY this chunk, extract a prioritized list of requirements and checks that impact design, materials, code compliance, testing/inspection, documentation, delivery, and safety. For each item, return:\n- id: string (stable)\n- severity: High | Medium | Low\n- category: Design | Materials | Fabrication | Testing | Documentation | Delivery | Safety | Code\n- requirement: concise requirement statement\n- rationale: why this matters / downstream impact\n- source: { fileName: string, page?: number } (best effort)\n\nOnly output JSON array. Text:\n\n${text}`;
-      try {
-        const completion = await anthropic.messages.create({
-          model: model || DEFAULT_MODEL,
-          max_tokens: 1400,
-          temperature: 0,
-          system,
-          messages: [{ role: 'user', content: prompt }],
-        });
-        const textBlocks = (completion.content || []).filter(b=>b.type==='text').map(b=>b.text).join('\n');
-        let arr = [];
-        try {
-          arr = JSON.parse(textBlocks);
-        } catch {
-          const s = textBlocks.indexOf('['); const e = textBlocks.lastIndexOf(']');
-          if (s!==-1 && e!==-1 && e>s) arr = JSON.parse(textBlocks.slice(s,e+1));
-        }
-        return Array.isArray(arr) ? arr : [];
-      } catch (e) {
-        diagnostics.push(`CLAUDE: chunk ${idx+1}/${total} failed - ${e.message}`);
-        return [];
-      }
-    }
-
-    // Chunk each document and aggregate results
+    
     let results = [];
-    for (const d of docs) {
-      const text = d.text || '';
-      if (!text || text.trim().length < 50) continue;
-      const chunkSize = 20000; // ~tokens proxy
-      const chunks = [];
-      for (let i=0; i<text.length; i+=chunkSize) {
-        chunks.push(text.slice(i, i+chunkSize));
+    try {
+      diagnostics.push(`CLAUDE: analyzing complete document(s) - ${combined.length} characters`);
+      
+      const completion = await anthropic.messages.create({
+        model: model || DEFAULT_MODEL,
+        max_tokens: 4000, // Increased for comprehensive analysis
+        temperature: 0,
+        system,
+        messages: [{ role: 'user', content: userPrompt }],
+      });
+      
+      const textBlocks = (completion.content || [])
+        .filter(b => b.type === 'text')
+        .map(b => b.text)
+        .join('\n');
+      
+      try {
+        results = JSON.parse(textBlocks);
+      } catch {
+        // Fallback to extract JSON array from response
+        const start = textBlocks.indexOf('[');
+        const end = textBlocks.lastIndexOf(']');
+        if (start !== -1 && end !== -1 && end > start) {
+          results = JSON.parse(textBlocks.slice(start, end + 1));
+        } else {
+          results = [];
+        }
       }
-      diagnostics.push(`CLAUDE: analyzing ${d.name} in ${chunks.length} chunk(s)`);
-      for (let i=0; i<chunks.length; i++) {
-        const arr = await analyzeChunk(d.name, chunks[i], i, chunks.length);
-        results.push(...arr);
+      
+      if (!Array.isArray(results)) {
+        results = [];
       }
+      
+      diagnostics.push(`CLAUDE: extracted ${results.length} requirements from complete analysis`);
+      
+    } catch (e) {
+      console.error('Claude API error:', e);
+      diagnostics.push(`CLAUDE: analysis failed - ${e.message}`);
+      return { 
+        statusCode: 502, 
+        body: JSON.stringify({ 
+          error: 'Claude API error', 
+          details: e.message,
+          diagnostics 
+        }) 
+      };
     }
-
-    // Deduplicate by requirement text
-    const seen = new Set();
-    results = results.filter(r => {
-      const key = (r.requirement||'').trim().toLowerCase();
-      if (!key) return false;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
 
     // Basic normalization
     results = (Array.isArray(results) ? results : []).map((r, i) => ({
