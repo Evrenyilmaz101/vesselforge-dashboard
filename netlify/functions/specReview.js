@@ -157,87 +157,129 @@ exports.handler = async (event) => {
       }
     }
 
-    // Build comprehensive prompt with all documents
-    const combined = docs.map(d => `=== FILE: ${d.name} ===\n${d.text || ''}`).join('\n\n');
-    
-    const system = `You are an expert mechanical/process engineering spec reviewer for pressure vessels and related equipment. You must thoroughly analyze the ENTIRE specification document(s) provided and extract ALL critical requirements, specifications, and compliance items. Be comprehensive and meticulous - review every section, table, drawing reference, code requirement, material specification, testing requirement, and delivery criterion. Return strict JSON only.`;
-    
-    const userPrompt = `Perform a comprehensive spec review of the following complete document(s). Extract ALL requirements and checks that impact design, materials, code compliance, testing/inspection, documentation, and delivery. Be thorough and include items from every section of the document(s).
-
-For each requirement found, return:
-- id: string (stable identifier)
-- severity: High | Medium | Low (High=critical/safety/code, Medium=important/quality, Low=documentation/minor)
-- category: Design | Materials | Fabrication | Testing | Documentation | Delivery | Safety | Code
-- requirement: clear, specific requirement statement
-- rationale: why this matters and downstream impact
-- source: { fileName: string, page?: number, section?: string } (identify location in document)
-
-Focus on:
-- Pressure vessel design codes (ASME, etc.)
-- Material specifications and certifications
-- Welding and fabrication requirements
-- Testing and inspection requirements (NDT, pressure testing, etc.)
-- Documentation and certification requirements
-- Delivery and shipping specifications
-- Safety and operational requirements
-- Design parameters (pressure, temperature, corrosion allowance, etc.)
-
-Only output JSON array. Documents:
-
-${combined}`;
-
-    // Call Claude with full document
+    // Smart chunking approach for large documents
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     const anthropic = new Anthropic({ apiKey });
     
+    const system = `You are an expert mechanical/process engineering spec reviewer for pressure vessels and related equipment. Extract critical requirements from specifications. Return strict JSON only.`;
+    
     let results = [];
-    try {
-      diagnostics.push(`CLAUDE: analyzing complete document(s) - ${combined.length} characters`);
+    
+    for (const doc of docs) {
+      const text = doc.text || '';
+      if (!text || text.trim().length < 50) continue;
       
-      const completion = await anthropic.messages.create({
-        model: model || DEFAULT_MODEL,
-        max_tokens: 4000, // Increased for comprehensive analysis
-        temperature: 0,
-        system,
-        messages: [{ role: 'user', content: userPrompt }],
-      });
+      // Check document size and decide approach
+      const isLarge = text.length > 80000; // ~20k tokens
+      diagnostics.push(`CLAUDE: ${doc.name} - ${text.length} chars - ${isLarge ? 'CHUNKED' : 'FULL'} analysis`);
       
-      const textBlocks = (completion.content || [])
-        .filter(b => b.type === 'text')
-        .map(b => b.text)
-        .join('\n');
-      
-      try {
-        results = JSON.parse(textBlocks);
-      } catch {
-        // Fallback to extract JSON array from response
-        const start = textBlocks.indexOf('[');
-        const end = textBlocks.lastIndexOf(']');
-        if (start !== -1 && end !== -1 && end > start) {
-          results = JSON.parse(textBlocks.slice(start, end + 1));
-        } else {
-          results = [];
+      if (!isLarge) {
+        // Small/medium docs - analyze in full
+        try {
+          const prompt = `Perform comprehensive spec review of this complete document: ${doc.name}
+
+Extract ALL requirements impacting design, materials, code compliance, testing/inspection, documentation, and delivery.
+
+For each requirement return:
+- id: string 
+- severity: High | Medium | Low
+- category: Design | Materials | Fabrication | Testing | Documentation | Delivery | Safety | Code
+- requirement: specific requirement statement
+- rationale: why this matters
+- source: { fileName: "${doc.name}", page?: number, section?: string }
+
+Focus on pressure vessel codes, materials, welding, NDT, testing, documentation, delivery, safety, design parameters.
+
+Only output JSON array.
+
+Document:
+${text}`;
+
+          const completion = await anthropic.messages.create({
+            model: model || DEFAULT_MODEL,
+            max_tokens: 3000,
+            temperature: 0,
+            system,
+            messages: [{ role: 'user', content: prompt }],
+          });
+          
+          const response = (completion.content || []).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+          let parsed = [];
+          try {
+            parsed = JSON.parse(response);
+          } catch {
+            const s = response.indexOf('['), e = response.lastIndexOf(']');
+            if (s!==-1 && e!==-1 && e>s) parsed = JSON.parse(response.slice(s,e+1));
+          }
+          results.push(...(Array.isArray(parsed) ? parsed : []));
+          
+        } catch (e) {
+          diagnostics.push(`CLAUDE: ${doc.name} full analysis failed - ${e.message}`);
+        }
+        
+      } else {
+        // Large docs - intelligent chunking with overlap
+        const chunkSize = 60000; // ~15k tokens
+        const overlap = 5000; // Overlap to preserve context
+        
+        for (let i = 0; i < text.length; i += chunkSize - overlap) {
+          const chunk = text.slice(i, i + chunkSize);
+          const chunkNum = Math.floor(i / (chunkSize - overlap)) + 1;
+          const totalChunks = Math.ceil(text.length / (chunkSize - overlap));
+          
+          try {
+            const prompt = `Analyze chunk ${chunkNum}/${totalChunks} of specification: ${doc.name}
+
+Extract requirements from this section that impact design, materials, codes, testing, documentation, delivery, safety.
+
+For each requirement return:
+- id: string 
+- severity: High | Medium | Low
+- category: Design | Materials | Fabrication | Testing | Documentation | Delivery | Safety | Code
+- requirement: specific requirement
+- rationale: impact/importance
+- source: { fileName: "${doc.name}", page?: number, section?: string }
+
+Only output JSON array.
+
+Text:
+${chunk}`;
+
+            const completion = await anthropic.messages.create({
+              model: model || DEFAULT_MODEL,
+              max_tokens: 2000,
+              temperature: 0,
+              system,
+              messages: [{ role: 'user', content: prompt }],
+            });
+            
+            const response = (completion.content || []).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+            let parsed = [];
+            try {
+              parsed = JSON.parse(response);
+            } catch {
+              const s = response.indexOf('['), e = response.lastIndexOf(']');
+              if (s!==-1 && e!==-1 && e>s) parsed = JSON.parse(response.slice(s,e+1));
+            }
+            results.push(...(Array.isArray(parsed) ? parsed : []));
+            
+          } catch (e) {
+            diagnostics.push(`CLAUDE: ${doc.name} chunk ${chunkNum}/${totalChunks} failed - ${e.message}`);
+          }
         }
       }
-      
-      if (!Array.isArray(results)) {
-        results = [];
-      }
-      
-      diagnostics.push(`CLAUDE: extracted ${results.length} requirements from complete analysis`);
-      
-    } catch (e) {
-      console.error('Claude API error:', e);
-      diagnostics.push(`CLAUDE: analysis failed - ${e.message}`);
-      return { 
-        statusCode: 502, 
-        body: JSON.stringify({ 
-          error: 'Claude API error', 
-          details: e.message,
-          diagnostics 
-        }) 
-      };
     }
+    
+    // Deduplicate by requirement similarity
+    const seen = new Set();
+    results = results.filter(r => {
+      const key = (r.requirement||'').trim().toLowerCase().slice(0, 100);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    
+    diagnostics.push(`CLAUDE: final results - ${results.length} unique requirements`);
 
     // Basic normalization
     results = (Array.isArray(results) ? results : []).map((r, i) => ({
