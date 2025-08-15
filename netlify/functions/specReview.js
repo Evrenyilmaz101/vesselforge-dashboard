@@ -169,8 +169,8 @@ exports.handler = async (event) => {
       const text = doc.text || '';
       if (!text || text.trim().length < 50) continue;
       
-      // Check document size and decide approach
-      const isLarge = text.length > 80000; // ~20k tokens
+      // Check document size and decide approach  
+      const isLarge = text.length > 60000; // Reduced threshold to prevent timeouts
       diagnostics.push(`CLAUDE: ${doc.name} - ${text.length} chars - ${isLarge ? 'CHUNKED' : 'FULL'} analysis`);
       
       if (!isLarge) {
@@ -241,9 +241,9 @@ ${text}`;
         }
         
       } else {
-        // Large docs - intelligent chunking with overlap
-        const chunkSize = 60000; // ~15k tokens
-        const overlap = 5000; // Overlap to preserve context
+        // Large docs - smaller chunks to prevent timeouts
+        const chunkSize = 40000; // Reduced chunk size
+        const overlap = 3000; // Reduced overlap
         
         for (let i = 0; i < text.length; i += chunkSize - overlap) {
           const chunk = text.slice(i, i + chunkSize);
