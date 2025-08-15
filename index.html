@@ -257,6 +257,7 @@
             const [specRuns, setSpecRuns] = useState({}); // { tenderId: [{id, createdAt, items, diagnostics, files}] }
             const [specSelectedRunId, setSpecSelectedRunId] = useState(null);
             // const [specSeverityFilter, setSpecSeverityFilter] = useState('All'); // Removed severity filter
+            const [uploadProgress, setUploadProgress] = useState({});
 
             // Load persisted spec review runs when tender changes
             useEffect(() => {
@@ -7188,13 +7189,22 @@
                                                         const tenderId = selectedEnquiry.id;
                                                         const folderRef = storage.ref(`specs/${tenderId}`);
                                                         const uploaded = [];
-                                                        for (const file of files) {
+                                                        
+                                                        // Show upload progress
+                                                        setUploadProgress(prev => ({ ...prev, [tenderId]: { uploading: true, current: 0, total: files.length } }));
+                                                        
+                                                        for (let i = 0; i < files.length; i++) {
+                                                            const file = files[i];
+                                                            setUploadProgress(prev => ({ ...prev, [tenderId]: { uploading: true, current: i + 1, total: files.length, fileName: file.name } }));
+                                                            
                                                             const ref = folderRef.child(`${Date.now()}_${file.name}`);
                                                             await ref.put(file);
                                                             const url = await ref.getDownloadURL();
                                                             uploaded.push({ id: `${Date.now()}_${file.name}`, name: file.name, url, type: file.type || 'application/octet-stream' });
                                                         }
+                                                        
                                                         setSpecFiles(prev => ({ ...prev, [tenderId]: [ ...(prev[tenderId]||[]), ...uploaded ] }));
+                                                        setUploadProgress(prev => ({ ...prev, [tenderId]: null }));
                                                     }}
                                                     onClick={() => document.getElementById('spec-file-input').click()}
                                                 >
@@ -7228,16 +7238,52 @@
                                                         const tenderId = selectedEnquiry.id;
                                                         const folderRef = storage.ref(`specs/${tenderId}`);
                                                         const uploaded = [];
-                                                        for (const file of files) {
+                                                        
+                                                        // Show upload progress
+                                                        setUploadProgress(prev => ({ ...prev, [tenderId]: { uploading: true, current: 0, total: files.length } }));
+                                                        
+                                                        for (let i = 0; i < files.length; i++) {
+                                                            const file = files[i];
+                                                            setUploadProgress(prev => ({ ...prev, [tenderId]: { uploading: true, current: i + 1, total: files.length, fileName: file.name } }));
+                                                            
                                                             const ref = folderRef.child(`${Date.now()}_${file.name}`);
                                                             await ref.put(file);
                                                             const url = await ref.getDownloadURL();
                                                             uploaded.push({ id: `${Date.now()}_${file.name}`, name: file.name, url, type: file.type || 'application/octet-stream' });
                                                         }
+                                                        
                                                         setSpecFiles(prev => ({ ...prev, [tenderId]: [ ...(prev[tenderId]||[]), ...uploaded ] }));
+                                                        setUploadProgress(prev => ({ ...prev, [tenderId]: null }));
                                                     }}
                                                 />
                                             </div>
+
+                                            {/* Upload Progress */}
+                                            {uploadProgress[selectedEnquiry.id]?.uploading && (
+                                                <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="animate-spin text-2xl">⚡</div>
+                                                        <div className="flex-1">
+                                                            <div className="text-white font-medium">Uploading files...</div>
+                                                            <div className="text-blue-300 text-sm">
+                                                                {uploadProgress[selectedEnquiry.id].fileName && `Processing: ${uploadProgress[selectedEnquiry.id].fileName}`}
+                                                            </div>
+                                                            <div className="text-blue-400 text-xs">
+                                                                {uploadProgress[selectedEnquiry.id].current} of {uploadProgress[selectedEnquiry.id].total} files
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-blue-300 text-sm">
+                                                            {Math.round((uploadProgress[selectedEnquiry.id].current / uploadProgress[selectedEnquiry.id].total) * 100)}%
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-3 bg-slate-700 rounded-full h-2">
+                                                        <div 
+                                                            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                                                            style={{ width: `${(uploadProgress[selectedEnquiry.id].current / uploadProgress[selectedEnquiry.id].total) * 100}%` }}
+                                                        ></div>
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             {/* Uploaded Files Display */}
                                             {(specFiles[selectedEnquiry.id] || []).length > 0 && (
