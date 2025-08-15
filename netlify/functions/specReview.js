@@ -161,7 +161,7 @@ exports.handler = async (event) => {
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     const anthropic = new Anthropic({ apiKey });
     
-    const system = `You are an expert mechanical/process engineering spec reviewer for pressure vessels and related equipment. Extract critical requirements from specifications. Return strict JSON only.`;
+    const system = `You are a senior mechanical engineer and ASME code expert specializing in pressure vessel design, fabrication, and inspection. You must perform an exhaustive, line-by-line specification review extracting every single requirement, parameter, code reference, material property, dimensional tolerance, testing procedure, and compliance item. Be extremely detailed and thorough. Return strict JSON only.`;
     
     let results = [];
     
@@ -176,19 +176,42 @@ exports.handler = async (event) => {
       if (!isLarge) {
         // Small/medium docs - analyze in full
         try {
-          const prompt = `Perform comprehensive spec review of this complete document: ${doc.name}
+          const prompt = `Perform an EXHAUSTIVE, line-by-line specification review of: ${doc.name}
 
-Extract ALL requirements impacting design, materials, code compliance, testing/inspection, documentation, and delivery.
+Extract EVERY requirement, specification, parameter, tolerance, procedure, and compliance item. Be extremely detailed and granular.
 
-For each requirement return:
-- id: string 
-- severity: High | Medium | Low
-- category: Design | Materials | Fabrication | Testing | Documentation | Delivery | Safety | Code
-- requirement: specific requirement statement
-- rationale: why this matters
-- source: { fileName: "${doc.name}", page?: number, section?: string }
+MANDATORY EXTRACTION AREAS:
+1. DESIGN PARAMETERS: Operating pressure, temperature, flow rates, vessel dimensions, wall thickness, corrosion allowance, stress analysis requirements, fatigue analysis, seismic considerations
+2. MATERIAL SPECIFICATIONS: Material grades, heat treatment requirements, chemical composition limits, mechanical property requirements, impact testing temperatures, material certifications (MTRs), traceability requirements
+3. CODE COMPLIANCE: ASME Section VIII Div 1/2, ASME B31.3, API standards, local codes, exemptions, special requirements, code stamping requirements
+4. FABRICATION REQUIREMENTS: Welding procedures (WPS), welder qualifications, joint efficiency, weld inspection requirements, fit-up tolerances, heat treatment procedures, forming requirements
+5. TESTING & INSPECTION: Hydrostatic test pressure, pneumatic test requirements, radiographic testing (RT), ultrasonic testing (UT), magnetic particle testing (MT), liquid penetrant testing (PT), visual inspection criteria, acceptance standards
+6. DOCUMENTATION: Mill test certificates, welding documentation, NDE reports, hydrostatic test certificates, code compliance certificates, fabrication drawings, quality plans
+7. DELIVERY & LOGISTICS: Shipping requirements, preservation, marking, documentation packages, delivery schedules, installation requirements
+8. QUALITY ASSURANCE: QC procedures, hold points, witness points, third-party inspection requirements, quality plans, non-conformance procedures
+9. DIMENSIONAL TOLERANCES: Fabrication tolerances, assembly tolerances, straightness, roundness, dimensional inspection requirements
+10. SURFACE FINISH: Surface preparation, coating requirements, surface roughness, cleanliness requirements
 
-Focus on pressure vessel codes, materials, welding, NDT, testing, documentation, delivery, safety, design parameters.
+For each requirement found, return:
+- id: string (unique identifier)
+- severity: High | Medium | Low (High=safety/code/critical, Medium=quality/performance, Low=documentation/administrative)
+- category: Design | Materials | Fabrication | Testing | Documentation | Delivery | Safety | Code | Quality | Dimensional
+- requirement: very specific, detailed requirement statement with exact values, tolerances, procedures
+- rationale: detailed explanation of why this requirement exists and its impact on safety, quality, or compliance
+- source: { fileName: "${doc.name}", page?: number, section?: string, paragraph?: string }
+- details: additional technical details, referenced standards, or related requirements
+- compliance_ref: specific code section, standard, or regulation if mentioned
+
+Be exhaustive - extract requirements from:
+- Main text and specifications
+- Tables and charts  
+- Drawing notes and details
+- Referenced standards
+- Footnotes and appendices
+- Material property tables
+- Dimensional tolerances
+- Test procedures
+- Quality requirements
 
 Only output JSON array.
 
@@ -197,7 +220,7 @@ ${text}`;
 
           const completion = await anthropic.messages.create({
             model: model || DEFAULT_MODEL,
-            max_tokens: 3000,
+            max_tokens: 4000,
             temperature: 0,
             system,
             messages: [{ role: 'user', content: prompt }],
@@ -228,17 +251,33 @@ ${text}`;
           const totalChunks = Math.ceil(text.length / (chunkSize - overlap));
           
           try {
-            const prompt = `Analyze chunk ${chunkNum}/${totalChunks} of specification: ${doc.name}
+            const prompt = `EXHAUSTIVE analysis of chunk ${chunkNum}/${totalChunks} from specification: ${doc.name}
 
-Extract requirements from this section that impact design, materials, codes, testing, documentation, delivery, safety.
+Extract EVERY requirement, parameter, tolerance, procedure, and compliance item from this section. Be extremely detailed.
+
+EXTRACT FROM THIS CHUNK:
+- Design parameters with exact values and tolerances
+- Material specifications and properties  
+- Code references and compliance requirements
+- Fabrication procedures and tolerances
+- Testing and inspection requirements with acceptance criteria
+- Documentation and certification requirements
+- Quality assurance procedures
+- Dimensional requirements and tolerances
+- Surface finish and coating requirements
+- Any referenced standards or procedures
 
 For each requirement return:
-- id: string 
-- severity: High | Medium | Low
-- category: Design | Materials | Fabrication | Testing | Documentation | Delivery | Safety | Code
-- requirement: specific requirement
-- rationale: impact/importance
-- source: { fileName: "${doc.name}", page?: number, section?: string }
+- id: string (unique identifier)
+- severity: High | Medium | Low (High=safety/code/critical, Medium=quality/performance, Low=documentation/administrative)  
+- category: Design | Materials | Fabrication | Testing | Documentation | Delivery | Safety | Code | Quality | Dimensional
+- requirement: very specific, detailed requirement with exact values, tolerances, procedures
+- rationale: detailed explanation of why this requirement exists and its impact
+- source: { fileName: "${doc.name}", page?: number, section?: string, paragraph?: string }
+- details: additional technical details, referenced standards, or related requirements
+- compliance_ref: specific code section, standard, or regulation if mentioned
+
+Be exhaustive - examine every sentence, table entry, note, and specification detail.
 
 Only output JSON array.
 
@@ -247,7 +286,7 @@ ${chunk}`;
 
             const completion = await anthropic.messages.create({
               model: model || DEFAULT_MODEL,
-              max_tokens: 2000,
+              max_tokens: 3000,
               temperature: 0,
               system,
               messages: [{ role: 'user', content: prompt }],
