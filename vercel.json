@@ -3,5 +3,9 @@
     "api/specReview.js": {
       "maxDuration": 60
     }
-  }
+  },
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "buildCommand": "echo 'No build needed'",
+  "outputDirectory": "."
 }
