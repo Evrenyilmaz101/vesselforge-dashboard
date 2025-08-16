@@ -13,7 +13,18 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { tenderId, files } = req.body;
+  const { tenderId, files, test } = req.body;
+  
+  // Test endpoint to check configuration
+  if (test) {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    return res.status(200).json({ 
+      message: 'Test endpoint working',
+      hasApiKey: !!apiKey,
+      apiKeyLength: apiKey ? apiKey.length : 0,
+      diagnostics: ['Test mode - configuration check']
+    });
+  }
   
   if (!files || !Array.isArray(files) || files.length === 0) {
     return res.status(400).json({ error: 'No files provided' });

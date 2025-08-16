@@ -7383,7 +7383,23 @@
                                                                 }
                                                             } catch (err) {
                                                                 console.error('Spec review error:', err);
-                                                                setSpecError(err.message || 'Spec review failed');
+                                                                
+                                                                // Try to get more error details
+                                                                if (err.message && err.message.includes('500')) {
+                                                                    try {
+                                                                        const errorRes = await fetch('/api/specReview', { 
+                                                                            method: 'POST', 
+                                                                            headers: { 'Content-Type': 'application/json' }, 
+                                                                            body: JSON.stringify({ test: true }) 
+                                                                        });
+                                                                        const errorData = await errorRes.json();
+                                                                        setSpecError(`500 Error Details: ${errorData.error}. Diagnostics: ${(errorData.diagnostics || []).join(', ')}`);
+                                                                    } catch (e) {
+                                                                        setSpecError(`500 Error: ${err.message}. Likely missing Claude API key in Vercel environment variables.`);
+                                                                    }
+                                                                } else {
+                                                                    setSpecError(err.message || 'Spec review failed');
+                                                                }
                                                             } finally {
                                                                 setSpecRunning(false);
                                                             }
