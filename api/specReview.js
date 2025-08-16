@@ -45,11 +45,16 @@ export default async function handler(req, res) {
     if (file.name.endsWith('.txt') || file.name.match(/\.(js|py|java|cpp|cs|html|css|json|xml|md)$/)) {
       text = new TextDecoder().decode(buffer);
     } else if (file.name.endsWith('.pdf')) {
-      // For PDFs, we'd need pdf-parse or similar
-      // For now, suggest text conversion
-      throw new Error('PDF processing requires text conversion. Please convert to .txt format first.');
+      // Simple PDF text extraction for basic PDFs
+      try {
+        const pdfParse = await import('pdf-parse/lib/pdf-parse.js');
+        const data = await pdfParse.default(buffer);
+        text = data.text;
+      } catch (e) {
+        throw new Error('PDF processing failed. Please convert to .txt format first.');
+      }
     } else {
-      throw new Error('Unsupported file type. Please use .txt or code files.');
+      throw new Error('Unsupported file type. Please use .txt, .pdf, or code files.');
     }
     
     if (!text || text.trim().length < 50) {
@@ -59,7 +64,7 @@ export default async function handler(req, res) {
     diagnostics.push(`Processing ${file.name} - ${text.length} characters`);
     
     // Call Claude API
-    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const Anthropic = (await import('@anthropic-ai/sdk')).default;
     const anthropic = new Anthropic({ apiKey });
     
     const prompt = `Extract ALL technical requirements from this specification document. Be thorough and systematic.
@@ -121,10 +126,12 @@ Extract 30-50 key requirements. Focus on critical technical specifications. JSON
   } catch (error) {
     console.error('Spec review error:', error);
     diagnostics.push(`Error: ${error.message}`);
+    diagnostics.push(`Stack: ${error.stack}`);
     
     return res.status(500).json({
       error: error.message,
-      diagnostics
+      diagnostics,
+      stack: error.stack
     });
   }
 }
