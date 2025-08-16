@@ -58,10 +58,12 @@ export default async function handler(req, res) {
     } else if (file.name.endsWith('.pdf')) {
       // Simple PDF text extraction for basic PDFs
       try {
-        const pdfParse = await import('pdf-parse/lib/pdf-parse.js');
+        const pdfParse = await import('pdf-parse');
         const data = await pdfParse.default(buffer);
         text = data.text;
+        diagnostics.push(`PDF parsed successfully: ${text.length} characters`);
       } catch (e) {
+        diagnostics.push(`PDF parsing failed: ${e.message}`);
         throw new Error('PDF processing failed. Please convert to .txt format first.');
       }
     } else {
@@ -75,7 +77,16 @@ export default async function handler(req, res) {
     diagnostics.push(`Processing ${file.name} - ${text.length} characters`);
     
     // Call Claude API
-    const Anthropic = (await import('@anthropic-ai/sdk')).default;
+    let Anthropic;
+    try {
+      const anthropicModule = await import('@anthropic-ai/sdk');
+      Anthropic = anthropicModule.default || anthropicModule.Anthropic || anthropicModule;
+      diagnostics.push(`Anthropic import successful: ${typeof Anthropic}`);
+    } catch (e) {
+      diagnostics.push(`Anthropic import failed: ${e.message}`);
+      throw new Error(`Failed to import Anthropic SDK: ${e.message}`);
+    }
+    
     const anthropic = new Anthropic({ apiKey });
     
     const prompt = `Extract ALL technical requirements from this specification document. Be thorough and systematic.
@@ -102,15 +113,24 @@ Return JSON array:
 
 Extract 30-50 key requirements. Focus on critical technical specifications. JSON only.`;
 
-    const completion = await anthropic.messages.create({
-      model: 'claude-3-sonnet-20240229',
-      max_tokens: 3000,
-      temperature: 0,
-      system: 'You are a mechanical engineer. Extract technical requirements from specifications. Return valid JSON only.',
-      messages: [{ role: 'user', content: prompt }],
-    });
+    let completion;
+    try {
+      diagnostics.push('Calling Claude API...');
+      completion = await anthropic.messages.create({
+        model: 'claude-3-sonnet-20240229',
+        max_tokens: 3000,
+        temperature: 0,
+        system: 'You are a mechanical engineer. Extract technical requirements from specifications. Return valid JSON only.',
+        messages: [{ role: 'user', content: prompt }],
+      });
+      diagnostics.push('Claude API call successful');
+    } catch (e) {
+      diagnostics.push(`Claude API call failed: ${e.message}`);
+      throw new Error(`Claude API error: ${e.message}`);
+    }
     
     const responseText = completion.content.filter(b => b.type === 'text').map(b => b.text).join('\n');
+    diagnostics.push(`Claude response length: ${responseText.length} characters`);
     
     let results = [];
     try {
