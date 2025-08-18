@@ -207,15 +207,27 @@ Return ONLY a JSON array of requirements. No other text.`;
     
     const responseText = completion.content.filter(b => b.type === 'text').map(b => b.text).join('\n');
     diagnostics.push(`Claude response length: ${responseText.length} characters`);
+    diagnostics.push(`Claude response preview: ${responseText.substring(0, 1000)}`);
     
     let results = [];
     try {
       results = JSON.parse(responseText);
-    } catch {
+      diagnostics.push(`Direct JSON parse successful: ${results.length} items`);
+    } catch (parseError) {
+      diagnostics.push(`Direct JSON parse failed: ${parseError.message}`);
+      
       const start = responseText.indexOf('[');
       const end = responseText.lastIndexOf(']');
       if (start !== -1 && end !== -1 && end > start) {
-        results = JSON.parse(responseText.slice(start, end + 1));
+        try {
+          results = JSON.parse(responseText.slice(start, end + 1));
+          diagnostics.push(`Extracted JSON parse successful: ${results.length} items`);
+        } catch (extractError) {
+          diagnostics.push(`Extracted JSON parse failed: ${extractError.message}`);
+          diagnostics.push(`Extracted JSON text: ${responseText.slice(start, end + 1)}`);
+        }
+      } else {
+        diagnostics.push(`No JSON array brackets found in response`);
       }
     }
     
