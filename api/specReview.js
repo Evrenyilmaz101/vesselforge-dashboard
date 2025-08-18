@@ -115,7 +115,19 @@ module.exports = async function handler(req, res) {
             
           diagnostics.push(`Azure OCR successful: ${text.length} characters extracted`);
         } else {
-          throw new Error('Azure Computer Vision credentials not configured');
+          // Fallback: Try to extract text directly from PDF buffer as plain text
+          diagnostics.push(`Azure credentials not found, trying basic text extraction...`);
+          const textDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: false });
+          const rawText = textDecoder.decode(buffer);
+          
+          // Look for readable text in the PDF (basic approach)
+          const textMatches = rawText.match(/[a-zA-Z0-9\s\-\.\,\:\;\(\)\/\%\$\#\@\!\?\[\]]{20,}/g);
+          if (textMatches && textMatches.length > 0) {
+            text = textMatches.join('\n').replace(/\s+/g, ' ').trim();
+            diagnostics.push(`Basic text extraction found ${text.length} characters`);
+          } else {
+            throw new Error('No readable text found. This appears to be a scanned PDF. Please provide Azure Computer Vision credentials or convert to .txt format.');
+          }
         }
       } catch (e) {
         diagnostics.push(`PDF OCR failed: ${e.message}`);
