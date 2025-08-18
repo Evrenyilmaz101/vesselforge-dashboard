@@ -191,10 +191,8 @@ If this document contains technical specifications, standards, materials, dimens
     
     const anthropic = new Anthropic({ apiKey });
     
-          const prompt = `You are analyzing a technical specification document. Extract EVERY technical requirement, specification, standard, and critical detail.
-
-DOCUMENT CONTENT:
-${text}
+    // Send PDF directly to Claude instead of extracted text
+    const prompt = `Please perform a comprehensive technical specification review of this document. Extract ALL technical requirements, specifications, standards, and critical details.
 
 EXTRACT ALL OF THESE:
 1. Dimensions, sizes, measurements with tolerances
@@ -216,23 +214,40 @@ For EACH requirement found, create a JSON object with:
 - source: {"fileName": "${file.name}"}
 
 IMPORTANT:
+- Review the ENTIRE document thoroughly - all pages, sections, tables, appendices
 - Extract EVERYTHING technical, even if it seems minor
 - Include ALL numbers, dimensions, pressures, temperatures, etc.
-- Don't skip requirements - be comprehensive
+- Don't skip requirements - be comprehensive and systematic
 - Look for specifications in tables, lists, paragraphs, and notes
-- Extract 50-100+ requirements if they exist
+- Extract 50-100+ requirements if they exist in the document
 
 Return ONLY a JSON array of requirements. No other text.`;
 
     let completion;
     try {
-      diagnostics.push('Calling Claude API...');
+      diagnostics.push('Sending PDF directly to Claude API...');
       completion = await anthropic.messages.create({
         model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 3000,
+        max_tokens: 4000, // Increased for comprehensive analysis
         temperature: 0,
-        system: 'You are a mechanical engineer. Extract technical requirements from specifications. Return valid JSON only.',
-        messages: [{ role: 'user', content: prompt }],
+        system: 'You are a mechanical engineer performing comprehensive specification reviews. Analyze the entire document thoroughly and return valid JSON only.',
+        messages: [{ 
+          role: 'user', 
+          content: [
+            {
+              type: 'text',
+              text: prompt
+            },
+            {
+              type: 'document',
+              source: {
+                type: 'base64',
+                media_type: file.name.endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream',
+                data: Buffer.from(buffer).toString('base64')
+              }
+            }
+          ]
+        }],
       });
       diagnostics.push('Claude API call successful');
     } catch (e) {
