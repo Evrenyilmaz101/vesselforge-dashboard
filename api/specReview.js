@@ -120,13 +120,48 @@ module.exports = async function handler(req, res) {
           const textDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: false });
           const rawText = textDecoder.decode(buffer);
           
-          // Look for readable text in the PDF (basic approach)
-          const textMatches = rawText.match(/[a-zA-Z0-9\s\-\.\,\:\;\(\)\/\%\$\#\@\!\?\[\]]{20,}/g);
-          if (textMatches && textMatches.length > 0) {
-            text = textMatches.join('\n').replace(/\s+/g, ' ').trim();
+          // Clean up the extracted text to remove PDF binary data
+          let cleanText = rawText
+            // Remove PDF binary markers and control characters
+            .replace(/%PDF-[\d\.]+/g, '')
+            .replace(/%%EOF/g, '')
+            .replace(/\/[A-Z][a-zA-Z0-9]+/g, '')
+            .replace(/\d+\s+\d+\s+obj/g, '')
+            .replace(/endobj/g, '')
+            .replace(/stream[\s\S]*?endstream/g, '')
+            .replace(/xref/g, '')
+            .replace(/trailer/g, '')
+            .replace(/startxref/g, '')
+            // Remove non-printable characters but keep basic punctuation
+            .replace(/[^\x20-\x7E\n\r\t]/g, ' ')
+            // Clean up multiple spaces and normalize whitespace
+            .replace(/\s+/g, ' ')
+            .trim();
+          
+          // Look for readable text patterns (technical specifications)
+          const textMatches = cleanText.match(/[a-zA-Z][a-zA-Z0-9\s\-\.\,\:\;\(\)\/\%\$\#\@\!\?\[\]]{15,}/g);
+          if (textMatches && textMatches.length > 5) {
+            text = textMatches
+              .filter(match => match.length > 20) // Filter out short fragments
+              .join('\n')
+              .replace(/\s+/g, ' ')
+              .trim();
             diagnostics.push(`Basic text extraction found ${text.length} characters`);
           } else {
-            throw new Error('No readable text found. This appears to be a scanned PDF. Please provide Azure Computer Vision credentials or convert to .txt format.');
+            // If we can't extract meaningful text, provide a clear message to Claude
+            text = `This appears to be a scanned or image-based PDF document. The basic text extraction could not find readable technical specifications. Please note: This document may contain technical drawings, specifications, or requirements that need OCR processing to extract properly.
+
+File name: ${file.name}
+File size: ${buffer.byteLength} bytes
+Content type: PDF document
+
+To properly extract requirements from this document, please:
+1. Convert to a text-based format (.txt, .docx)
+2. Or provide Azure Computer Vision credentials for OCR processing
+3. Or manually extract key technical requirements
+
+If this document contains technical specifications, standards, materials, dimensions, pressures, temperatures, or other engineering requirements, please provide them in text format.`;
+            diagnostics.push(`Could not extract readable text, providing guidance message to Claude`);
           }
         }
       } catch (e) {
