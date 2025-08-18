@@ -156,29 +156,38 @@ module.exports = async function handler(req, res) {
     
     const anthropic = new Anthropic({ apiKey });
     
-    const prompt = `Extract ALL technical requirements from this specification document. Be thorough and systematic.
+          const prompt = `You are analyzing a technical specification document. Extract EVERY technical requirement, specification, standard, and critical detail.
 
-EXTRACT:
-- Design parameters (pressure, temperature, dimensions, tolerances)
-- Material specifications and properties  
-- Code references (ASME, API, etc)
-- Testing and inspection requirements
-- Fabrication procedures and tolerances
-- Documentation requirements
-- Quality control procedures
-
+DOCUMENT CONTENT:
 ${text}
 
-Return JSON array:
-[{
-  "id": "req_1", 
-  "category": "Design|Materials|Code|Testing|Fabrication|Documentation|Quality|Safety",
-  "requirement": "specific requirement with values/tolerances",
-  "rationale": "why this matters",
-  "source": {"fileName": "${file.name}"}
-}]
+EXTRACT ALL OF THESE:
+1. Dimensions, sizes, measurements with tolerances
+2. Material specifications, grades, properties
+3. Pressure ratings, temperature limits, flow rates
+4. Standards and codes (ASME, API, ASTM, ISO, etc.)
+5. Testing requirements, inspection criteria
+6. Manufacturing/fabrication specifications
+7. Quality requirements, acceptance criteria
+8. Safety requirements and limits
+9. Performance specifications
+10. Documentation and certification requirements
 
-Extract 30-50 key requirements. Focus on critical technical specifications. JSON only.`;
+For EACH requirement found, create a JSON object with:
+- id: sequential number (req_1, req_2, etc.)
+- category: one of [Design, Materials, Code, Testing, Fabrication, Documentation, Quality, Safety, Dimensional, Performance]
+- requirement: the specific technical requirement with exact values/tolerances
+- rationale: brief explanation of why this requirement is important
+- source: {"fileName": "${file.name}"}
+
+IMPORTANT:
+- Extract EVERYTHING technical, even if it seems minor
+- Include ALL numbers, dimensions, pressures, temperatures, etc.
+- Don't skip requirements - be comprehensive
+- Look for specifications in tables, lists, paragraphs, and notes
+- Extract 50-100+ requirements if they exist
+
+Return ONLY a JSON array of requirements. No other text.`;
 
     let completion;
     try {
