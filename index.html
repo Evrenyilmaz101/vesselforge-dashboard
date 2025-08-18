@@ -7391,10 +7391,11 @@
                                                                     // If it's a fetch error, try to get the response
                                                                     if (err.message && err.message.includes('500')) {
                                                                         // Re-fetch the last response to get error details
+                                                                        const testBody = { test: true };
                                                                         const errorRes = await fetch('/api/specReview', { 
                                                                             method: 'POST', 
                                                                             headers: { 'Content-Type': 'application/json' }, 
-                                                                            body: JSON.stringify(body) 
+                                                                            body: JSON.stringify(testBody) 
                                                                         });
                                                                         
                                                                         const errorText = await errorRes.text();
