@@ -229,93 +229,140 @@ Return ONLY a JSON array of requirements. No other text.`;
       const fileSizeMB = buffer.byteLength / (1024 * 1024);
       diagnostics.push(`File size: ${fileSizeMB.toFixed(2)} MB`);
       
-      // Temporary fallback: Use pattern matching to extract requirements until rate limits are resolved
-      diagnostics.push('Using pattern-based extraction due to API rate limits...');
+      // Try Claude API first (paid account should handle this)
+      diagnostics.push('Attempting Claude API with paid account...');
       
-      const fallbackResults = [];
-      let reqId = 1;
-      
-      // Look for common specification patterns in the text
-      const lines = text.split('\n');
-      for (let i = 0; i < lines.length && fallbackResults.length < 50; i++) {
-        const line = lines[i].trim();
+      try {
+        let claudeCompletion;
         
-        // Look for Australian Standards references
-        if (line.match(/AS\s*\d+/i) || line.match(/Australian\s+Standard/i)) {
-          fallbackResults.push({
-            id: `req_${reqId++}`,
-            category: 'Code',
-            requirement: line,
-            rationale: 'Australian Standard compliance requirement',
-            source: { fileName: file.name }
+        if (fileSizeMB > 5) {
+          // For large files, use text-based approach
+          diagnostics.push('Large file detected, using text extraction with Claude...');
+          
+          if (!text || text.length < 100) {
+            throw new Error('Large PDF file requires text extraction, but no readable text was found.');
+          }
+          
+          // Take a substantial portion for comprehensive analysis
+          const analysisText = text.substring(0, 50000); // 50KB should be fine with paid account
+          diagnostics.push(`Processing ${analysisText.length} characters with Claude...`);
+          
+          const textPrompt = `Perform a comprehensive technical specification review of this document. Extract ALL technical requirements, specifications, standards, and critical details.
+
+DOCUMENT CONTENT:
+${analysisText}
+
+EXTRACT ALL OF THESE:
+1. Dimensions, sizes, measurements with tolerances
+2. Material specifications, grades, properties
+3. Pressure ratings, temperature limits, flow rates
+4. Standards and codes (ASME, API, ASTM, ISO, AS, etc.)
+5. Testing requirements, inspection criteria
+6. Manufacturing/fabrication specifications
+7. Quality requirements, acceptance criteria
+8. Safety requirements and limits
+9. Performance specifications
+10. Documentation and certification requirements
+
+Return JSON array of requirements with this exact format:
+[{"id": "req_1", "category": "Design|Materials|Code|Testing|Fabrication|Documentation|Quality|Safety|Dimensional|Performance", "requirement": "specific technical requirement with exact values/tolerances", "rationale": "brief explanation of why this requirement is important", "source": {"fileName": "${file.name}"}}]
+
+IMPORTANT: Extract 30-100+ requirements. Be comprehensive and systematic. Return ONLY valid JSON array.`;
+
+          claudeCompletion = await anthropic.messages.create({
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 4000,
+            temperature: 0,
+            system: 'You are a mechanical engineer performing comprehensive specification reviews. Extract all technical requirements and return valid JSON only.',
+            messages: [{ role: 'user', content: textPrompt }],
+          });
+          
+        } else {
+          // For smaller files, try direct PDF approach
+          diagnostics.push('Sending PDF directly to Claude API...');
+          claudeCompletion = await anthropic.messages.create({
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 4000,
+            temperature: 0,
+            system: 'You are a mechanical engineer performing comprehensive specification reviews. Analyze the entire document thoroughly and return valid JSON only.',
+            messages: [{ 
+              role: 'user', 
+              content: [
+                {
+                  type: 'text',
+                  text: prompt
+                },
+                {
+                  type: 'document',
+                  source: {
+                    type: 'base64',
+                    media_type: file.name.endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream',
+                    data: Buffer.from(buffer).toString('base64')
+                  }
+                }
+              ]
+            }],
           });
         }
         
-        // Look for pressure specifications
-        else if (line.match(/\d+.*(?:psi|bar|kPa|MPa)/i)) {
-          fallbackResults.push({
-            id: `req_${reqId++}`,
-            category: 'Design',
-            requirement: line,
-            rationale: 'Pressure specification requirement',
-            source: { fileName: file.name }
-          });
+        completion = claudeCompletion;
+        diagnostics.push('Claude API call successful with paid account');
+        
+      } catch (claudeError) {
+        diagnostics.push(`Claude API failed: ${claudeError.message}`);
+        diagnostics.push('Falling back to pattern-based extraction...');
+        
+        // Pattern-based fallback
+        const fallbackResults = [];
+        let reqId = 1;
+        
+        // Look for common specification patterns in the text
+        const lines = text.split('\n');
+        for (let i = 0; i < lines.length && fallbackResults.length < 50; i++) {
+          const line = lines[i].trim();
+          
+          // Look for Australian Standards references
+          if (line.match(/AS\s*\d+/i) || line.match(/Australian\s+Standard/i)) {
+            fallbackResults.push({
+              id: `req_${reqId++}`,
+              category: 'Code',
+              requirement: line,
+              rationale: 'Australian Standard compliance requirement',
+              source: { fileName: file.name }
+            });
+          }
+          // Look for pressure specifications
+          else if (line.match(/\d+.*(?:psi|bar|kPa|MPa)/i)) {
+            fallbackResults.push({
+              id: `req_${reqId++}`,
+              category: 'Design',
+              requirement: line,
+              rationale: 'Pressure specification requirement',
+              source: { fileName: file.name }
+            });
+          }
+          // Look for material specifications
+          else if (line.match(/(?:steel|carbon|stainless|material|grade)/i) && line.length > 20) {
+            fallbackResults.push({
+              id: `req_${reqId++}`,
+              category: 'Materials',
+              requirement: line,
+              rationale: 'Material specification requirement',
+              source: { fileName: file.name }
+            });
+          }
         }
         
-        // Look for temperature specifications
-        else if (line.match(/\d+.*(?:°C|°F|celsius|fahrenheit)/i)) {
-          fallbackResults.push({
-            id: `req_${reqId++}`,
-            category: 'Design',
-            requirement: line,
-            rationale: 'Temperature specification requirement',
-            source: { fileName: file.name }
-          });
-        }
+        // Create a mock completion object with pattern-matched results
+        completion = {
+          content: [{
+            type: 'text',
+            text: JSON.stringify(fallbackResults)
+          }]
+        };
         
-        // Look for material specifications
-        else if (line.match(/(?:steel|carbon|stainless|material|grade)/i) && line.length > 20) {
-          fallbackResults.push({
-            id: `req_${reqId++}`,
-            category: 'Materials',
-            requirement: line,
-            rationale: 'Material specification requirement',
-            source: { fileName: file.name }
-          });
-        }
-        
-        // Look for testing requirements
-        else if (line.match(/(?:test|testing|inspection|verify|check)/i) && line.length > 20) {
-          fallbackResults.push({
-            id: `req_${reqId++}`,
-            category: 'Testing',
-            requirement: line,
-            rationale: 'Testing/inspection requirement',
-            source: { fileName: file.name }
-          });
-        }
-        
-        // Look for dimensional requirements
-        else if (line.match(/\d+.*(?:mm|inch|diameter|thickness|length|width|height)/i)) {
-          fallbackResults.push({
-            id: `req_${reqId++}`,
-            category: 'Dimensional',
-            requirement: line,
-            rationale: 'Dimensional specification requirement',
-            source: { fileName: file.name }
-          });
-        }
+        diagnostics.push(`Pattern-based fallback found ${fallbackResults.length} requirements`);
       }
-      
-      // Create a mock completion object with pattern-matched results
-      completion = {
-        content: [{
-          type: 'text',
-          text: JSON.stringify(fallbackResults)
-        }]
-      };
-      
-      diagnostics.push(`Pattern-based extraction found ${fallbackResults.length} requirements`);
     } catch (e) {
       diagnostics.push(`Claude API call failed: ${e.message}`);
       throw new Error(`Claude API error: ${e.message}`);
