@@ -7379,7 +7379,23 @@
                                                                 // Now make the actual request
                                                                 const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
                                                                 console.log('📡 Response received:', { status: res.status, ok: res.ok });
-                                                                if (!res.ok) throw new Error(`Spec review failed (${res.status})`);
+                                                                
+                                                                if (!res.ok) {
+                                                                    // Get the error details from the response
+                                                                    const errorText = await res.text();
+                                                                    console.log('❌ Error response body:', errorText);
+                                                                    
+                                                                    try {
+                                                                        const errorData = JSON.parse(errorText);
+                                                                        console.log('❌ Error data:', errorData);
+                                                                        if (errorData.diagnostics) {
+                                                                            console.log('🔍 Server diagnostics:', errorData.diagnostics);
+                                                                        }
+                                                                        throw new Error(`Spec review failed (${res.status}): ${errorData.error || 'Unknown error'}`);
+                                                                    } catch (parseErr) {
+                                                                        throw new Error(`Spec review failed (${res.status}): ${errorText}`);
+                                                                    }
+                                                                }
                                                                 const data = await res.json();
                                                                 if (data.diagnostics && Array.isArray(data.diagnostics) && data.diagnostics.length > 0) {
                                                                     console.log('🔎 SpecReview diagnostics:', data.diagnostics);
