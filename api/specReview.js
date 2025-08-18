@@ -39,10 +39,12 @@ module.exports = async function handler(req, res) {
       diagnostics.push('ANTHROPIC_API_KEY not set on server');
       return res.status(500).json({ error: 'API key not configured', diagnostics });
     }
+    diagnostics.push(`API key found, length: ${apiKey.length}`);
 
     // Process first file
     const file = files[0];
-    diagnostics.push(`Downloading ${file.name} from ${file.url}`);
+    diagnostics.push(`Processing file: ${file.name}`);
+    diagnostics.push(`File URL: ${file.url}`);
     
     const response = await fetch(file.url);
     if (!response.ok) {
@@ -58,12 +60,17 @@ module.exports = async function handler(req, res) {
     } else if (file.name.endsWith('.pdf')) {
       // Simple PDF text extraction for basic PDFs
       try {
+        diagnostics.push(`Attempting to import pdf-parse module...`);
         const pdfParse = await import('pdf-parse');
+        diagnostics.push(`pdf-parse module imported successfully`);
+        
+        diagnostics.push(`Attempting to parse PDF buffer (${buffer.byteLength} bytes)...`);
         const data = await pdfParse.default(buffer);
         text = data.text;
         diagnostics.push(`PDF parsed successfully: ${text.length} characters`);
       } catch (e) {
         diagnostics.push(`PDF parsing failed: ${e.message}`);
+        diagnostics.push(`PDF parsing error stack: ${e.stack}`);
         throw new Error('PDF processing failed. Please convert to .txt format first.');
       }
     } else {
