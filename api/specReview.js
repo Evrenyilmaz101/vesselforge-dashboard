@@ -58,20 +58,68 @@ module.exports = async function handler(req, res) {
     if (file.name.endsWith('.txt') || file.name.match(/\.(js|py|java|cpp|cs|html|css|json|xml|md)$/)) {
       text = new TextDecoder().decode(buffer);
     } else if (file.name.endsWith('.pdf')) {
-      // Simple PDF text extraction for basic PDFs
+      // PDF text extraction - try OCR fallback for scanned PDFs
       try {
-        diagnostics.push(`Attempting to import pdf-parse module...`);
-        const pdfParse = await import('pdf-parse');
-        diagnostics.push(`pdf-parse module imported successfully`);
+        diagnostics.push(`PDF detected, attempting OCR extraction...`);
         
-        diagnostics.push(`Attempting to parse PDF buffer (${buffer.byteLength} bytes)...`);
-        const data = await pdfParse.default(buffer);
-        text = data.text;
-        diagnostics.push(`PDF parsed successfully: ${text.length} characters`);
+        // Try Azure Computer Vision Read API first
+        const azureEndpoint = process.env.AZURE_CV_ENDPOINT;
+        const azureKey = process.env.AZURE_CV_KEY;
+        
+        if (azureEndpoint && azureKey) {
+          diagnostics.push(`Using Azure Computer Vision for PDF OCR...`);
+          
+          // Convert buffer to base64 for Azure
+          const base64Data = Buffer.from(buffer).toString('base64');
+          
+          // Submit for analysis
+          const analyzeResponse = await fetch(`${azureEndpoint}/vision/v3.2/read/analyze`, {
+            method: 'POST',
+            headers: {
+              'Ocp-Apim-Subscription-Key': azureKey,
+              'Content-Type': 'application/octet-stream'
+            },
+            body: buffer
+          });
+          
+          if (!analyzeResponse.ok) {
+            throw new Error(`Azure OCR failed: ${analyzeResponse.status}`);
+          }
+          
+          const operationLocation = analyzeResponse.headers.get('Operation-Location');
+          diagnostics.push(`Azure OCR operation started: ${operationLocation}`);
+          
+          // Poll for results
+          let result;
+          let attempts = 0;
+          while (attempts < 30) { // Max 30 seconds
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const resultResponse = await fetch(operationLocation, {
+              headers: { 'Ocp-Apim-Subscription-Key': azureKey }
+            });
+            
+            result = await resultResponse.json();
+            if (result.status === 'succeeded') break;
+            if (result.status === 'failed') throw new Error('Azure OCR failed');
+            attempts++;
+          }
+          
+          if (result.status !== 'succeeded') {
+            throw new Error('Azure OCR timed out');
+          }
+          
+          // Extract text from results
+          text = result.analyzeResult.readResults
+            .map(page => page.lines.map(line => line.text).join('\n'))
+            .join('\n\n');
+            
+          diagnostics.push(`Azure OCR successful: ${text.length} characters extracted`);
+        } else {
+          throw new Error('Azure Computer Vision credentials not configured');
+        }
       } catch (e) {
-        diagnostics.push(`PDF parsing failed: ${e.message}`);
-        diagnostics.push(`PDF parsing error stack: ${e.stack}`);
-        throw new Error('PDF processing failed. Please convert to .txt format first.');
+        diagnostics.push(`PDF OCR failed: ${e.message}`);
+        throw new Error('PDF processing failed. This appears to be a scanned PDF. Please convert to .txt format or provide text-based PDF.');
       }
     } else {
       throw new Error('Unsupported file type. Please use .txt, .pdf, or code files.');

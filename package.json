@@ -9,8 +9,7 @@
     "deploy": "vercel --prod"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.20.0",
-    "pdf-parse": "^1.1.1"
+    "@anthropic-ai/sdk": "^0.20.0"
   },
   "devDependencies": {
     "vercel": "^33.0.0"
