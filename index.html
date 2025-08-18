@@ -7357,6 +7357,26 @@
                                                                     files: (specFiles[tenderId]||[]).map(f => ({ name: f.name, url: f.url }))
                                                                 };
                                                                 console.log('🚀 Making spec review request:', { endpoint, body });
+                                                                
+                                                                // First test if the function is working at all
+                                                                console.log('🧪 Testing function with simple test call...');
+                                                                const testRes = await fetch(endpoint, { 
+                                                                    method: 'POST', 
+                                                                    headers: { 'Content-Type': 'application/json' }, 
+                                                                    body: JSON.stringify({ test: true }) 
+                                                                });
+                                                                console.log('🧪 Test response:', { status: testRes.status, ok: testRes.ok });
+                                                                
+                                                                if (testRes.ok) {
+                                                                    const testData = await testRes.json();
+                                                                    console.log('🧪 Test data:', testData);
+                                                                } else {
+                                                                    const testError = await testRes.text();
+                                                                    console.log('🧪 Test error:', testError);
+                                                                    throw new Error(`Function test failed: ${testRes.status} - ${testError}`);
+                                                                }
+                                                                
+                                                                // Now make the actual request
                                                                 const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
                                                                 console.log('📡 Response received:', { status: res.status, ok: res.ok });
                                                                 if (!res.ok) throw new Error(`Spec review failed (${res.status})`);
