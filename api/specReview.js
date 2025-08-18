@@ -225,30 +225,97 @@ Return ONLY a JSON array of requirements. No other text.`;
 
     let completion;
     try {
-      diagnostics.push('Sending PDF directly to Claude API...');
-      completion = await anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 4000, // Increased for comprehensive analysis
-        temperature: 0,
-        system: 'You are a mechanical engineer performing comprehensive specification reviews. Analyze the entire document thoroughly and return valid JSON only.',
-        messages: [{ 
-          role: 'user', 
-          content: [
-            {
-              type: 'text',
-              text: prompt
-            },
-            {
-              type: 'document',
-              source: {
-                type: 'base64',
-                media_type: file.name.endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream',
-                data: Buffer.from(buffer).toString('base64')
-              }
+      // Check file size and use appropriate strategy
+      const fileSizeMB = buffer.byteLength / (1024 * 1024);
+      diagnostics.push(`File size: ${fileSizeMB.toFixed(2)} MB`);
+      
+      if (fileSizeMB > 10) {
+        // For large files, fall back to text extraction + chunking
+        diagnostics.push('Large file detected, using text extraction approach...');
+        
+        if (!text || text.length < 100) {
+          throw new Error('Large PDF file requires text extraction, but no readable text was found. Please provide Azure Computer Vision credentials or convert to text format.');
+        }
+        
+        // Split text into chunks to avoid token limits
+        const maxChunkSize = 15000; // Conservative chunk size
+        const chunks = [];
+        for (let i = 0; i < text.length; i += maxChunkSize) {
+          chunks.push(text.slice(i, i + maxChunkSize));
+        }
+        
+        diagnostics.push(`Processing ${chunks.length} text chunks...`);
+        
+        const allResults = [];
+        for (let i = 0; i < Math.min(chunks.length, 5); i++) { // Limit to first 5 chunks to avoid rate limits
+          const chunkPrompt = `Extract technical requirements from this section of the specification document:
+
+${chunks[i]}
+
+Return JSON array of requirements with format:
+[{"id": "req_X", "category": "Design|Materials|Code|Testing|Fabrication|Documentation|Quality|Safety|Dimensional|Performance", "requirement": "specific requirement", "rationale": "why important", "source": {"fileName": "${file.name}", "section": "Part ${i+1}"}}]
+
+Extract ALL technical requirements from this section. JSON only.`;
+
+          const chunkCompletion = await anthropic.messages.create({
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 2000,
+            temperature: 0,
+            system: 'Extract technical requirements from specification documents. Return valid JSON only.',
+            messages: [{ role: 'user', content: chunkPrompt }],
+          });
+          
+          try {
+            const chunkText = chunkCompletion.content.filter(b => b.type === 'text').map(b => b.text).join('\n');
+            const chunkResults = JSON.parse(chunkText);
+            if (Array.isArray(chunkResults)) {
+              allResults.push(...chunkResults);
             }
-          ]
-        }],
-      });
+          } catch (e) {
+            diagnostics.push(`Failed to parse chunk ${i+1}: ${e.message}`);
+          }
+          
+          // Add delay between requests to avoid rate limits
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        // Create a mock completion object with combined results
+        completion = {
+          content: [{
+            type: 'text',
+            text: JSON.stringify(allResults)
+          }]
+        };
+        
+        diagnostics.push(`Combined results from ${chunks.length} chunks: ${allResults.length} requirements`);
+        
+      } else {
+        // For smaller files, try direct PDF approach
+        diagnostics.push('Sending PDF directly to Claude API...');
+        completion = await anthropic.messages.create({
+          model: 'claude-3-5-sonnet-20241022',
+          max_tokens: 4000,
+          temperature: 0,
+          system: 'You are a mechanical engineer performing comprehensive specification reviews. Analyze the entire document thoroughly and return valid JSON only.',
+          messages: [{ 
+            role: 'user', 
+            content: [
+              {
+                type: 'text',
+                text: prompt
+              },
+              {
+                type: 'document',
+                source: {
+                  type: 'base64',
+                  media_type: file.name.endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream',
+                  data: Buffer.from(buffer).toString('base64')
+                }
+              }
+            ]
+          }],
+        });
+      }
       diagnostics.push('Claude API call successful');
     } catch (e) {
       diagnostics.push(`Claude API call failed: ${e.message}`);
