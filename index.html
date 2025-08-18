@@ -7384,22 +7384,34 @@
                                                             } catch (err) {
                                                                 console.error('Spec review error:', err);
                                                                 
-                                                                // Try to get more error details
-                                                                if (err.message && err.message.includes('500')) {
-                                                                    try {
+                                                                // Try to get detailed error response
+                                                                let errorDetails = err.message || 'Unknown error';
+                                                                
+                                                                try {
+                                                                    // If it's a fetch error, try to get the response
+                                                                    if (err.message && err.message.includes('500')) {
+                                                                        // Re-fetch the last response to get error details
                                                                         const errorRes = await fetch('/api/specReview', { 
                                                                             method: 'POST', 
                                                                             headers: { 'Content-Type': 'application/json' }, 
-                                                                            body: JSON.stringify({ test: true }) 
+                                                                            body: JSON.stringify(body) 
                                                                         });
-                                                                        const errorData = await errorRes.json();
-                                                                        setSpecError(`500 Error Details: ${errorData.error}. Diagnostics: ${(errorData.diagnostics || []).join(', ')}`);
-                                                                    } catch (e) {
-                                                                        setSpecError(`500 Error: ${err.message}. Likely missing Claude API key in Vercel environment variables.`);
+                                                                        
+                                                                        const errorText = await errorRes.text();
+                                                                        console.log('Raw error response:', errorText);
+                                                                        
+                                                                        try {
+                                                                            const errorData = JSON.parse(errorText);
+                                                                            errorDetails = `Error: ${errorData.error || 'Unknown'}. Diagnostics: ${(errorData.diagnostics || []).join(' | ')}. Stack: ${errorData.stack || 'No stack'}`;
+                                                                        } catch (parseErr) {
+                                                                            errorDetails = `Raw response: ${errorText.substring(0, 500)}`;
+                                                                        }
                                                                     }
-                                                                } else {
-                                                                    setSpecError(err.message || 'Spec review failed');
+                                                                } catch (fetchErr) {
+                                                                    errorDetails += ` (Fetch error: ${fetchErr.message})`;
                                                                 }
+                                                                
+                                                                setSpecError(errorDetails);
                                                             } finally {
                                                                 setSpecRunning(false);
                                                             }
