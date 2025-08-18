@@ -229,63 +229,93 @@ Return ONLY a JSON array of requirements. No other text.`;
       const fileSizeMB = buffer.byteLength / (1024 * 1024);
       diagnostics.push(`File size: ${fileSizeMB.toFixed(2)} MB`);
       
-      if (fileSizeMB > 5) {
-        // For large files, use a simple text-based approach with a smaller sample
-        diagnostics.push('Large file detected, using text extraction approach...');
+      // Temporary fallback: Use pattern matching to extract requirements until rate limits are resolved
+      diagnostics.push('Using pattern-based extraction due to API rate limits...');
+      
+      const fallbackResults = [];
+      let reqId = 1;
+      
+      // Look for common specification patterns in the text
+      const lines = text.split('\n');
+      for (let i = 0; i < lines.length && fallbackResults.length < 50; i++) {
+        const line = lines[i].trim();
         
-        if (!text || text.length < 100) {
-          throw new Error('Large PDF file requires text extraction, but no readable text was found. Please provide Azure Computer Vision credentials or convert to text format.');
+        // Look for Australian Standards references
+        if (line.match(/AS\s*\d+/i) || line.match(/Australian\s+Standard/i)) {
+          fallbackResults.push({
+            id: `req_${reqId++}`,
+            category: 'Code',
+            requirement: line,
+            rationale: 'Australian Standard compliance requirement',
+            source: { fileName: file.name }
+          });
         }
         
-        // Take only the first portion of the text to avoid rate limits
-        const sampleText = text.substring(0, 10000); // First 10KB of text
-        diagnostics.push(`Processing sample of document: ${sampleText.length} characters`);
+        // Look for pressure specifications
+        else if (line.match(/\d+.*(?:psi|bar|kPa|MPa)/i)) {
+          fallbackResults.push({
+            id: `req_${reqId++}`,
+            category: 'Design',
+            requirement: line,
+            rationale: 'Pressure specification requirement',
+            source: { fileName: file.name }
+          });
+        }
         
-        const simplePrompt = `Extract technical requirements from this specification document sample:
-
-${sampleText}
-
-Return JSON array of requirements with format:
-[{"id": "req_X", "category": "Design|Materials|Code|Testing|Fabrication|Documentation|Quality|Safety|Dimensional|Performance", "requirement": "specific requirement", "rationale": "why important", "source": {"fileName": "${file.name}"}}]
-
-Extract ALL technical requirements from this section. JSON only.`;
-
-        completion = await anthropic.messages.create({
-          model: 'claude-3-5-sonnet-20241022',
-          max_tokens: 2000,
-          temperature: 0,
-          system: 'Extract technical requirements from specification documents. Return valid JSON only.',
-          messages: [{ role: 'user', content: simplePrompt }],
-        });
+        // Look for temperature specifications
+        else if (line.match(/\d+.*(?:°C|°F|celsius|fahrenheit)/i)) {
+          fallbackResults.push({
+            id: `req_${reqId++}`,
+            category: 'Design',
+            requirement: line,
+            rationale: 'Temperature specification requirement',
+            source: { fileName: file.name }
+          });
+        }
         
-      } else {
-        // For smaller files, try direct PDF approach
-        diagnostics.push('Sending PDF directly to Claude API...');
-        completion = await anthropic.messages.create({
-          model: 'claude-3-5-sonnet-20241022',
-          max_tokens: 4000,
-          temperature: 0,
-          system: 'You are a mechanical engineer performing comprehensive specification reviews. Analyze the entire document thoroughly and return valid JSON only.',
-          messages: [{ 
-            role: 'user', 
-            content: [
-              {
-                type: 'text',
-                text: prompt
-              },
-              {
-                type: 'document',
-                source: {
-                  type: 'base64',
-                  media_type: file.name.endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream',
-                  data: Buffer.from(buffer).toString('base64')
-                }
-              }
-            ]
-          }],
-        });
+        // Look for material specifications
+        else if (line.match(/(?:steel|carbon|stainless|material|grade)/i) && line.length > 20) {
+          fallbackResults.push({
+            id: `req_${reqId++}`,
+            category: 'Materials',
+            requirement: line,
+            rationale: 'Material specification requirement',
+            source: { fileName: file.name }
+          });
+        }
+        
+        // Look for testing requirements
+        else if (line.match(/(?:test|testing|inspection|verify|check)/i) && line.length > 20) {
+          fallbackResults.push({
+            id: `req_${reqId++}`,
+            category: 'Testing',
+            requirement: line,
+            rationale: 'Testing/inspection requirement',
+            source: { fileName: file.name }
+          });
+        }
+        
+        // Look for dimensional requirements
+        else if (line.match(/\d+.*(?:mm|inch|diameter|thickness|length|width|height)/i)) {
+          fallbackResults.push({
+            id: `req_${reqId++}`,
+            category: 'Dimensional',
+            requirement: line,
+            rationale: 'Dimensional specification requirement',
+            source: { fileName: file.name }
+          });
+        }
       }
-      diagnostics.push('Claude API call successful');
+      
+      // Create a mock completion object with pattern-matched results
+      completion = {
+        content: [{
+          type: 'text',
+          text: JSON.stringify(fallbackResults)
+        }]
+      };
+      
+      diagnostics.push(`Pattern-based extraction found ${fallbackResults.length} requirements`);
     } catch (e) {
       diagnostics.push(`Claude API call failed: ${e.message}`);
       throw new Error(`Claude API error: ${e.message}`);
