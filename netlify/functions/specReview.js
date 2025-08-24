@@ -183,35 +183,113 @@ exports.handler = async (event) => {
     diagnostics.push(`Processing ${doc.name} - ${text.length} characters`);
     
     try {
-      const prompt = `Extract ALL technical requirements from this specification document. Be thorough and systematic.
+      const prompt = `You are a senior mechanical engineer performing a COMPREHENSIVE specification review. You must read through EVERY section, paragraph, table, note, and drawing detail in this document and extract ALL technical requirements, parameters, tolerances, procedures, and compliance items.
 
-EXTRACT:
-- Design parameters (pressure, temperature, dimensions, tolerances)
-- Material specifications and properties  
-- Code references (ASME, API, etc)
-- Testing and inspection requirements
-- Fabrication procedures and tolerances
-- Documentation requirements
-- Quality control procedures
-
+DOCUMENT TO REVIEW:
 ${text}
 
-Return JSON array:
-[{
-  "id": "req_1", 
-  "category": "Design|Materials|Code|Testing|Fabrication|Documentation|Quality|Safety",
-  "requirement": "specific requirement with values/tolerances",
-  "rationale": "why this matters",
-  "source": {"fileName": "${doc.name}"}
-}]
+MANDATORY COMPREHENSIVE REVIEW - Extract EVERYTHING from:
 
-Extract 30-50 key requirements. Focus on critical technical specifications. JSON only.`;
+1. DESIGN REQUIREMENTS:
+- Operating conditions (pressure, temperature, flow rates, cycles)
+- Vessel dimensions, wall thickness, head types
+- Nozzle sizes, locations, reinforcement requirements
+- Internal components (trays, baffles, supports)
+- Corrosion allowances, stress analysis requirements
+- Fatigue analysis, seismic/wind load requirements
+- Thermal expansion considerations
+
+2. MATERIAL SPECIFICATIONS:
+- Base material grades and specifications
+- Welding consumables and procedures
+- Bolting materials and grades
+- Gasket and seal materials
+- Coating and lining materials
+- Material property requirements (yield, tensile, impact)
+- Heat treatment requirements
+- Material certifications (MTCs, PMI)
+
+3. CODE COMPLIANCE & STANDARDS:
+- ASME Section VIII Division 1/2 requirements
+- ASME B31.3 piping requirements
+- API standards (API 510, 570, 650, etc.)
+- Local jurisdiction requirements
+- Special code cases or exemptions
+- Third-party inspection requirements
+- Code stamping and certification
+
+4. FABRICATION REQUIREMENTS:
+- Welding procedure specifications (WPS)
+- Welder qualifications (WQT)
+- Joint efficiency factors
+- Fit-up tolerances and procedures
+- Heat treatment procedures (PWHT)
+- Forming and machining requirements
+- Assembly procedures and sequences
+
+5. TESTING & INSPECTION:
+- Hydrostatic test pressure and procedures
+- Pneumatic test requirements
+- Radiographic testing (RT) requirements
+- Ultrasonic testing (UT) requirements
+- Magnetic particle testing (MT)
+- Liquid penetrant testing (PT)
+- Visual inspection criteria
+- Acceptance standards and reject criteria
+- Hold points and witness points
+
+6. DOCUMENTATION REQUIREMENTS:
+- Mill test certificates (MTCs)
+- Welding documentation packages
+- NDE reports and certifications
+- Hydrostatic test certificates
+- Code compliance documentation
+- Fabrication drawings and procedures
+- Quality control records
+- As-built documentation
+
+7. QUALITY ASSURANCE:
+- QC procedures and plans
+- Inspection and test plans (ITPs)
+- Non-conformance procedures
+- Corrective action requirements
+- Third-party inspection requirements
+- Audit and surveillance requirements
+
+8. DIMENSIONAL TOLERANCES:
+- Fabrication tolerances
+- Assembly tolerances
+- Straightness and roundness requirements
+- Surface finish requirements
+- Dimensional inspection procedures
+
+For EVERY requirement found, return this exact JSON structure:
+{
+  "id": "req_XXX",
+  "category": "Design|Materials|Code|Testing|Fabrication|Documentation|Quality|Safety|Dimensional",
+  "requirement": "Complete, specific requirement statement with exact values, tolerances, procedures, and acceptance criteria",
+  "rationale": "Detailed technical explanation of why this requirement exists and its impact on safety, performance, or compliance",
+  "source": {"fileName": "${doc.name}", "section": "specific section/paragraph where found"},
+  "details": "Additional technical context, referenced standards, or related requirements",
+  "compliance_ref": "Specific ASME/API/code section if referenced"
+}
+
+CRITICAL INSTRUCTIONS:
+- Read EVERY paragraph, sentence, table entry, note, and specification detail
+- Extract 50-100+ requirements minimum for a proper spec review
+- Include exact numerical values, tolerances, pressures, temperatures
+- Capture procedural requirements step-by-step
+- Include all referenced standards and specifications
+- Extract requirements from tables, charts, and drawing notes
+- Be extremely thorough - this is a professional engineering review
+
+Return only the JSON array with NO other text. Extract EVERYTHING.`;
 
       const completion = await anthropic.messages.create({
         model: model || DEFAULT_MODEL,
-        max_tokens: 2500,
+        max_tokens: 4000, // Increased for comprehensive review
         temperature: 0,
-        system: 'You are a mechanical engineer. Extract technical requirements from specifications. Return valid JSON only.',
+        system: 'You are a senior mechanical engineer performing a comprehensive specification review. You must extract EVERY technical requirement from the entire document. Return only a valid JSON array with 50-100+ requirements.',
         messages: [{ role: 'user', content: prompt }],
       });
       
