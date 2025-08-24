@@ -7390,7 +7390,7 @@
                                                                             fileText = `Document: ${file.name} (${file.type}, ${(blob.size / 1024).toFixed(1)} KB)`;
                                                                         }
                                                                         
-                                                                                                                                        // Use Netlify function to avoid CORS issues
+                                                                        // Use Netlify function to avoid CORS issues
                                                                         const response = await fetch('/.netlify/functions/specReview', {
                                                                             method: 'POST',
                                                                             headers: { 'Content-Type': 'application/json' },
