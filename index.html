@@ -7391,7 +7391,7 @@
                                                                         }
                                                                         
                                                                         // Use Netlify function to avoid CORS issues
-                                                                        const response = await fetch('/.netlify/functions/specReview', {
+                                                                        const apiResponse = await fetch('/.netlify/functions/specReview', {
                                                                             method: 'POST',
                                                                             headers: { 'Content-Type': 'application/json' },
                                                                             body: JSON.stringify({
@@ -7400,12 +7400,12 @@
                                                                             })
                                                                         });
                                                                         
-                                                                        if (!response.ok) {
-                                                                            const errorData = await response.json();
-                                                                            throw new Error(`Spec review failed (${response.status}): ${errorData.error || 'Unknown error'}`);
+                                                                        if (!apiResponse.ok) {
+                                                                            const errorData = await apiResponse.json();
+                                                                            throw new Error(`Spec review failed (${apiResponse.status}): ${errorData.error || 'Unknown error'}`);
                                                                         }
                                                                         
-                                                                        const data = await response.json();
+                                                                        const data = await apiResponse.json();
                                                                         
                                                                         // Results come directly from Netlify function
                                                                         let fileResults = data.results || [];
