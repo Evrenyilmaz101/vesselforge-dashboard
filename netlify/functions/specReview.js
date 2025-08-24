@@ -32,44 +32,8 @@ exports.handler = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: 'tenderId and files[] required' }) };
     }
 
-    // QUICK TEST: Return mock data to verify pipeline works
-    console.log('🚀 Quick test mode - returning mock data');
-    const mockResults = [
-      {
-        id: "req_1",
-        category: "Design",
-        requirement: "Operating pressure shall not exceed 150 PSI",
-        rationale: "Safety requirement to prevent overpressure failure",
-        source: { fileName: files[0].name }
-      },
-      {
-        id: "req_2", 
-        category: "Materials",
-        requirement: "Material shall be ASTM A36 carbon steel",
-        rationale: "Structural integrity and code compliance",
-        source: { fileName: files[0].name }
-      },
-      {
-        id: "req_3",
-        category: "Testing",
-        requirement: "Hydrostatic test at 1.5x design pressure",
-        rationale: "ASME Section VIII verification requirement",
-        source: { fileName: files[0].name }
-      }
-    ];
-
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        tenderId, 
-        results: mockResults, 
-        diagnostics: ['Quick test mode - mock data returned'] 
-      }),
-    };
-
-    // DISABLED FOR NOW - Real processing below
-    /*
+    // OPTIMIZED CLAUDE INTEGRATION - Fast & focused engineering review
+    console.log('⚡ Starting optimized Claude spec review...');
     // Fetch and extract text from supported files (PDF/DOCX/TXT/MD/CSV/JSON/Code)
     const docs = [];
     const diagnostics = [];
@@ -203,15 +167,13 @@ exports.handler = async (event) => {
       }
     }
 
-    // Smart chunking approach for large documents
+    // OPTIMIZED CLAUDE INTEGRATION - Fast engineering review
     console.log('🤖 Initializing Claude API...');
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     const anthropic = new Anthropic({ apiKey });
     console.log('✅ Claude API initialized');
     
-    const system = `You are a senior mechanical engineer and ASME code expert specializing in pressure vessel design, fabrication, and inspection. You must perform an exhaustive, line-by-line specification review extracting every single requirement, parameter, code reference, material property, dimensional tolerance, testing procedure, and compliance item. Be extremely detailed and thorough. Return strict JSON only.`;
-    
-    // Simplified approach - just send the FIRST document directly to Claude like you do
+    // Fast, focused engineering review approach
     let results = [];
     console.log(`📊 Processing ${docs.length} documents...`);
     
@@ -232,113 +194,51 @@ exports.handler = async (event) => {
     diagnostics.push(`Processing ${doc.name} - ${text.length} characters`);
     
     try {
-      const prompt = `You are a senior mechanical engineer performing a COMPREHENSIVE specification review. You must read through EVERY section, paragraph, table, note, and drawing detail in this document and extract ALL technical requirements, parameters, tolerances, procedures, and compliance items.
+      const prompt = `You are a senior design engineer and certified welding engineer with 20+ years of experience in pressure vessel design, fabrication, and ASME code compliance. Review this specification and extract the most critical engineering requirements.
 
-DOCUMENT TO REVIEW:
+SPECIFICATION TO REVIEW:
 ${text}
 
-MANDATORY COMPREHENSIVE REVIEW - Extract EVERYTHING from:
+As an experienced design and welding engineer, identify the TOP 15-20 CRITICAL requirements focusing on:
 
-1. DESIGN REQUIREMENTS:
-- Operating conditions (pressure, temperature, flow rates, cycles)
-- Vessel dimensions, wall thickness, head types
-- Nozzle sizes, locations, reinforcement requirements
-- Internal components (trays, baffles, supports)
-- Corrosion allowances, stress analysis requirements
-- Fatigue analysis, seismic/wind load requirements
-- Thermal expansion considerations
+🔧 DESIGN ENGINEERING PRIORITIES:
+- Operating pressure, temperature, and service conditions
+- Material specifications and properties
+- Dimensional requirements and tolerances
+- Structural design criteria
+- Safety factors and design margins
 
-2. MATERIAL SPECIFICATIONS:
-- Base material grades and specifications
-- Welding consumables and procedures
-- Bolting materials and grades
-- Gasket and seal materials
-- Coating and lining materials
-- Material property requirements (yield, tensile, impact)
-- Heat treatment requirements
-- Material certifications (MTCs, PMI)
+⚡ WELDING ENGINEERING PRIORITIES:
+- Welding procedures and qualifications
+- Joint designs and efficiencies
+- Post-weld heat treatment requirements
+- NDE inspection requirements
+- Material compatibility and weldability
 
-3. CODE COMPLIANCE & STANDARDS:
-- ASME Section VIII Division 1/2 requirements
-- ASME B31.3 piping requirements
-- API standards (API 510, 570, 650, etc.)
-- Local jurisdiction requirements
-- Special code cases or exemptions
-- Third-party inspection requirements
-- Code stamping and certification
+📋 CODE COMPLIANCE ESSENTIALS:
+- ASME Section VIII requirements
+- API/ASTM standards referenced
+- Third-party inspection points
+- Documentation and certification requirements
 
-4. FABRICATION REQUIREMENTS:
-- Welding procedure specifications (WPS)
-- Welder qualifications (WQT)
-- Joint efficiency factors
-- Fit-up tolerances and procedures
-- Heat treatment procedures (PWHT)
-- Forming and machining requirements
-- Assembly procedures and sequences
+Return ONLY a JSON array in this format:
+[
+  {
+    "id": "req_1",
+    "category": "Design|Materials|Welding|Testing|Code|Safety",
+    "requirement": "Specific requirement with exact values and tolerances",
+    "rationale": "Engineering rationale - why this is critical for safety/performance",
+    "source": {"fileName": "${doc.name}"}
+  }
+]
 
-5. TESTING & INSPECTION:
-- Hydrostatic test pressure and procedures
-- Pneumatic test requirements
-- Radiographic testing (RT) requirements
-- Ultrasonic testing (UT) requirements
-- Magnetic particle testing (MT)
-- Liquid penetrant testing (PT)
-- Visual inspection criteria
-- Acceptance standards and reject criteria
-- Hold points and witness points
-
-6. DOCUMENTATION REQUIREMENTS:
-- Mill test certificates (MTCs)
-- Welding documentation packages
-- NDE reports and certifications
-- Hydrostatic test certificates
-- Code compliance documentation
-- Fabrication drawings and procedures
-- Quality control records
-- As-built documentation
-
-7. QUALITY ASSURANCE:
-- QC procedures and plans
-- Inspection and test plans (ITPs)
-- Non-conformance procedures
-- Corrective action requirements
-- Third-party inspection requirements
-- Audit and surveillance requirements
-
-8. DIMENSIONAL TOLERANCES:
-- Fabrication tolerances
-- Assembly tolerances
-- Straightness and roundness requirements
-- Surface finish requirements
-- Dimensional inspection procedures
-
-For EVERY requirement found, return this exact JSON structure:
-{
-  "id": "req_XXX",
-  "category": "Design|Materials|Code|Testing|Fabrication|Documentation|Quality|Safety|Dimensional",
-  "requirement": "Complete, specific requirement statement with exact values, tolerances, procedures, and acceptance criteria",
-  "rationale": "Detailed technical explanation of why this requirement exists and its impact on safety, performance, or compliance",
-  "source": {"fileName": "${doc.name}", "section": "specific section/paragraph where found"},
-  "details": "Additional technical context, referenced standards, or related requirements",
-  "compliance_ref": "Specific ASME/API/code section if referenced"
-}
-
-CRITICAL INSTRUCTIONS:
-- Read EVERY paragraph, sentence, table entry, note, and specification detail
-- Extract 50-100+ requirements minimum for a proper spec review
-- Include exact numerical values, tolerances, pressures, temperatures
-- Capture procedural requirements step-by-step
-- Include all referenced standards and specifications
-- Extract requirements from tables, charts, and drawing notes
-- Be extremely thorough - this is a professional engineering review
-
-Return only the JSON array with NO other text. Extract EVERYTHING.`;
+Focus on the most critical requirements that would impact vessel integrity, safety, and code compliance. Extract 15-20 key items maximum for a focused engineering review.`;
 
       const completion = await anthropic.messages.create({
         model: model || DEFAULT_MODEL,
-        max_tokens: 4000, // Increased for comprehensive review
+        max_tokens: 2000, // Reduced for faster processing
         temperature: 0,
-        system: 'You are a senior mechanical engineer performing a comprehensive specification review. You must extract EVERY technical requirement from the entire document. Return only a valid JSON array with 50-100+ requirements.',
+        system: 'You are a senior design engineer and certified welding engineer. Focus on the most critical engineering requirements. Return only a valid JSON array with 15-20 key requirements.',
         messages: [{ role: 'user', content: prompt }],
       });
       
@@ -402,7 +302,6 @@ Return only the JSON array with NO other text. Extract EVERYTHING.`;
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tenderId, results, diagnostics }),
     };
-    */
   } catch (error) {
     console.error('❌ SpecReview function error:', error);
     return { 
