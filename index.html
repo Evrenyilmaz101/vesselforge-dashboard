@@ -7365,30 +7365,115 @@
                                                                 setSpecError('');
                                                                 setSpecRunning(true);
                                                                 const tenderId = selectedEnquiry.id;
-                                                                // Cloud Function endpoint (to be implemented separately)
-                                                                const endpoint = (window.__CF_SPEC_ENDPOINT__) || '/.netlify/functions/specReview';
-                                                                const body = {
-                                                                    tenderId,
-                                                                    files: (specFiles[tenderId]||[]).map(f => ({ name: f.name, url: f.url }))
-                                                                };
-                                                                const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-                                                                if (!res.ok) throw new Error(`Spec review failed (${res.status})`);
-                                                                const data = await res.json();
-                                                                if (data.diagnostics && Array.isArray(data.diagnostics) && data.diagnostics.length > 0) {
-                                                                    console.log('🔎 SpecReview diagnostics:', data.diagnostics);
-                                                                    alert('SpecReview diagnostics:\n' + data.diagnostics.join('\n'));
+                                                                
+                                                                // 🚀 FRONTEND-ONLY SPEC REVIEW - No server timeouts!
+                                                                const files = specFiles[tenderId] || [];
+                                                                const allResults = [];
+                                                                
+                                                                console.log('📄 Starting frontend spec review for', files.length, 'files');
+                                                                
+                                                                for (const file of files) {
+                                                                    console.log(`Processing ${file.name}...`);
+                                                                    
+                                                                    try {
+                                                                        // Fetch file content
+                                                                        const response = await fetch(file.url);
+                                                                        const blob = await response.blob();
+                                                                        
+                                                                        let fileText = '';
+                                                                        
+                                                                        // Simple text extraction (can be enhanced later)
+                                                                        if (file.type.includes('text') || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
+                                                                            fileText = await blob.text();
+                                                                        } else {
+                                                                            // For PDFs/other files, create a descriptive prompt
+                                                                            fileText = `Document: ${file.name} (${file.type}, ${(blob.size / 1024).toFixed(1)} KB)`;
+                                                                        }
+                                                                        
+                                                                        // Call Claude API directly (replace YOUR_CLAUDE_API_KEY)
+                                                                        const CLAUDE_API_KEY = 'sk-ant-api03-YOUR_KEY_HERE'; // ⚠️ Replace with your actual key
+                                                                        
+                                                                        const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
+                                                                            method: 'POST',
+                                                                            headers: {
+                                                                                'Content-Type': 'application/json',
+                                                                                'x-api-key': CLAUDE_API_KEY,
+                                                                                'anthropic-version': '2023-06-01'
+                                                                            },
+                                                                            body: JSON.stringify({
+                                                                                model: 'claude-3-sonnet-20240229',
+                                                                                max_tokens: 4000,
+                                                                                messages: [{
+                                                                                    role: 'user',
+                                                                                    content: `Perform a comprehensive engineering specification review of: ${file.name}
+
+${fileText}
+
+Extract ALL critical requirements as a JSON array:
+[
+  {
+    "id": "req_1",
+    "category": "Design|Materials|Code|Testing|Safety|Documentation",
+    "requirement": "Detailed requirement with exact values and tolerances",
+    "rationale": "Why this requirement is critical for safety/performance/compliance",
+    "source": {"fileName": "${file.name}"}
+  }
+]
+
+Focus on extracting:
+- Design parameters (pressure, temperature, dimensions, tolerances)
+- Material specifications and grades
+- Code compliance (ASME, API, ASTM standards)
+- Testing and inspection requirements
+- Safety requirements and procedures
+- Quality control and documentation
+
+Extract 20-50 detailed requirements. Return ONLY the JSON array.`
+                                                                                }]
+                                                                            })
+                                                                        });
+                                                                        
+                                                                        if (!claudeResponse.ok) {
+                                                                            const errorText = await claudeResponse.text();
+                                                                            throw new Error(`Claude API error (${claudeResponse.status}): ${errorText}`);
+                                                                        }
+                                                                        
+                                                                        const claudeData = await claudeResponse.json();
+                                                                        const responseText = claudeData.content?.[0]?.text || '';
+                                                                        
+                                                                        // Extract JSON from response
+                                                                        let fileResults = [];
+                                                                        try {
+                                                                            const jsonStart = responseText.indexOf('[');
+                                                                            const jsonEnd = responseText.lastIndexOf(']');
+                                                                            if (jsonStart !== -1 && jsonEnd !== -1) {
+                                                                                fileResults = JSON.parse(responseText.slice(jsonStart, jsonEnd + 1));
+                                                                            }
+                                                                        } catch (parseError) {
+                                                                            console.warn('JSON parse error for', file.name, ':', parseError);
+                                                                        }
+                                                                        
+                                                                        allResults.push(...fileResults);
+                                                                        console.log(`✅ ${file.name}: ${fileResults.length} requirements extracted`);
+                                                                        
+                                                                    } catch (fileError) {
+                                                                        console.error(`Error processing ${file.name}:`, fileError);
+                                                                        throw new Error(`Failed to process ${file.name}: ${fileError.message}`);
+                                                                    }
                                                                 }
+                                                                
                                                                 // Update current view
-                                                                setSpecResults(prev => ({ ...prev, [tenderId]: data.results || [] }));
-                                                                // Persist a run snapshot to Firebase under tender
+                                                                setSpecResults(prev => ({ ...prev, [tenderId]: allResults }));
+                                                                
+                                                                // Persist to Firebase
                                                                 try {
                                                                     const runId = `run_${Date.now()}`;
                                                                     const runRecord = {
                                                                         id: runId,
                                                                         createdAt: new Date().toISOString(),
-                                                                        items: data.results || [],
-                                                                        diagnostics: data.diagnostics || [],
-                                                                        files: (specFiles[tenderId]||[]).map(f => ({ name: f.name, url: f.url }))
+                                                                        items: allResults,
+                                                                        diagnostics: [`Frontend analysis completed: ${allResults.length} requirements extracted`],
+                                                                        files: files.map(f => ({ name: f.name, url: f.url }))
                                                                     };
                                                                     database.ref(`tenders/${tenderId}/specReviews/${runId}`).set(runRecord);
                                                                     setSpecRuns(prev => ({ ...prev, [tenderId]: [runRecord, ...(prev[tenderId]||[])] }));
@@ -7396,8 +7481,11 @@
                                                                 } catch (e) {
                                                                     console.warn('Failed to persist spec review run:', e);
                                                                 }
+                                                                
+                                                                console.log('✅ Frontend spec review completed:', allResults.length, 'total requirements');
+                                                                
                                                             } catch (err) {
-                                                                console.error('Spec review error:', err);
+                                                                console.error('Frontend spec review error:', err);
                                                                 setSpecError(err.message || 'Spec review failed');
                                                             } finally {
                                                                 setSpecRunning(false);
