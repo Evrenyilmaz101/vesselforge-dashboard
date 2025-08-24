@@ -7190,21 +7190,28 @@
                                                         const folderRef = storage.ref(`specs/${tenderId}`);
                                                         const uploaded = [];
                                                         
-                                                        // Show upload progress
-                                                        setUploadProgress(prev => ({ ...prev, [tenderId]: { uploading: true, current: 0, total: files.length } }));
-                                                        
-                                                        for (let i = 0; i < files.length; i++) {
-                                                            const file = files[i];
-                                                            setUploadProgress(prev => ({ ...prev, [tenderId]: { uploading: true, current: i + 1, total: files.length, fileName: file.name } }));
+                                                        try {
+                                                            // Show upload progress
+                                                            setUploadProgress(prev => ({ ...prev, [tenderId]: { uploading: true, current: 0, total: files.length } }));
                                                             
-                                                            const ref = folderRef.child(`${Date.now()}_${file.name}`);
-                                                            await ref.put(file);
-                                                            const url = await ref.getDownloadURL();
-                                                            uploaded.push({ id: `${Date.now()}_${file.name}`, name: file.name, url, type: file.type || 'application/octet-stream' });
+                                                            for (let i = 0; i < files.length; i++) {
+                                                                const file = files[i];
+                                                                setUploadProgress(prev => ({ ...prev, [tenderId]: { uploading: true, current: i + 1, total: files.length, fileName: file.name } }));
+                                                                
+                                                                const ref = folderRef.child(`${Date.now()}_${file.name}`);
+                                                                await ref.put(file);
+                                                                const url = await ref.getDownloadURL();
+                                                                uploaded.push({ id: `${Date.now()}_${file.name}`, name: file.name, url, type: file.type || 'application/octet-stream' });
+                                                            }
+                                                            
+                                                            setSpecFiles(prev => ({ ...prev, [tenderId]: [ ...(prev[tenderId]||[]), ...uploaded ] }));
+                                                        } catch (error) {
+                                                            console.error('Upload error:', error);
+                                                            alert('Upload failed: ' + error.message);
+                                                        } finally {
+                                                            // Always reset upload progress
+                                                            setUploadProgress(prev => ({ ...prev, [tenderId]: null }));
                                                         }
-                                                        
-                                                        setSpecFiles(prev => ({ ...prev, [tenderId]: [ ...(prev[tenderId]||[]), ...uploaded ] }));
-                                                        setUploadProgress(prev => ({ ...prev, [tenderId]: null }));
                                                     }}
                                                     onClick={() => document.getElementById('spec-file-input').click()}
                                                 >
@@ -7239,21 +7246,29 @@
                                                         const folderRef = storage.ref(`specs/${tenderId}`);
                                                         const uploaded = [];
                                                         
-                                                        // Show upload progress
-                                                        setUploadProgress(prev => ({ ...prev, [tenderId]: { uploading: true, current: 0, total: files.length } }));
-                                                        
-                                                        for (let i = 0; i < files.length; i++) {
-                                                            const file = files[i];
-                                                            setUploadProgress(prev => ({ ...prev, [tenderId]: { uploading: true, current: i + 1, total: files.length, fileName: file.name } }));
+                                                        try {
+                                                            // Show upload progress
+                                                            setUploadProgress(prev => ({ ...prev, [tenderId]: { uploading: true, current: 0, total: files.length } }));
                                                             
-                                                            const ref = folderRef.child(`${Date.now()}_${file.name}`);
-                                                            await ref.put(file);
-                                                            const url = await ref.getDownloadURL();
-                                                            uploaded.push({ id: `${Date.now()}_${file.name}`, name: file.name, url, type: file.type || 'application/octet-stream' });
+                                                            for (let i = 0; i < files.length; i++) {
+                                                                const file = files[i];
+                                                                setUploadProgress(prev => ({ ...prev, [tenderId]: { uploading: true, current: i + 1, total: files.length, fileName: file.name } }));
+                                                                
+                                                                const ref = folderRef.child(`${Date.now()}_${file.name}`);
+                                                                await ref.put(file);
+                                                                const url = await ref.getDownloadURL();
+                                                                uploaded.push({ id: `${Date.now()}_${file.name}`, name: file.name, url, type: file.type || 'application/octet-stream' });
+                                                            }
+                                                            
+                                                            setSpecFiles(prev => ({ ...prev, [tenderId]: [ ...(prev[tenderId]||[]), ...uploaded ] }));
+                                                        } catch (error) {
+                                                            console.error('Upload error:', error);
+                                                            alert('Upload failed: ' + error.message);
+                                                        } finally {
+                                                            // Always reset upload progress and clear file input
+                                                            setUploadProgress(prev => ({ ...prev, [tenderId]: null }));
+                                                            e.target.value = ''; // Clear the file input
                                                         }
-                                                        
-                                                        setSpecFiles(prev => ({ ...prev, [tenderId]: [ ...(prev[tenderId]||[]), ...uploaded ] }));
-                                                        setUploadProgress(prev => ({ ...prev, [tenderId]: null }));
                                                     }}
                                                 />
                                             </div>
@@ -7351,51 +7366,13 @@
                                                                 setSpecRunning(true);
                                                                 const tenderId = selectedEnquiry.id;
                                                                 // Cloud Function endpoint (to be implemented separately)
-                                                                const endpoint = (window.__CF_SPEC_ENDPOINT__) || '/api/specReview';
+                                                                const endpoint = (window.__CF_SPEC_ENDPOINT__) || '/.netlify/functions/specReview';
                                                                 const body = {
                                                                     tenderId,
                                                                     files: (specFiles[tenderId]||[]).map(f => ({ name: f.name, url: f.url }))
                                                                 };
-                                                                console.log('🚀 Making spec review request:', { endpoint, body });
-                                                                
-                                                                // First test if the function is working at all
-                                                                console.log('🧪 Testing function with simple test call...');
-                                                                const testRes = await fetch(endpoint, { 
-                                                                    method: 'POST', 
-                                                                    headers: { 'Content-Type': 'application/json' }, 
-                                                                    body: JSON.stringify({ test: true }) 
-                                                                });
-                                                                console.log('🧪 Test response:', { status: testRes.status, ok: testRes.ok });
-                                                                
-                                                                if (testRes.ok) {
-                                                                    const testData = await testRes.json();
-                                                                    console.log('🧪 Test data:', testData);
-                                                                } else {
-                                                                    const testError = await testRes.text();
-                                                                    console.log('🧪 Test error:', testError);
-                                                                    throw new Error(`Function test failed: ${testRes.status} - ${testError}`);
-                                                                }
-                                                                
-                                                                // Now make the actual request
                                                                 const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-                                                                console.log('📡 Response received:', { status: res.status, ok: res.ok });
-                                                                
-                                                                if (!res.ok) {
-                                                                    // Get the error details from the response
-                                                                    const errorText = await res.text();
-                                                                    console.log('❌ Error response body:', errorText);
-                                                                    
-                                                                    try {
-                                                                        const errorData = JSON.parse(errorText);
-                                                                        console.log('❌ Error data:', errorData);
-                                                                        if (errorData.diagnostics) {
-                                                                            console.log('🔍 Server diagnostics:', errorData.diagnostics);
-                                                                        }
-                                                                        throw new Error(`Spec review failed (${res.status}): ${errorData.error || 'Unknown error'}`);
-                                                                    } catch (parseErr) {
-                                                                        throw new Error(`Spec review failed (${res.status}): ${errorText}`);
-                                                                    }
-                                                                }
+                                                                if (!res.ok) throw new Error(`Spec review failed (${res.status})`);
                                                                 const data = await res.json();
                                                                 if (data.diagnostics && Array.isArray(data.diagnostics) && data.diagnostics.length > 0) {
                                                                     console.log('🔎 SpecReview diagnostics:', data.diagnostics);
@@ -7421,12 +7398,7 @@
                                                                 }
                                                             } catch (err) {
                                                                 console.error('Spec review error:', err);
-                                                                console.error('Error stack:', err.stack);
-                                                                console.error('Error name:', err.name);
-                                                                console.error('Error message:', err.message);
-                                                                
-                                                                // Simple error display for now
-                                                                setSpecError(`Error: ${err.message || err.toString()}`);
+                                                                setSpecError(err.message || 'Spec review failed');
                                                             } finally {
                                                                 setSpecRunning(false);
                                                             }
@@ -7497,17 +7469,7 @@
                                                         Files: {(specFiles[selectedEnquiry.id]||[]).map(f => f.name).join(', ')}
                                                     </div>
                                                 )}
-                                                {specError && (
-                                                    <div className="mt-3 text-red-300 text-sm">
-                                                        {specError}
-                                                        {specError.includes('504') && (
-                                                            <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-yellow-300 text-xs">
-                                                                💡 <strong>Tip:</strong> 504 errors are caused by Netlify function timeout limits (10-26 seconds). 
-                                                                For large documents, consider using Claude directly or converting to text format first.
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
+                                                {specError && <div className="mt-3 text-red-300 text-sm">{specError}</div>}
                                             </div>
                                             <div className="bg-white/5 border border-white/10 rounded-lg p-3">
                                                 <div className="flex items-center justify-between mb-2">
