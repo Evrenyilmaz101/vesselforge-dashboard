@@ -6,20 +6,28 @@
 const DEFAULT_MODEL = process.env.CLAUDE_MODEL || 'claude-3-5-sonnet-20240620';
 
 exports.handler = async (event) => {
+  console.log('🔍 SpecReview function started');
+  
   try {
     if (event.httpMethod !== 'POST') {
-      return { statusCode: 405, body: 'Method Not Allowed' };
+      return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) };
     }
 
+    console.log('🔑 Checking API key...');
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
+      console.log('❌ API key not found');
       return {
         statusCode: 501,
         body: JSON.stringify({ error: 'ANTHROPIC_API_KEY not set on server' }),
       };
     }
+    console.log('✅ API key found');
 
+    console.log('📥 Parsing request body...');
     const { tenderId, files = [], model } = JSON.parse(event.body || '{}');
+    console.log(`📄 Request: ${tenderId}, ${files.length} files`);
+    
     if (!tenderId || !Array.isArray(files) || files.length === 0) {
       return { statusCode: 400, body: JSON.stringify({ error: 'tenderId and files[] required' }) };
     }
@@ -158,13 +166,16 @@ exports.handler = async (event) => {
     }
 
     // Smart chunking approach for large documents
+    console.log('🤖 Initializing Claude API...');
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     const anthropic = new Anthropic({ apiKey });
+    console.log('✅ Claude API initialized');
     
     const system = `You are a senior mechanical engineer and ASME code expert specializing in pressure vessel design, fabrication, and inspection. You must perform an exhaustive, line-by-line specification review extracting every single requirement, parameter, code reference, material property, dimensional tolerance, testing procedure, and compliance item. Be extremely detailed and thorough. Return strict JSON only.`;
     
     // Simplified approach - just send the FIRST document directly to Claude like you do
     let results = [];
+    console.log(`📊 Processing ${docs.length} documents...`);
     
     if (docs.length === 0) {
       diagnostics.push('No documents to analyze');
@@ -354,8 +365,15 @@ Return only the JSON array with NO other text. Extract EVERYTHING.`;
       body: JSON.stringify({ tenderId, results, diagnostics }),
     };
   } catch (error) {
-    console.error('specReview error', error);
-    return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+    console.error('❌ SpecReview function error:', error);
+    return { 
+      statusCode: 500, 
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        error: error.message || 'Unknown error',
+        diagnostics: [`Function crashed: ${error.message}`]
+      }) 
+    };
   }
 };
 
