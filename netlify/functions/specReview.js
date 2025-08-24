@@ -193,52 +193,139 @@ exports.handler = async (event) => {
     
     diagnostics.push(`Processing ${doc.name} - ${text.length} characters`);
     
-    try {
-      const prompt = `You are a senior design engineer and certified welding engineer with 20+ years of experience in pressure vessel design, fabrication, and ASME code compliance. Review this specification and extract the most critical engineering requirements.
+    // Smart chunking for very large documents (>25k chars) to prevent timeouts
+    if (text.length > 25000) {
+      diagnostics.push(`Large document detected (${text.length} chars) - using smart chunking`);
+      
+      const chunkSize = 20000;
+      const overlap = 1000;
+      const chunks = [];
+      
+      for (let i = 0; i < text.length; i += chunkSize - overlap) {
+        const chunk = text.slice(i, i + chunkSize);
+        const chunkNum = Math.floor(i / (chunkSize - overlap)) + 1;
+        const totalChunks = Math.ceil(text.length / (chunkSize - overlap));
+        chunks.push({ text: chunk, chunkNum, totalChunks });
+      }
+      
+      diagnostics.push(`Split into ${chunks.length} chunks for comprehensive analysis`);
+      
+      // Process each chunk and combine results
+      for (const { text: chunkText, chunkNum, totalChunks } of chunks) {
+        try {
+          const chunkPrompt = `You are a senior design engineer and certified welding engineer. This is chunk ${chunkNum} of ${totalChunks} from specification: ${doc.name}
 
-SPECIFICATION TO REVIEW:
+ANALYZE THIS SECTION COMPREHENSIVELY:
+${chunkText}
+
+Extract ALL technical requirements from this section. Include every specification, tolerance, procedure, and requirement found. Return 10-20 detailed requirements from this section only.
+
+[Same JSON format and engineering analysis requirements as main prompt...]
+
+Return JSON array with detailed requirements from this section.`;
+
+          const chunkCompletion = await anthropic.messages.create({
+            model: model || DEFAULT_MODEL,
+            max_tokens: 3000,
+            temperature: 0,
+            system: 'Extract ALL requirements from this document section. Be comprehensive and detailed.',
+            messages: [{ role: 'user', content: chunkPrompt }],
+          });
+          
+          const chunkResponse = (chunkCompletion.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
+          let chunkResults = [];
+          
+          try {
+            chunkResults = JSON.parse(chunkResponse);
+          } catch {
+            const start = chunkResponse.indexOf('[');
+            const end = chunkResponse.lastIndexOf(']');
+            if (start !== -1 && end !== -1) {
+              chunkResults = JSON.parse(chunkResponse.slice(start, end + 1));
+            }
+          }
+          
+          if (Array.isArray(chunkResults)) {
+            results.push(...chunkResults);
+            diagnostics.push(`Chunk ${chunkNum}/${totalChunks}: ${chunkResults.length} requirements extracted`);
+          }
+          
+        } catch (chunkError) {
+          diagnostics.push(`Chunk ${chunkNum} failed: ${chunkError.message}`);
+        }
+      }
+      
+    } else {
+      // Single document analysis for smaller documents
+      try {
+      const prompt = `You are a senior design engineer and certified welding engineer with 20+ years of experience in pressure vessel design, fabrication, and ASME code compliance. Perform a COMPREHENSIVE, DETAILED engineering review of the ENTIRE specification document.
+
+SPECIFICATION DOCUMENT TO ANALYZE:
 ${text}
 
-As an experienced design and welding engineer, identify the TOP 15-20 CRITICAL requirements focusing on:
+COMPREHENSIVE ENGINEERING REVIEW REQUIREMENTS:
+Read through EVERY section, paragraph, table, drawing note, and specification detail in this document. As an experienced design and welding engineer, extract ALL technical requirements, not just highlights.
 
-🔧 DESIGN ENGINEERING PRIORITIES:
-- Operating pressure, temperature, and service conditions
-- Material specifications and properties
-- Dimensional requirements and tolerances
-- Structural design criteria
-- Safety factors and design margins
+🔧 DESIGN ENGINEERING ANALYSIS:
+- ALL operating conditions (pressure, temperature, flow, cycles, environment)
+- COMPLETE material specifications, grades, properties, certifications
+- ALL dimensional requirements, tolerances, and geometric specifications
+- FULL structural design criteria, stress analysis, fatigue requirements
+- ALL safety factors, design margins, and safety systems
+- COMPLETE nozzle, opening, and reinforcement requirements
+- ALL support, foundation, and mounting specifications
 
-⚡ WELDING ENGINEERING PRIORITIES:
-- Welding procedures and qualifications
-- Joint designs and efficiencies
-- Post-weld heat treatment requirements
-- NDE inspection requirements
-- Material compatibility and weldability
+⚡ WELDING ENGINEERING ANALYSIS:
+- ALL welding procedures, qualifications, and consumables
+- COMPLETE joint designs, configurations, and efficiency factors
+- ALL heat treatment requirements (preheat, interpass, PWHT)
+- COMPREHENSIVE NDE requirements (RT, UT, MT, PT, VT)
+- ALL material compatibility and weldability requirements
+- COMPLETE welding quality and acceptance standards
+- ALL repair and rework procedures
 
-📋 CODE COMPLIANCE ESSENTIALS:
-- ASME Section VIII requirements
-- API/ASTM standards referenced
-- Third-party inspection points
-- Documentation and certification requirements
+📋 CODE & COMPLIANCE ANALYSIS:
+- ALL ASME Section VIII Division 1/2 requirements
+- COMPLETE API, ASTM, AWS standards referenced
+- ALL third-party inspection and witness points
+- COMPREHENSIVE documentation and certification requirements
+- ALL local jurisdiction and special requirements
 
-Return ONLY a JSON array in this format:
+🔍 FABRICATION & QUALITY ANALYSIS:
+- ALL fabrication procedures and sequences
+- COMPLETE dimensional and geometric tolerances
+- ALL surface finish and coating requirements
+- COMPREHENSIVE testing procedures (hydrostatic, pneumatic, leak)
+- ALL quality control and inspection plans
+
+Return a JSON array with 40-60 detailed requirements in this format:
 [
   {
-    "id": "req_1",
-    "category": "Design|Materials|Welding|Testing|Code|Safety",
-    "requirement": "Specific requirement with exact values and tolerances",
-    "rationale": "Engineering rationale - why this is critical for safety/performance",
-    "source": {"fileName": "${doc.name}"}
+    "id": "req_XXX",
+    "category": "Design|Materials|Welding|Testing|Code|Safety|Fabrication|Quality",
+    "requirement": "Detailed requirement with exact values, tolerances, procedures, and acceptance criteria",
+    "rationale": "Detailed engineering explanation of why this requirement is critical for safety, performance, or compliance",
+    "source": {"fileName": "${doc.name}", "section": "specific section where found"},
+    "details": "Additional technical context, calculations, or related requirements"
   }
 ]
 
-Focus on the most critical requirements that would impact vessel integrity, safety, and code compliance. Extract 15-20 key items maximum for a focused engineering review.`;
+CRITICAL: This must be a COMPLETE engineering review. Extract requirements from:
+- Main specification text and clauses
+- All tables, charts, and data sheets
+- Drawing notes and dimensional requirements
+- Referenced standards and codes
+- Material property tables and certificates
+- Test procedures and acceptance criteria
+- Quality plans and inspection requirements
+
+Return 40-60 comprehensive requirements covering the ENTIRE document. Be thorough and detailed.`;
 
       const completion = await anthropic.messages.create({
         model: model || DEFAULT_MODEL,
-        max_tokens: 2000, // Reduced for faster processing
+        max_tokens: 4000, // Increased for comprehensive review
         temperature: 0,
-        system: 'You are a senior design engineer and certified welding engineer. Focus on the most critical engineering requirements. Return only a valid JSON array with 15-20 key requirements.',
+        system: 'You are a senior design engineer and certified welding engineer. Perform a comprehensive review of the ENTIRE document. Extract ALL technical requirements from every section. Return only a valid JSON array with 40-60 detailed requirements.',
         messages: [{ role: 'user', content: prompt }],
       });
       
@@ -275,6 +362,7 @@ Focus on the most critical requirements that would impact vessel integrity, safe
         }) 
       };
     }
+    } // Close the else block for single document analysis
     
     // Deduplicate by requirement similarity
     const seen = new Set();
