@@ -32,6 +32,44 @@ exports.handler = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: 'tenderId and files[] required' }) };
     }
 
+    // QUICK TEST: Return mock data to verify pipeline works
+    console.log('🚀 Quick test mode - returning mock data');
+    const mockResults = [
+      {
+        id: "req_1",
+        category: "Design",
+        requirement: "Operating pressure shall not exceed 150 PSI",
+        rationale: "Safety requirement to prevent overpressure failure",
+        source: { fileName: files[0].name }
+      },
+      {
+        id: "req_2", 
+        category: "Materials",
+        requirement: "Material shall be ASTM A36 carbon steel",
+        rationale: "Structural integrity and code compliance",
+        source: { fileName: files[0].name }
+      },
+      {
+        id: "req_3",
+        category: "Testing",
+        requirement: "Hydrostatic test at 1.5x design pressure",
+        rationale: "ASME Section VIII verification requirement",
+        source: { fileName: files[0].name }
+      }
+    ];
+
+    return {
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        tenderId, 
+        results: mockResults, 
+        diagnostics: ['Quick test mode - mock data returned'] 
+      }),
+    };
+
+    // DISABLED FOR NOW - Real processing below
+    /*
     // Fetch and extract text from supported files (PDF/DOCX/TXT/MD/CSV/JSON/Code)
     const docs = [];
     const diagnostics = [];
@@ -364,6 +402,7 @@ Return only the JSON array with NO other text. Extract EVERYTHING.`;
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tenderId, results, diagnostics }),
     };
+    */
   } catch (error) {
     console.error('❌ SpecReview function error:', error);
     return { 
