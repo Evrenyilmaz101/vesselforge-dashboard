@@ -7344,14 +7344,105 @@
                                                 </div>
                                             )}
 
-                                            {/* Review Controls */}
+                                            {/* Direct Claude Integration */}
                                             <div className="bg-gradient-to-r from-slate-800/40 to-slate-700/40 border border-slate-600/40 rounded-xl p-6">
-                                                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                                                    <div className="flex-1">
-                                                        <h4 className="text-white font-semibold mb-2">🔍 Analysis Controls</h4>
-                                                        <p className="text-slate-400 text-sm">Run comprehensive analysis on uploaded specifications</p>
+                                                <div className="flex flex-col gap-4">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex-1">
+                                                            <h4 className="text-white font-semibold mb-2">🤖 Claude AI Spec Review</h4>
+                                                            <p className="text-slate-400 text-sm">Direct access to Claude AI for specification analysis</p>
+                                                        </div>
+                                                        <button
+                                                            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                                                            onClick={() => {
+                                                                // Open Claude with pre-filled spec review prompt
+                                                                const files = specFiles[selectedEnquiry.id] || [];
+                                                                if (files.length === 0) {
+                                                                    alert('Please upload specification files first');
+                                                                    return;
+                                                                }
+                                                                
+                                                                const prompt = `I need you to perform a comprehensive engineering specification review as a senior design engineer and certified welding engineer. 
+
+Please analyze the uploaded specification document and provide a detailed engineering review focusing on:
+
+🔧 DESIGN ENGINEERING:
+- Operating conditions (pressure, temperature, service environment)
+- Material specifications and properties
+- Dimensional requirements and tolerances  
+- Structural design criteria and safety factors
+
+⚡ WELDING ENGINEERING:
+- Welding procedures and qualifications
+- Joint designs and weld efficiencies
+- Heat treatment requirements (PWHT)
+- NDE inspection requirements
+
+📋 CODE COMPLIANCE:
+- ASME Section VIII requirements
+- API/ASTM standards
+- Third-party inspection points
+- Documentation requirements
+
+Please extract 30-50 critical engineering requirements with:
+- Specific requirement details
+- Engineering rationale
+- Safety/compliance impact
+- Reference to specification sections
+
+File(s) to review: ${files.map(f => f.name).join(', ')}`;
+                                                                
+                                                                // Copy prompt to clipboard and open Claude
+                                                                navigator.clipboard.writeText(prompt).then(() => {
+                                                                    window.open('https://claude.ai/chat', '_blank');
+                                                                    alert('Prompt copied to clipboard! Paste it in Claude and upload your spec file.');
+                                                                }).catch(() => {
+                                                                    // Fallback - just open Claude
+                                                                    window.open('https://claude.ai/chat', '_blank');
+                                                                    console.log('Spec review prompt:', prompt);
+                                                                });
+                                                            }}
+                                                        >
+                                                            🚀 Open Claude AI
+                                                        </button>
                                                     </div>
-                                                    <button
+                                                    
+                                                    {/* Alternative: Embedded Claude iframe */}
+                                                    <div className="bg-slate-700/30 border border-slate-600/40 rounded-lg p-4">
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <h5 className="text-white font-medium">Embedded Claude Chat</h5>
+                                                            <button
+                                                                className="text-blue-400 hover:text-blue-300 text-sm"
+                                                                onClick={() => {
+                                                                    const iframe = document.getElementById('claude-iframe');
+                                                                    if (iframe.style.display === 'none') {
+                                                                        iframe.style.display = 'block';
+                                                                    } else {
+                                                                        iframe.style.display = 'none';
+                                                                    }
+                                                                }}
+                                                            >
+                                                                Toggle Claude Chat
+                                                            </button>
+                                                        </div>
+                                                        <iframe
+                                                            id="claude-iframe"
+                                                            src="https://claude.ai/chat"
+                                                            className="w-full h-96 rounded border border-slate-600/40"
+                                                            style={{ display: 'none' }}
+                                                            title="Claude AI Chat"
+                                                        />
+                                                        <p className="text-slate-400 text-xs mt-2">
+                                                            Click "Toggle Claude Chat" to show/hide the embedded Claude interface. 
+                                                            Upload your spec files directly in Claude for analysis.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Legacy Analysis (Hidden) */}
+                                            <div style={{ display: 'none' }}>
+                                                <button
                                                         className={`px-8 py-3 rounded-xl font-semibold text-white shadow-lg transition-all duration-300 ${
                                                             specRunning 
                                                                 ? 'bg-yellow-600 cursor-wait animate-pulse' 
@@ -7432,6 +7523,7 @@
                                                         )}
                                                     </button>
                                                 </div>
+                                            </div> {/* Close Legacy Analysis */}
                                                 {/* Previous runs selector */}
                                                 <div className="mt-4 flex flex-wrap items-center gap-2">
                                                     <span className="text-white/70 text-sm mr-2">Spec reviews:</span>
