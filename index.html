@@ -7366,58 +7366,28 @@
                                                                 setSpecRunning(true);
                                                                 const tenderId = selectedEnquiry.id;
                                                                 
-                                                                // 🚀 FRONTEND-ONLY SPEC REVIEW - No server timeouts!
+                                                                // Send all files to Netlify function at once - avoids CORS issues
                                                                 const files = specFiles[tenderId] || [];
-                                                                const allResults = [];
                                                                 
-                                                                console.log('📄 Starting frontend spec review for', files.length, 'files');
+                                                                console.log('📄 Starting spec review for', files.length, 'files');
                                                                 
-                                                                for (const file of files) {
-                                                                    console.log(`Processing ${file.name}...`);
-                                                                    
-                                                                    try {
-                                                                        // Fetch file content
-                                                                        const response = await fetch(file.url);
-                                                                        const blob = await response.blob();
-                                                                        
-                                                                        let fileText = '';
-                                                                        
-                                                                        // Simple text extraction (can be enhanced later)
-                                                                        if (file.type.includes('text') || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
-                                                                            fileText = await blob.text();
-                                                                        } else {
-                                                                            // For PDFs/other files, create a descriptive prompt
-                                                                            fileText = `Document: ${file.name} (${file.type}, ${(blob.size / 1024).toFixed(1)} KB)`;
-                                                                        }
-                                                                        
-                                                                        // Use Netlify function to avoid CORS issues
-                                                                        const apiResponse = await fetch('/.netlify/functions/specReview', {
-                                                                            method: 'POST',
-                                                                            headers: { 'Content-Type': 'application/json' },
-                                                                            body: JSON.stringify({
-                                                                                tenderId: tenderId,
-                                                                                files: [{ name: file.name, url: file.url, type: file.type }]
-                                                                            })
-                                                                        });
-                                                                        
-                                                                        if (!apiResponse.ok) {
-                                                                            const errorData = await apiResponse.json();
-                                                                            throw new Error(`Spec review failed (${apiResponse.status}): ${errorData.error || 'Unknown error'}`);
-                                                                        }
-                                                                        
-                                                                        const data = await apiResponse.json();
-                                                                        
-                                                                        // Results come directly from Netlify function
-                                                                        let fileResults = data.results || [];
-                                                                        
-                                                                        allResults.push(...fileResults);
-                                                                        console.log(`✅ ${file.name}: ${fileResults.length} requirements extracted`);
-                                                                        
-                                                                    } catch (fileError) {
-                                                                        console.error(`Error processing ${file.name}:`, fileError);
-                                                                        throw new Error(`Failed to process ${file.name}: ${fileError.message}`);
-                                                                    }
+                                                                // Single API call to process all files
+                                                                const apiResponse = await fetch('/.netlify/functions/specReview', {
+                                                                    method: 'POST',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify({
+                                                                        tenderId: tenderId,
+                                                                        files: files.map(f => ({ name: f.name, url: f.url, type: f.type }))
+                                                                    })
+                                                                });
+                                                                
+                                                                if (!apiResponse.ok) {
+                                                                    const errorData = await apiResponse.json();
+                                                                    throw new Error(`Spec review failed (${apiResponse.status}): ${errorData.error || 'Unknown error'}`);
                                                                 }
+                                                                
+                                                                const data = await apiResponse.json();
+                                                                const allResults = data.results || [];
                                                                 
                                                                 // Update current view
                                                                 setSpecResults(prev => ({ ...prev, [tenderId]: allResults }));
