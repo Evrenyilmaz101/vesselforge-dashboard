@@ -7366,7 +7366,25 @@
                                                             if (!files.length) return;
                                                             
                                                             // Create comprehensive prompt for Claude
-                                                            const promptText = `Please perform a comprehensive specification review of the file(s) I'll upload.
+                                                            const promptText = `Please perform a comprehensive specification and code compliance review of the files I'll upload (specifications + applicable codes).
+
+STEP 1: IDENTIFY THE EQUIPMENT
+First, determine what type of equipment this is:
+- Pressure vessel type (storage tank, heat exchanger, reactor, etc.)
+- Operating conditions (pressure, temperature, service)
+- Size and capacity
+- Critical service requirements
+
+STEP 2: DETERMINE APPLICABLE CODES
+Based on the equipment type and service, identify which codes apply:
+- ASME Section VIII Div 1 vs Div 2 requirements
+- ASME B31.3 piping requirements  
+- API standards (650, 510, 570, 653, etc.)
+- Local jurisdiction codes
+- Special service requirements (sour service, high temperature, etc.)
+
+STEP 3: CROSS-REFERENCE SPEC WITH CODE REQUIREMENTS
+For this specific equipment, extract what the codes actually require:
 
 EXTRACT ALL CRITICAL REQUIREMENTS FROM THESE 8 AREAS:
 
@@ -7425,13 +7443,26 @@ EXTRACT ALL CRITICAL REQUIREMENTS FROM THESE 8 AREAS:
 - Assembly tolerances
 - Surface finish requirements
 
+STEP 4: EQUIPMENT-SPECIFIC CODE ANALYSIS
+For each requirement, analyze:
+- Does this specific equipment fall under this code requirement? (Yes/No/Conditional)
+- What does the code specifically require for this equipment type?
+- What are the code-mandated values, tolerances, or procedures?
+- Are there any exemptions or alternatives for this equipment?
+- What inspection/testing does the code require for this specific case?
+
 For each requirement, provide:
 - Category (Design/Materials/Code/Testing/Fabrication/Documentation/Quality/Safety)
 - Specific requirement with exact values and tolerances
+- Code Reference (e.g., "ASME VIII-1 UG-27(c)(1)" or "API 650 Section 5.6.1")
+- Applicability to THIS equipment (Required/Not Required/Conditional - explain why)
+- Code-mandated requirement vs. specification requirement (note any conflicts)
 - Why this requirement is critical for safety/compliance
-- Reference to document section if available
+- Reference to both spec document AND code section
 
-Please be extremely thorough and extract 50-100+ requirements minimum.
+CRITICAL: Focus on what the CODES actually require for THIS specific equipment type, size, and service. Don't just list general requirements - analyze what applies to this particular vessel/equipment.
+
+Please be extremely thorough and extract 50-100+ equipment-specific code requirements.
 
 FILES TO ANALYZE:
 ${files.map(f => `• ${f.name} - ${f.url}`).join('\n')}`;
@@ -7443,7 +7474,7 @@ ${files.map(f => `• ${f.name} - ${f.url}`).join('\n')}`;
                                                             // Copy prompt to clipboard
                                                             try {
                                                                 await navigator.clipboard.writeText(promptText);
-                                                                alert('✅ Claude opened in new tab!\n\n📋 Comprehensive spec review prompt copied to clipboard.\n\n📝 Instructions:\n1. Paste the prompt in Claude\n2. Upload your spec files\n3. Claude will provide detailed analysis\n4. Copy results back here when ready');
+                                                                alert('✅ Claude opened in new tab!\n\n📋 Comprehensive spec + code analysis prompt copied to clipboard.\n\n📝 Instructions:\n1. Paste the prompt in Claude\n2. Upload your SPEC files AND applicable CODE documents\n3. Claude will cross-reference spec vs code requirements\n4. Copy results back here when ready');
                                                             } catch (e) {
                                                                 // Fallback for older browsers
                                                                 const textArea = document.createElement('textarea');
@@ -7457,8 +7488,8 @@ ${files.map(f => `• ${f.name} - ${f.url}`).join('\n')}`;
                                                         }}
                                                     >
                                                         <>
-                                                            <span className="mr-2">🤖</span>
-                                                            Analyze with Claude
+                                                            <span className="mr-2">⚖️</span>
+                                                            Code + Spec Analysis
                                                         </>
                                                     </button>
                                                 </div>
@@ -7559,8 +7590,9 @@ ${files.map(f => `• ${f.name} - ${f.url}`).join('\n')}`;
                                                                             id: `req_${results.length + 1}`,
                                                                             category: currentCategory,
                                                                             requirement: requirement,
-                                                                            rationale: 'From Claude analysis',
-                                                                            source: { fileName: 'Claude Analysis' }
+                                                                            rationale: 'From Claude code analysis',
+                                                                            source: { fileName: 'Claude Code Analysis' },
+                                                                            compliance_ref: 'See Claude analysis for specific code sections'
                                                                         });
                                                                     }
                                                                 }
@@ -7602,7 +7634,7 @@ ${files.map(f => `• ${f.name} - ${f.url}`).join('\n')}`;
                                                     className="w-full h-24 bg-slate-800 text-white text-sm p-2 rounded border border-white/20 resize-y"
                                                 ></textarea>
                                                 <div className="text-white/50 text-xs mt-1">
-                                                    💡 After getting results from Claude, paste them here and click "Import Results"
+                                                    💡 Upload both SPEC files and CODE documents to Claude, then paste the cross-referenced analysis here
                                                 </div>
                                             </div>
                                             
@@ -7616,7 +7648,7 @@ ${files.map(f => `• ${f.name} - ${f.url}`).join('\n')}`;
                                                         const results = (specResults[selectedEnquiry.id]||[]);
                                                         
                                                         if (!results.length) {
-                                                            return <div className="text-white/60 text-sm">No results yet. Upload specs and click "Analyze with Claude".</div>;
+                                                            return <div className="text-white/60 text-sm">No results yet. Upload specs + codes and click "Code + Spec Analysis".</div>;
                                                         }
                                                         
                                                         // Group by category
