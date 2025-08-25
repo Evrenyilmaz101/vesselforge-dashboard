@@ -7376,12 +7376,16 @@ First, determine what type of equipment this is:
 - Critical service requirements
 
 STEP 2: DETERMINE APPLICABLE CODES
-Based on the equipment type and service, identify which codes apply:
+Based on the equipment type and service, identify which codes apply from ALL uploaded documents:
 - ASME Section VIII Div 1 vs Div 2 requirements
 - ASME B31.3 piping requirements  
 - API standards (650, 510, 570, 653, etc.)
+- Australian Standards (AS1210, AS4458, AS1548, etc.)
+- European Standards (EN, PED, etc.)
 - Local jurisdiction codes
 - Special service requirements (sour service, high temperature, etc.)
+
+IMPORTANT: Cross-reference ALL uploaded code documents - analyze each one to determine which sections apply to this specific equipment.
 
 STEP 3: CROSS-REFERENCE SPEC WITH CODE REQUIREMENTS
 For this specific equipment, extract what the codes actually require:
@@ -7619,9 +7623,10 @@ ${files.map(f => `• ${f.name} - ${f.url}`).join('\n')}`;
                                                             setSpecRuns(prev => ({ ...prev, [tenderId]: [runRecord, ...(prev[tenderId]||[])] }));
                                                             setSpecSelectedRunId(runId);
                                                             
-                                                            // Clear input
+                                                            // Clear input and show results
                                                             input.value = '';
-                                                            alert(`✅ Imported ${results.length} requirements from Claude!`);
+                                                            console.log('Imported results:', results);
+                                                            alert(`✅ Imported ${results.length} requirements from Claude!\n\nResults should now appear in the "Results" section below.`);
                                                         }}
                                                         className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
                                                     >
@@ -7630,11 +7635,22 @@ ${files.map(f => `• ${f.name} - ${f.url}`).join('\n')}`;
                                                 </div>
                                                 <textarea 
                                                     id="claude-results-input"
-                                                    placeholder="Paste Claude's comprehensive spec review results here..."
-                                                    className="w-full h-24 bg-slate-800 text-white text-sm p-2 rounded border border-white/20 resize-y"
+                                                    placeholder="Paste Claude's code + spec analysis results here...
+
+Example format:
+1. DESIGN REQUIREMENTS
+- Operating pressure: 1.6 MPa as per AS1210 Section 4.2.1
+- Wall thickness: 12mm minimum per AS1210 Section 4.3.2
+- Hydrostatic test: 2.4 MPa per AS1210 Section 8.1.1
+
+2. MATERIAL SPECIFICATIONS  
+- Material grade: AS1548-7-460R as per AS1210 Section 3.2.1
+- Mill test certificates required per AS1548 Section 7.2
+..."
+                                                    className="w-full h-32 bg-slate-800 text-white text-sm p-2 rounded border border-white/20 resize-y"
                                                 ></textarea>
                                                 <div className="text-white/50 text-xs mt-1">
-                                                    💡 Upload both SPEC files and CODE documents to Claude, then paste the cross-referenced analysis here
+                                                    💡 Upload ALL applicable codes (AS1210, AS4458, AS1548, etc.) + spec files to Claude, then paste the cross-referenced analysis here
                                                 </div>
                                             </div>
                                             
