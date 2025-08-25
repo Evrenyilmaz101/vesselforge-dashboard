@@ -7344,26 +7344,14 @@
                                                 </div>
                                             )}
 
-                                            {/* Simple Claude Link */}
+                                            {/* Review Controls */}
                                             <div className="bg-gradient-to-r from-slate-800/40 to-slate-700/40 border border-slate-600/40 rounded-xl p-6">
-                                                <div className="flex items-center justify-between">
+                                                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                                     <div className="flex-1">
-                                                        <h4 className="text-white font-semibold mb-2">🤖 Claude AI Spec Review</h4>
-                                                        <p className="text-slate-400 text-sm">Click to open Claude AI for specification analysis</p>
+                                                        <h4 className="text-white font-semibold mb-2">🔍 Analysis Controls</h4>
+                                                        <p className="text-slate-400 text-sm">Run comprehensive analysis on uploaded specifications</p>
                                                     </div>
-                                                    <a
-                                                        href="https://claude.ai/chat"
-                                                        target="_blank"
-                                                        className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors inline-block"
-                                                    >
-                                                        🚀 Open Claude AI
-                                                    </a>
-                                                </div>
-                                            </div>
-
-                                            {/* Legacy Analysis (Hidden) */}
-                                            <div style={{ display: 'none' }}>
-                                                <button
+                                                    <button
                                                         className={`px-8 py-3 rounded-xl font-semibold text-white shadow-lg transition-all duration-300 ${
                                                             specRunning 
                                                                 ? 'bg-yellow-600 cursor-wait animate-pulse' 
@@ -7373,80 +7361,108 @@
                                                         }`}
                                                         disabled={specRunning || !(specFiles[selectedEnquiry.id]||[]).length}
                                                         onClick={async () => {
+                                                            const tenderId = selectedEnquiry.id;
+                                                            const files = specFiles[tenderId] || [];
+                                                            if (!files.length) return;
+                                                            
+                                                            // Create comprehensive prompt for Claude
+                                                            const promptText = `Please perform a comprehensive specification review of the file(s) I'll upload.
+
+EXTRACT ALL CRITICAL REQUIREMENTS FROM THESE 8 AREAS:
+
+1. DESIGN REQUIREMENTS:
+- Operating conditions (pressure, temperature, flow rates, cycles)
+- Vessel dimensions, wall thickness, head types
+- Nozzle sizes, locations, reinforcement requirements
+- Internal components (trays, baffles, supports)
+- Corrosion allowances, stress analysis requirements
+- Fatigue analysis, seismic/wind load requirements
+
+2. MATERIAL SPECIFICATIONS:
+- Base material grades and specifications
+- Welding consumables and procedures
+- Bolting materials and grades
+- Material property requirements (yield, tensile, impact)
+- Heat treatment requirements
+- Material certifications (MTCs, PMI)
+
+3. CODE COMPLIANCE & STANDARDS:
+- ASME Section VIII Division 1/2 requirements
+- ASME B31.3 piping requirements
+- API standards (API 510, 570, 650, etc.)
+- Local jurisdiction requirements
+- Code stamping and certification
+
+4. FABRICATION REQUIREMENTS:
+- Welding procedure specifications (WPS)
+- Welder qualifications (WQT)
+- Joint efficiency factors
+- Fit-up tolerances and procedures
+- Heat treatment procedures (PWHT)
+
+5. TESTING & INSPECTION:
+- Hydrostatic test pressure and procedures
+- Radiographic testing (RT) requirements
+- Ultrasonic testing (UT) requirements
+- Magnetic particle testing (MT)
+- Liquid penetrant testing (PT)
+- Visual inspection criteria
+
+6. DOCUMENTATION REQUIREMENTS:
+- Mill test certificates (MTCs)
+- Welding documentation packages
+- NDE reports and certifications
+- Code compliance documentation
+
+7. QUALITY ASSURANCE:
+- QC procedures and plans
+- Inspection and test plans (ITPs)
+- Non-conformance procedures
+- Third-party inspection requirements
+
+8. DIMENSIONAL TOLERANCES:
+- Fabrication tolerances
+- Assembly tolerances
+- Surface finish requirements
+
+For each requirement, provide:
+- Category (Design/Materials/Code/Testing/Fabrication/Documentation/Quality/Safety)
+- Specific requirement with exact values and tolerances
+- Why this requirement is critical for safety/compliance
+- Reference to document section if available
+
+Please be extremely thorough and extract 50-100+ requirements minimum.
+
+FILES TO ANALYZE:
+${files.map(f => `• ${f.name} - ${f.url}`).join('\n')}`;
+
+                                                            // Open Claude and copy prompt to clipboard
+                                                            const claudeUrl = 'https://claude.ai/new';
+                                                            window.open(claudeUrl, '_blank');
+                                                            
+                                                            // Copy prompt to clipboard
                                                             try {
-                                                                setSpecError('');
-                                                                setSpecRunning(true);
-                                                                const tenderId = selectedEnquiry.id;
-                                                                
-                                                                // Send all files to Netlify function at once - avoids CORS issues
-                                                                const files = specFiles[tenderId] || [];
-                                                                
-                                                                console.log('📄 Starting spec review for', files.length, 'files');
-                                                                
-                                                                // Single API call to process all files
-                                                                const apiResponse = await fetch('/.netlify/functions/specReview', {
-                                                                    method: 'POST',
-                                                                    headers: { 'Content-Type': 'application/json' },
-                                                                    body: JSON.stringify({
-                                                                        tenderId: tenderId,
-                                                                        files: files.map(f => ({ name: f.name, url: f.url, type: f.type }))
-                                                                    })
-                                                                });
-                                                                
-                                                                if (!apiResponse.ok) {
-                                                                    const errorData = await apiResponse.json();
-                                                                    throw new Error(`Spec review failed (${apiResponse.status}): ${errorData.error || 'Unknown error'}`);
-                                                                }
-                                                                
-                                                                const data = await apiResponse.json();
-                                                                const allResults = data.results || [];
-                                                                
-                                                                // Update current view
-                                                                setSpecResults(prev => ({ ...prev, [tenderId]: allResults }));
-                                                                
-                                                                // Persist to Firebase
-                                                                try {
-                                                                    const runId = `run_${Date.now()}`;
-                                                                    const runRecord = {
-                                                                        id: runId,
-                                                                        createdAt: new Date().toISOString(),
-                                                                        items: allResults,
-                                                                        diagnostics: [`Frontend analysis completed: ${allResults.length} requirements extracted`],
-                                                                        files: files.map(f => ({ name: f.name, url: f.url }))
-                                                                    };
-                                                                    database.ref(`tenders/${tenderId}/specReviews/${runId}`).set(runRecord);
-                                                                    setSpecRuns(prev => ({ ...prev, [tenderId]: [runRecord, ...(prev[tenderId]||[])] }));
-                                                                    setSpecSelectedRunId(runId);
-                                                                } catch (e) {
-                                                                    console.warn('Failed to persist spec review run:', e);
-                                                                }
-                                                                
-                                                                console.log('✅ Frontend spec review completed:', allResults.length, 'total requirements');
-                                                                
-                                                            } catch (err) {
-                                                                console.error('Frontend spec review error:', err);
-                                                                setSpecError(err.message || 'Spec review failed');
-                                                            } finally {
-                                                                setSpecRunning(false);
+                                                                await navigator.clipboard.writeText(promptText);
+                                                                alert('✅ Claude opened in new tab!\n\n📋 Comprehensive spec review prompt copied to clipboard.\n\n📝 Instructions:\n1. Paste the prompt in Claude\n2. Upload your spec files\n3. Claude will provide detailed analysis\n4. Copy results back here when ready');
+                                                            } catch (e) {
+                                                                // Fallback for older browsers
+                                                                const textArea = document.createElement('textarea');
+                                                                textArea.value = promptText;
+                                                                document.body.appendChild(textArea);
+                                                                textArea.select();
+                                                                document.execCommand('copy');
+                                                                document.body.removeChild(textArea);
+                                                                alert('✅ Claude opened in new tab!\n\n📋 Prompt copied to clipboard - paste it in Claude with your files!');
                                                             }
                                                         }}
                                                     >
-                                                        {specRunning ? (
-                                                            <>
-                                                                <span className="mr-2">⚡</span>
-                                                                Analyzing...
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <span className="mr-2">🚀</span>
-                                                                Run Review
-                                                            </>
-                                                        )}
+                                                        <>
+                                                            <span className="mr-2">🤖</span>
+                                                            Analyze with Claude
+                                                        </>
                                                     </button>
                                                 </div>
-                                            </div> {/* Close Legacy Analysis */}
-                                            
-                                            {/* Previous runs selector */}
+                                                {/* Previous runs selector */}
                                                 <div className="mt-4 flex flex-wrap items-center gap-2">
                                                     <span className="text-white/70 text-sm mr-2">Spec reviews:</span>
                                                     {((specRuns[selectedEnquiry.id])||[]).length === 0 ? (
@@ -7500,6 +7516,96 @@
                                                 )}
                                                 {specError && <div className="mt-3 text-red-300 text-sm">{specError}</div>}
                                             </div>
+                                            
+                                            {/* Claude Results Input */}
+                                            <div className="bg-white/5 border border-white/10 rounded-lg p-3 mb-4">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="text-white/80 text-sm">Paste Claude Results</div>
+                                                    <button 
+                                                        onClick={() => {
+                                                            const input = document.getElementById('claude-results-input');
+                                                            const text = input.value.trim();
+                                                            if (!text) {
+                                                                alert('Please paste Claude results first');
+                                                                return;
+                                                            }
+                                                            
+                                                            // Simple parsing - split by lines and create basic structure
+                                                            const lines = text.split('\n').filter(line => line.trim());
+                                                            const results = [];
+                                                            let currentCategory = 'General';
+                                                            
+                                                            lines.forEach((line, i) => {
+                                                                const trimmed = line.trim();
+                                                                
+                                                                // Detect category headers
+                                                                if (trimmed.toLowerCase().includes('design') || 
+                                                                    trimmed.toLowerCase().includes('material') ||
+                                                                    trimmed.toLowerCase().includes('code') ||
+                                                                    trimmed.toLowerCase().includes('fabrication') ||
+                                                                    trimmed.toLowerCase().includes('testing') ||
+                                                                    trimmed.toLowerCase().includes('documentation') ||
+                                                                    trimmed.toLowerCase().includes('quality') ||
+                                                                    trimmed.toLowerCase().includes('dimensional')) {
+                                                                    currentCategory = trimmed.replace(/[0-9.\-\*]/g, '').trim();
+                                                                    return;
+                                                                }
+                                                                
+                                                                // Convert bullet points to requirements
+                                                                if (trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('*')) {
+                                                                    const requirement = trimmed.replace(/^[\-\•\*]\s*/, '');
+                                                                    if (requirement.length > 10) {
+                                                                        results.push({
+                                                                            id: `req_${results.length + 1}`,
+                                                                            category: currentCategory,
+                                                                            requirement: requirement,
+                                                                            rationale: 'From Claude analysis',
+                                                                            source: { fileName: 'Claude Analysis' }
+                                                                        });
+                                                                    }
+                                                                }
+                                                            });
+                                                            
+                                                            if (results.length === 0) {
+                                                                alert('No requirements found. Make sure to paste Claude\'s formatted results.');
+                                                                return;
+                                                            }
+                                                            
+                                                            const tenderId = selectedEnquiry.id;
+                                                            setSpecResults(prev => ({ ...prev, [tenderId]: results }));
+                                                            
+                                                            // Save to Firebase
+                                                            const runId = `claude_${Date.now()}`;
+                                                            const runRecord = {
+                                                                id: runId,
+                                                                createdAt: new Date().toISOString(),
+                                                                items: results,
+                                                                source: 'Claude Analysis',
+                                                                files: (specFiles[tenderId]||[]).map(f => ({ name: f.name, url: f.url }))
+                                                            };
+                                                            database.ref(`tenders/${tenderId}/specReviews/${runId}`).set(runRecord);
+                                                            setSpecRuns(prev => ({ ...prev, [tenderId]: [runRecord, ...(prev[tenderId]||[])] }));
+                                                            setSpecSelectedRunId(runId);
+                                                            
+                                                            // Clear input
+                                                            input.value = '';
+                                                            alert(`✅ Imported ${results.length} requirements from Claude!`);
+                                                        }}
+                                                        className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
+                                                    >
+                                                        Import Results
+                                                    </button>
+                                                </div>
+                                                <textarea 
+                                                    id="claude-results-input"
+                                                    placeholder="Paste Claude's comprehensive spec review results here..."
+                                                    className="w-full h-24 bg-slate-800 text-white text-sm p-2 rounded border border-white/20 resize-y"
+                                                ></textarea>
+                                                <div className="text-white/50 text-xs mt-1">
+                                                    💡 After getting results from Claude, paste them here and click "Import Results"
+                                                </div>
+                                            </div>
+                                            
                                             <div className="bg-white/5 border border-white/10 rounded-lg p-3">
                                                 <div className="flex items-center justify-between mb-2">
                                                     <div className="text-white/80 text-sm">Results</div>
@@ -7510,7 +7616,7 @@
                                                         const results = (specResults[selectedEnquiry.id]||[]);
                                                         
                                                         if (!results.length) {
-                                                            return <div className="text-white/60 text-sm">No results yet. Upload specs and Run Review.</div>;
+                                                            return <div className="text-white/60 text-sm">No results yet. Upload specs and click "Analyze with Claude".</div>;
                                                         }
                                                         
                                                         // Group by category
