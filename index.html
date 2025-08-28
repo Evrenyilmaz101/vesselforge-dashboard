@@ -273,7 +273,31 @@ Return only a JSON array, no other text.`;
             // Extract text from uploaded files  
             const extractTextFromFile = async (file) => {
                 console.log(`Extracting text from: ${file.name}`);
-                const response = await fetch(file.url);
+                
+                // Try to fetch with CORS mode
+                let response;
+                try {
+                    response = await fetch(file.url, {
+                        mode: 'cors',
+                        headers: {
+                            'Accept': 'application/pdf,*/*'
+                        }
+                    });
+                } catch (corsError) {
+                    console.warn('CORS fetch failed, trying no-cors mode:', corsError);
+                    // Try with no-cors mode (limited but may work for some cases)
+                    try {
+                        response = await fetch(file.url, { mode: 'no-cors' });
+                    } catch (noCorsError) {
+                        console.error('Both CORS and no-cors failed:', noCorsError);
+                        throw new Error(`Failed to fetch file due to CORS policy. Please configure Firebase Storage CORS settings to allow ${window.location.origin}`);
+                    }
+                }
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const arrayBuffer = await response.arrayBuffer();
                 
                 if (file.name.toLowerCase().endsWith('.pdf')) {

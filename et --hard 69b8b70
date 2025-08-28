@@ -1,0 +1,5 @@
+[33m173ab96[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Fix white screen: Simplified Claude integration - just a simple link to avoid JavaScript errors
+[33m9acdd24[m Fix white screen: Correct div structure in spec review section
+[33mf6cb97d[m SIMPLE SOLUTION: Direct Claude integration - opens claude.ai with pre-filled engineering prompt + embedded iframe option. No more complex backend issues!
+[33m69b8b70[m Reliability fix: Smaller chunks (12k), reduced tokens, aggressive chunking at 15k chars, fallback results to prevent JSON errors
+[33m1929856[m COMPREHENSIVE spec review: Full document analysis, 40-60 requirements, smart chunking for large docs, detailed engineering review by design+welding engineers
