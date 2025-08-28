@@ -6,37 +6,28 @@
 const DEFAULT_MODEL = process.env.CLAUDE_MODEL || 'claude-3-5-sonnet-20240620';
 
 exports.handler = async (event) => {
-  console.log('🔍 SpecReview function started');
-  
   try {
     if (event.httpMethod !== 'POST') {
-      return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) };
+      return { statusCode: 405, body: 'Method Not Allowed' };
     }
 
-    console.log('🔑 Checking API key...');
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      console.log('❌ API key not found');
       return {
         statusCode: 501,
         body: JSON.stringify({ error: 'ANTHROPIC_API_KEY not set on server' }),
       };
     }
-    console.log('✅ API key found');
 
-    console.log('📥 Parsing request body...');
-    const { tenderId, files = [], model } = JSON.parse(event.body || '{}');
-    console.log(`📄 Request: ${tenderId}, ${files.length} files`);
-    
+    const { tenderId, files = [], model, codeStandard, equipmentType } = JSON.parse(event.body || '{}');
     if (!tenderId || !Array.isArray(files) || files.length === 0) {
       return { statusCode: 400, body: JSON.stringify({ error: 'tenderId and files[] required' }) };
     }
-
-    // OPTIMIZED CLAUDE INTEGRATION - Fast & comprehensive engineering review with timeout protection
-    console.log('⚡ Starting optimized Claude spec review...');
     
-    // Ensure we always return valid JSON even if processing takes too long
-    let hasReturned = false;
+    if (!codeStandard || !equipmentType) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'codeStandard and equipmentType required' }) };
+    }
+
     // Fetch and extract text from supported files (PDF/DOCX/TXT/MD/CSV/JSON/Code)
     const docs = [];
     const diagnostics = [];
@@ -170,15 +161,53 @@ exports.handler = async (event) => {
       }
     }
 
-    // OPTIMIZED CLAUDE INTEGRATION - Fast engineering review
-    console.log('🤖 Initializing Claude API...');
+    // Fetch relevant code documents from Firebase Storage
+    const codeMapping = {
+      australian: {
+        pressure_vessel: ['AS1210_PressureVessels.pdf', 'AS4458_Welding.pdf', 'AS1548_Materials.pdf'],
+        storage_tank: ['AS1210_PressureVessels.pdf', 'AS4458_Welding.pdf', 'AS1548_Materials.pdf'],
+        heat_exchanger: ['AS1210_PressureVessels.pdf', 'AS4458_Welding.pdf', 'AS1548_Materials.pdf'],
+        piping: ['AS4458_Welding.pdf', 'AS1548_Materials.pdf'],
+        reactor: ['AS1210_PressureVessels.pdf', 'AS4458_Welding.pdf', 'AS1548_Materials.pdf']
+      },
+      american: {
+        pressure_vessel: ['ASME_VIII_Div1.pdf', 'ASME_B31.3_Piping.pdf'],
+        storage_tank: ['API_650_Storage.pdf', 'ASME_VIII_Div1.pdf'],
+        heat_exchanger: ['ASME_VIII_Div1.pdf', 'ASME_B31.3_Piping.pdf'],
+        piping: ['ASME_B31.3_Piping.pdf'],
+        reactor: ['ASME_VIII_Div1.pdf', 'ASME_B31.3_Piping.pdf']
+      },
+      european: {
+        pressure_vessel: ['EN_13445_PressureVessels.pdf', 'PED_Directive.pdf'],
+        storage_tank: ['EN_13445_PressureVessels.pdf', 'PED_Directive.pdf'],
+        heat_exchanger: ['EN_13445_PressureVessels.pdf', 'PED_Directive.pdf'],
+        piping: ['EN_1090_Structural.pdf'],
+        reactor: ['EN_13445_PressureVessels.pdf', 'PED_Directive.pdf']
+      }
+    };
+
+    const requiredCodes = codeMapping[codeStandard]?.[equipmentType] || [];
+    diagnostics.push(`CODE MAPPING: ${codeStandard} + ${equipmentType} -> ${requiredCodes.length} codes`);
+
+    // Try to fetch code documents (if available)
+    for (const codeFile of requiredCodes) {
+      try {
+        // This would require Firebase Admin SDK or direct storage access
+        // For now, we'll include the code requirements in the prompt instead
+        diagnostics.push(`CODE: Would fetch ${codeFile} from Firebase Storage`);
+      } catch (err) {
+        diagnostics.push(`CODE FETCH ERROR: ${codeFile} - ${err.message}`);
+      }
+    }
+
+    // Smart chunking approach for large documents
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     const anthropic = new Anthropic({ apiKey });
-    console.log('✅ Claude API initialized');
     
-    // Fast, focused engineering review approach
+    const system = `You are a senior mechanical engineer and ASME code expert specializing in pressure vessel design, fabrication, and inspection. You must perform an exhaustive, line-by-line specification review extracting every single requirement, parameter, code reference, material property, dimensional tolerance, testing procedure, and compliance item. Be extremely detailed and thorough. Return strict JSON only.`;
+    
+    // Simplified approach - just send the FIRST document directly to Claude like you do
     let results = [];
-    console.log(`📊 Processing ${docs.length} documents...`);
     
     if (docs.length === 0) {
       diagnostics.push('No documents to analyze');
@@ -196,139 +225,149 @@ exports.handler = async (event) => {
     
     diagnostics.push(`Processing ${doc.name} - ${text.length} characters`);
     
-    // Smart chunking for documents (>15k chars) to prevent timeouts - more aggressive
-    if (text.length > 15000) {
-      diagnostics.push(`Large document detected (${text.length} chars) - using smart chunking`);
-      
-      const chunkSize = 12000; // Smaller chunks for reliability
-      const overlap = 500;
-      const chunks = [];
-      
-      for (let i = 0; i < text.length; i += chunkSize - overlap) {
-        const chunk = text.slice(i, i + chunkSize);
-        const chunkNum = Math.floor(i / (chunkSize - overlap)) + 1;
-        const totalChunks = Math.ceil(text.length / (chunkSize - overlap));
-        chunks.push({ text: chunk, chunkNum, totalChunks });
-      }
-      
-      diagnostics.push(`Split into ${chunks.length} chunks for comprehensive analysis`);
-      
-      // Process each chunk and combine results
-      for (const { text: chunkText, chunkNum, totalChunks } of chunks) {
-        try {
-          const chunkPrompt = `You are a senior design engineer and certified welding engineer. This is chunk ${chunkNum} of ${totalChunks} from specification: ${doc.name}
-
-ANALYZE THIS SECTION COMPREHENSIVELY:
-${chunkText}
-
-Extract ALL technical requirements from this section. Include every specification, tolerance, procedure, and requirement found. Return 10-20 detailed requirements from this section only.
-
-[Same JSON format and engineering analysis requirements as main prompt...]
-
-Return JSON array with detailed requirements from this section.`;
-
-          const chunkCompletion = await anthropic.messages.create({
-            model: model || DEFAULT_MODEL,
-            max_tokens: 2000, // Reduced for reliability
-            temperature: 0,
-            system: 'Extract key requirements from this document section. Focus on critical items.',
-            messages: [{ role: 'user', content: chunkPrompt }],
-          });
-          
-          const chunkResponse = (chunkCompletion.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
-          let chunkResults = [];
-          
-          try {
-            chunkResults = JSON.parse(chunkResponse);
-          } catch {
-            const start = chunkResponse.indexOf('[');
-            const end = chunkResponse.lastIndexOf(']');
-            if (start !== -1 && end !== -1) {
-              chunkResults = JSON.parse(chunkResponse.slice(start, end + 1));
-            }
-          }
-          
-          if (Array.isArray(chunkResults)) {
-            results.push(...chunkResults);
-            diagnostics.push(`Chunk ${chunkNum}/${totalChunks}: ${chunkResults.length} requirements extracted`);
-          }
-          
-        } catch (chunkError) {
-          diagnostics.push(`Chunk ${chunkNum} failed: ${chunkError.message}`);
+    try {
+      // Build code-specific context
+      const codeContext = {
+        australian: {
+          name: "Australian Standards",
+          codes: "AS1210 (Pressure Vessels), AS4458 (Welding), AS1548 (Materials)",
+          focus: "Australian Standards requirements for pressure equipment"
+        },
+        american: {
+          name: "American Standards", 
+          codes: "ASME Section VIII (Pressure Vessels), ASME B31.3 (Piping), API Standards",
+          focus: "ASME and API requirements for pressure equipment"
+        },
+        european: {
+          name: "European Standards",
+          codes: "EN 13445 (Pressure Vessels), PED (Pressure Equipment Directive)",
+          focus: "European standards and PED requirements"
         }
-      }
-      
-    } else {
-      // Single document analysis for smaller documents
-      try {
-      const prompt = `You are a senior design engineer and certified welding engineer with 20+ years of experience in pressure vessel design, fabrication, and ASME code compliance. Perform a COMPREHENSIVE, DETAILED engineering review of the ENTIRE specification document.
+      };
 
-SPECIFICATION DOCUMENT TO ANALYZE:
+      const equipmentContext = {
+        pressure_vessel: "pressure vessel design, construction, and testing",
+        storage_tank: "storage tank design, construction, and integrity",
+        heat_exchanger: "heat exchanger design, thermal performance, and construction",
+        piping: "piping system design, materials, and installation",
+        reactor: "reactor vessel design, process safety, and construction"
+      };
+
+      const selectedCodeContext = codeContext[codeStandard];
+      const selectedEquipmentContext = equipmentContext[equipmentType];
+
+      const prompt = `You are a senior mechanical engineer performing a COMPREHENSIVE specification review for a ${selectedEquipmentContext} according to ${selectedCodeContext.name}.
+
+EQUIPMENT TYPE: ${equipmentType.replace('_', ' ').toUpperCase()}
+CODE STANDARD: ${selectedCodeContext.name} (${selectedCodeContext.codes})
+
+DOCUMENT TO REVIEW:
 ${text}
 
-COMPREHENSIVE ENGINEERING REVIEW REQUIREMENTS:
-Read through EVERY section, paragraph, table, drawing note, and specification detail in this document. As an experienced design and welding engineer, extract ALL technical requirements, not just highlights.
+FOCUS ON ${selectedCodeContext.focus.toUpperCase()} FOR THIS ${equipmentType.replace('_', ' ').toUpperCase()}.
 
-🔧 DESIGN ENGINEERING ANALYSIS:
-- ALL operating conditions (pressure, temperature, flow, cycles, environment)
-- COMPLETE material specifications, grades, properties, certifications
-- ALL dimensional requirements, tolerances, and geometric specifications
-- FULL structural design criteria, stress analysis, fatigue requirements
-- ALL safety factors, design margins, and safety systems
-- COMPLETE nozzle, opening, and reinforcement requirements
-- ALL support, foundation, and mounting specifications
+MANDATORY COMPREHENSIVE REVIEW - Extract EVERYTHING from:
 
-⚡ WELDING ENGINEERING ANALYSIS:
-- ALL welding procedures, qualifications, and consumables
-- COMPLETE joint designs, configurations, and efficiency factors
-- ALL heat treatment requirements (preheat, interpass, PWHT)
-- COMPREHENSIVE NDE requirements (RT, UT, MT, PT, VT)
-- ALL material compatibility and weldability requirements
-- COMPLETE welding quality and acceptance standards
-- ALL repair and rework procedures
+1. DESIGN REQUIREMENTS:
+- Operating conditions (pressure, temperature, flow rates, cycles)
+- Vessel dimensions, wall thickness, head types
+- Nozzle sizes, locations, reinforcement requirements
+- Internal components (trays, baffles, supports)
+- Corrosion allowances, stress analysis requirements
+- Fatigue analysis, seismic/wind load requirements
+- Thermal expansion considerations
 
-📋 CODE & COMPLIANCE ANALYSIS:
-- ALL ASME Section VIII Division 1/2 requirements
-- COMPLETE API, ASTM, AWS standards referenced
-- ALL third-party inspection and witness points
-- COMPREHENSIVE documentation and certification requirements
-- ALL local jurisdiction and special requirements
+2. MATERIAL SPECIFICATIONS:
+- Base material grades and specifications
+- Welding consumables and procedures
+- Bolting materials and grades
+- Gasket and seal materials
+- Coating and lining materials
+- Material property requirements (yield, tensile, impact)
+- Heat treatment requirements
+- Material certifications (MTCs, PMI)
 
-🔍 FABRICATION & QUALITY ANALYSIS:
-- ALL fabrication procedures and sequences
-- COMPLETE dimensional and geometric tolerances
-- ALL surface finish and coating requirements
-- COMPREHENSIVE testing procedures (hydrostatic, pneumatic, leak)
-- ALL quality control and inspection plans
+3. CODE COMPLIANCE & STANDARDS:
+- ASME Section VIII Division 1/2 requirements
+- ASME B31.3 piping requirements
+- API standards (API 510, 570, 650, etc.)
+- Local jurisdiction requirements
+- Special code cases or exemptions
+- Third-party inspection requirements
+- Code stamping and certification
 
-Return a JSON array with 40-60 detailed requirements in this format:
-[
-  {
-    "id": "req_XXX",
-    "category": "Design|Materials|Welding|Testing|Code|Safety|Fabrication|Quality",
-    "requirement": "Detailed requirement with exact values, tolerances, procedures, and acceptance criteria",
-    "rationale": "Detailed engineering explanation of why this requirement is critical for safety, performance, or compliance",
-    "source": {"fileName": "${doc.name}", "section": "specific section where found"},
-    "details": "Additional technical context, calculations, or related requirements"
-  }
-]
+4. FABRICATION REQUIREMENTS:
+- Welding procedure specifications (WPS)
+- Welder qualifications (WQT)
+- Joint efficiency factors
+- Fit-up tolerances and procedures
+- Heat treatment procedures (PWHT)
+- Forming and machining requirements
+- Assembly procedures and sequences
 
-CRITICAL: This must be a COMPLETE engineering review. Extract requirements from:
-- Main specification text and clauses
-- All tables, charts, and data sheets
-- Drawing notes and dimensional requirements
-- Referenced standards and codes
-- Material property tables and certificates
-- Test procedures and acceptance criteria
-- Quality plans and inspection requirements
+5. TESTING & INSPECTION:
+- Hydrostatic test pressure and procedures
+- Pneumatic test requirements
+- Radiographic testing (RT) requirements
+- Ultrasonic testing (UT) requirements
+- Magnetic particle testing (MT)
+- Liquid penetrant testing (PT)
+- Visual inspection criteria
+- Acceptance standards and reject criteria
+- Hold points and witness points
 
-Return 40-60 comprehensive requirements covering the ENTIRE document. Be thorough and detailed.`;
+6. DOCUMENTATION REQUIREMENTS:
+- Mill test certificates (MTCs)
+- Welding documentation packages
+- NDE reports and certifications
+- Hydrostatic test certificates
+- Code compliance documentation
+- Fabrication drawings and procedures
+- Quality control records
+- As-built documentation
+
+7. QUALITY ASSURANCE:
+- QC procedures and plans
+- Inspection and test plans (ITPs)
+- Non-conformance procedures
+- Corrective action requirements
+- Third-party inspection requirements
+- Audit and surveillance requirements
+
+8. DIMENSIONAL TOLERANCES:
+- Fabrication tolerances
+- Assembly tolerances
+- Straightness and roundness requirements
+- Surface finish requirements
+- Dimensional inspection procedures
+
+For EVERY requirement found, return this exact JSON structure:
+{
+  "id": "req_XXX",
+  "category": "Design|Materials|Code|Testing|Fabrication|Documentation|Quality|Safety|Dimensional",
+  "requirement": "Complete, specific requirement statement with exact values, tolerances, procedures, and acceptance criteria",
+  "rationale": "Detailed technical explanation of why this requirement exists and its impact on safety, performance, or compliance",
+  "source": {"fileName": "${doc.name}", "section": "specific section/paragraph where found"},
+  "details": "Additional technical context, referenced standards, or related requirements",
+  "compliance_ref": "Specific ASME/API/code section if referenced"
+}
+
+CRITICAL INSTRUCTIONS:
+- Read EVERY paragraph, sentence, table entry, note, and specification detail
+- Extract 50-100+ requirements minimum for a proper spec review
+- Include exact numerical values, tolerances, pressures, temperatures
+- Capture procedural requirements step-by-step
+- Include all referenced standards and specifications
+- Extract requirements from tables, charts, and drawing notes
+- Be extremely thorough - this is a professional engineering review
+
+Return only the JSON array with NO other text. Extract EVERYTHING.`;
 
       const completion = await anthropic.messages.create({
         model: model || DEFAULT_MODEL,
-        max_tokens: 3000, // Reduced for reliability
+        max_tokens: 4000, // Increased for comprehensive review
         temperature: 0,
-        system: 'You are a senior design engineer and certified welding engineer. Perform a comprehensive review. Extract critical technical requirements. Return only a valid JSON array with 25-40 detailed requirements.',
+        system: 'You are a senior mechanical engineer performing a comprehensive specification review. You must extract EVERY technical requirement from the entire document. Return only a valid JSON array with 50-100+ requirements.',
         messages: [{ role: 'user', content: prompt }],
       });
       
@@ -365,7 +404,6 @@ Return 40-60 comprehensive requirements covering the ENTIRE document. Be thoroug
         }) 
       };
     }
-    } // Close the else block for single document analysis
     
     // Deduplicate by requirement similarity
     const seen = new Set();
@@ -388,37 +426,14 @@ Return 40-60 comprehensive requirements covering the ENTIRE document. Be thoroug
       source: r.source || null,
     }));
 
-    // Final safety check - ensure we have some results
-    if (!results || results.length === 0) {
-      diagnostics.push('No results extracted - returning fallback data');
-      results = [
-        {
-          id: "req_fallback",
-          category: "Safety",
-          requirement: "Document requires manual engineering review - automated extraction incomplete",
-          rationale: "Complex document structure requires expert analysis",
-          source: { fileName: docs[0]?.name || "document" }
-        }
-      ];
-    }
-
-    console.log(`✅ Spec review completed: ${results.length} requirements extracted`);
-    
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tenderId, results, diagnostics }),
     };
   } catch (error) {
-    console.error('❌ SpecReview function error:', error);
-    return { 
-      statusCode: 500, 
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        error: error.message || 'Unknown error',
-        diagnostics: [`Function crashed: ${error.message}`]
-      }) 
-    };
+    console.error('specReview error', error);
+    return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
   }
 };
 

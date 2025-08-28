@@ -5988,6 +5988,23 @@
                                         Spec Review
                                         {activeTab === 'spec' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-400"></div>}
                                     </button>
+                                    {user && user.role === 'Sales Manager' && (
+                                        <button
+                                            onClick={() => {
+                                                setActiveTab('codeadmin');
+                                                setPreviewDocument(null);
+                                            }}
+                                            className={`px-4 py-3 text-sm font-medium transition-colors relative ${
+                                                activeTab === 'codeadmin' 
+                                                    ? 'text-blue-400 bg-white/5' 
+                                                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                                            }`}
+                                        >
+                                            <i data-lucide="library" className="h-4 w-4 inline mr-2"></i>
+                                            Code Library
+                                            {activeTab === 'codeadmin' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-400"></div>}
+                                        </button>
+                                    )}
                                     <button
                                         onClick={() => {
                                             setActiveTab('notes');
@@ -7153,6 +7170,131 @@
                                             </div>
                                         </div>
                                     )}
+                                    
+                                    {/* Code Library Admin Tab */}
+                                    {activeTab === 'codeadmin' && user && user.role === 'Sales Manager' && (
+                                        <div className="p-6 space-y-6 overflow-auto h-full bg-gradient-to-br from-slate-900/50 to-slate-800/30">
+                                            <div className="bg-slate-800 rounded-xl border border-white/20 p-6">
+                                                <h3 className="text-xl font-bold text-white mb-4">📚 Code Library Administration</h3>
+                                                <p className="text-white/70 mb-6">Upload and manage code documents for spec analysis.</p>
+                                                
+                                                {/* Code Standard Selection */}
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                                    <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                                                        <h4 className="text-white font-semibold mb-3">🇦🇺 Australian Standards</h4>
+                                                        <div className="space-y-2 text-sm">
+                                                            <div className="text-white/70">AS1210 - Pressure Vessels</div>
+                                                            <div className="text-white/70">AS4458 - Welding</div>
+                                                            <div className="text-white/70">AS1548 - Materials</div>
+                                                        </div>
+                                                        <input 
+                                                            type="file" 
+                                                            multiple 
+                                                            accept=".pdf"
+                                                            onChange={async (e) => {
+                                                                const files = Array.from(e.target.files);
+                                                                for (const file of files) {
+                                                                    const ref = storage.ref(`codes/australian/${file.name}`);
+                                                                    await ref.put(file);
+                                                                    console.log(`Uploaded: ${file.name}`);
+                                                                }
+                                                                alert(`Uploaded ${files.length} Australian Standard files`);
+                                                            }}
+                                                            className="mt-3 text-xs text-white/70"
+                                                        />
+                                                    </div>
+                                                    
+                                                    <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                                                        <h4 className="text-white font-semibold mb-3">🇺🇸 American Standards</h4>
+                                                        <div className="space-y-2 text-sm">
+                                                            <div className="text-white/70">ASME VIII - Pressure Vessels</div>
+                                                            <div className="text-white/70">ASME B31.3 - Piping</div>
+                                                            <div className="text-white/70">API 650 - Storage Tanks</div>
+                                                        </div>
+                                                        <input 
+                                                            type="file" 
+                                                            multiple 
+                                                            accept=".pdf"
+                                                            onChange={async (e) => {
+                                                                const files = Array.from(e.target.files);
+                                                                for (const file of files) {
+                                                                    const ref = storage.ref(`codes/american/${file.name}`);
+                                                                    await ref.put(file);
+                                                                    console.log(`Uploaded: ${file.name}`);
+                                                                }
+                                                                alert(`Uploaded ${files.length} American Standard files`);
+                                                            }}
+                                                            className="mt-3 text-xs text-white/70"
+                                                        />
+                                                    </div>
+                                                    
+                                                    <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                                                        <h4 className="text-white font-semibold mb-3">🇪🇺 European Standards</h4>
+                                                        <div className="space-y-2 text-sm">
+                                                            <div className="text-white/70">EN 13445 - Pressure Vessels</div>
+                                                            <div className="text-white/70">PED - Pressure Equipment</div>
+                                                            <div className="text-white/70">EN 1090 - Structural Steel</div>
+                                                        </div>
+                                                        <input 
+                                                            type="file" 
+                                                            multiple 
+                                                            accept=".pdf"
+                                                            onChange={async (e) => {
+                                                                const files = Array.from(e.target.files);
+                                                                for (const file of files) {
+                                                                    const ref = storage.ref(`codes/european/${file.name}`);
+                                                                    await ref.put(file);
+                                                                    console.log(`Uploaded: ${file.name}`);
+                                                                }
+                                                                alert(`Uploaded ${files.length} European Standard files`);
+                                                            }}
+                                                            className="mt-3 text-xs text-white/70"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Uploaded Files List */}
+                                                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                                                    <h4 className="text-white font-semibold mb-3">📁 Uploaded Code Documents</h4>
+                                                    <div id="uploaded-codes-list" className="text-white/70 text-sm">
+                                                        Click "Refresh List" to see uploaded files
+                                                    </div>
+                                                    <button 
+                                                        onClick={async () => {
+                                                            const listDiv = document.getElementById('uploaded-codes-list');
+                                                            listDiv.innerHTML = 'Loading...';
+                                                            
+                                                            try {
+                                                                const regions = ['australian', 'american', 'european'];
+                                                                let html = '';
+                                                                
+                                                                for (const region of regions) {
+                                                                    const folderRef = storage.ref(`codes/${region}`);
+                                                                    const list = await folderRef.listAll();
+                                                                    
+                                                                    if (list.items.length > 0) {
+                                                                        html += `<div class="mb-2"><strong>${region.toUpperCase()}:</strong></div>`;
+                                                                        for (const item of list.items) {
+                                                                            html += `<div class="ml-4 mb-1">📄 ${item.name}</div>`;
+                                                                        }
+                                                                        html += '<div class="mb-4"></div>';
+                                                                    }
+                                                                }
+                                                                
+                                                                listDiv.innerHTML = html || 'No code documents uploaded yet';
+                                                            } catch (e) {
+                                                                listDiv.innerHTML = 'Error loading files: ' + e.message;
+                                                            }
+                                                        }}
+                                                        className="mt-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm"
+                                                    >
+                                                        Refresh List
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    
                                     {activeTab === 'spec' && selectedEnquiry && (
                                         <div className="p-6 space-y-6 overflow-auto h-full bg-gradient-to-br from-slate-900/50 to-slate-800/30">
                                             <div className="flex items-center justify-between">
@@ -7165,6 +7307,44 @@
                                                 </div>
                                                 <div className="text-slate-400 text-sm bg-slate-700/30 px-3 py-1 rounded-full border border-slate-600/30">
                                                     {selectedEnquiry.id}
+                                                </div>
+                                            </div>
+
+                                            {/* Code Standard Selection */}
+                                            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                                                <h4 className="text-white font-semibold text-sm mb-3">⚖️ Code Standard Selection</h4>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="block text-white/70 text-sm mb-2">Code Standard:</label>
+                                                        <select 
+                                                            id="code-standard-select"
+                                                            className="w-full bg-slate-700 text-white text-sm rounded border border-white/20 p-2"
+                                                            defaultValue=""
+                                                        >
+                                                            <option value="">Select code standard...</option>
+                                                            <option value="australian">🇦🇺 Australian Standards (AS)</option>
+                                                            <option value="american">🇺🇸 American Standards (ASME/API)</option>
+                                                            <option value="european">🇪🇺 European Standards (EN/PED)</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-white/70 text-sm mb-2">Equipment Type:</label>
+                                                        <select 
+                                                            id="equipment-type-select"
+                                                            className="w-full bg-slate-700 text-white text-sm rounded border border-white/20 p-2"
+                                                            defaultValue=""
+                                                        >
+                                                            <option value="">Select equipment type...</option>
+                                                            <option value="pressure_vessel">Pressure Vessel</option>
+                                                            <option value="storage_tank">Storage Tank</option>
+                                                            <option value="heat_exchanger">Heat Exchanger</option>
+                                                            <option value="piping">Piping System</option>
+                                                            <option value="reactor">Reactor</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-3 text-white/50 text-xs">
+                                                    💡 Select your code standard and equipment type. The system will automatically include relevant code documents in the analysis.
                                                 </div>
                                             </div>
 
@@ -7363,131 +7543,69 @@
                                                         onClick={async () => {
                                                             const tenderId = selectedEnquiry.id;
                                                             const files = specFiles[tenderId] || [];
-                                                            if (!files.length) return;
+                                                            if (!files.length) {
+                                                                alert('Please upload specification files first');
+                                                                return;
+                                                            }
                                                             
-                                                            // Create comprehensive prompt for Claude
-                                                            const promptText = `Please perform a comprehensive specification and code compliance review of the files I'll upload (specifications + applicable codes).
-
-STEP 1: IDENTIFY THE EQUIPMENT
-First, determine what type of equipment this is:
-- Pressure vessel type (storage tank, heat exchanger, reactor, etc.)
-- Operating conditions (pressure, temperature, service)
-- Size and capacity
-- Critical service requirements
-
-STEP 2: DETERMINE APPLICABLE CODES
-Based on the equipment type and service, identify which codes apply from ALL uploaded documents:
-- ASME Section VIII Div 1 vs Div 2 requirements
-- ASME B31.3 piping requirements  
-- API standards (650, 510, 570, 653, etc.)
-- Australian Standards (AS1210, AS4458, AS1548, etc.)
-- European Standards (EN, PED, etc.)
-- Local jurisdiction codes
-- Special service requirements (sour service, high temperature, etc.)
-
-IMPORTANT: Cross-reference ALL uploaded code documents - analyze each one to determine which sections apply to this specific equipment.
-
-STEP 3: CROSS-REFERENCE SPEC WITH CODE REQUIREMENTS
-For this specific equipment, extract what the codes actually require:
-
-EXTRACT ALL CRITICAL REQUIREMENTS FROM THESE 8 AREAS:
-
-1. DESIGN REQUIREMENTS:
-- Operating conditions (pressure, temperature, flow rates, cycles)
-- Vessel dimensions, wall thickness, head types
-- Nozzle sizes, locations, reinforcement requirements
-- Internal components (trays, baffles, supports)
-- Corrosion allowances, stress analysis requirements
-- Fatigue analysis, seismic/wind load requirements
-
-2. MATERIAL SPECIFICATIONS:
-- Base material grades and specifications
-- Welding consumables and procedures
-- Bolting materials and grades
-- Material property requirements (yield, tensile, impact)
-- Heat treatment requirements
-- Material certifications (MTCs, PMI)
-
-3. CODE COMPLIANCE & STANDARDS:
-- ASME Section VIII Division 1/2 requirements
-- ASME B31.3 piping requirements
-- API standards (API 510, 570, 650, etc.)
-- Local jurisdiction requirements
-- Code stamping and certification
-
-4. FABRICATION REQUIREMENTS:
-- Welding procedure specifications (WPS)
-- Welder qualifications (WQT)
-- Joint efficiency factors
-- Fit-up tolerances and procedures
-- Heat treatment procedures (PWHT)
-
-5. TESTING & INSPECTION:
-- Hydrostatic test pressure and procedures
-- Radiographic testing (RT) requirements
-- Ultrasonic testing (UT) requirements
-- Magnetic particle testing (MT)
-- Liquid penetrant testing (PT)
-- Visual inspection criteria
-
-6. DOCUMENTATION REQUIREMENTS:
-- Mill test certificates (MTCs)
-- Welding documentation packages
-- NDE reports and certifications
-- Code compliance documentation
-
-7. QUALITY ASSURANCE:
-- QC procedures and plans
-- Inspection and test plans (ITPs)
-- Non-conformance procedures
-- Third-party inspection requirements
-
-8. DIMENSIONAL TOLERANCES:
-- Fabrication tolerances
-- Assembly tolerances
-- Surface finish requirements
-
-STEP 4: EQUIPMENT-SPECIFIC CODE ANALYSIS
-For each requirement, analyze:
-- Does this specific equipment fall under this code requirement? (Yes/No/Conditional)
-- What does the code specifically require for this equipment type?
-- What are the code-mandated values, tolerances, or procedures?
-- Are there any exemptions or alternatives for this equipment?
-- What inspection/testing does the code require for this specific case?
-
-For each requirement, provide:
-- Category (Design/Materials/Code/Testing/Fabrication/Documentation/Quality/Safety)
-- Specific requirement with exact values and tolerances
-- Code Reference (e.g., "ASME VIII-1 UG-27(c)(1)" or "API 650 Section 5.6.1")
-- Applicability to THIS equipment (Required/Not Required/Conditional - explain why)
-- Code-mandated requirement vs. specification requirement (note any conflicts)
-- Why this requirement is critical for safety/compliance
-- Reference to both spec document AND code section
-
-CRITICAL: Focus on what the CODES actually require for THIS specific equipment type, size, and service. Don't just list general requirements - analyze what applies to this particular vessel/equipment.
-
-Please be extremely thorough and extract 50-100+ equipment-specific code requirements.
-
-FILES TO ANALYZE:
-${files.map(f => `• ${f.name} - ${f.url}`).join('\n')}`;
-
-                                                            // Open Claude and copy prompt to clipboard
-                                                            const claudeUrl = 'https://claude.ai/new';
-                                                            window.open(claudeUrl, '_blank');
+                                                            // Get selected code standard and equipment type
+                                                            const codeStandard = document.getElementById('code-standard-select').value;
+                                                            const equipmentType = document.getElementById('equipment-type-select').value;
                                                             
-                                                            // Copy prompt to clipboard
+                                                            if (!codeStandard || !equipmentType) {
+                                                                alert('Please select both Code Standard and Equipment Type');
+                                                                return;
+                                                            }
+                                                            
                                                             try {
-                                                                await navigator.clipboard.writeText(promptText);
-                                                                alert('✅ Claude opened in new tab!\n\n📋 Comprehensive spec + code analysis prompt copied to clipboard.\n\n📝 Instructions:\n1. Paste the prompt in Claude\n2. Upload your SPEC files AND applicable CODE documents\n3. Claude will cross-reference spec vs code requirements\n4. Copy results back here when ready');
-                                                            } catch (e) {
-                                                                // Fallback for older browsers
-                                                                const textArea = document.createElement('textarea');
-                                                                textArea.value = promptText;
-                                                                document.body.appendChild(textArea);
-                                                                textArea.select();
-                                                                document.execCommand('copy');
-                                                                document.body.removeChild(textArea);
-                                                                alert('✅ Claude opened in new tab!\n\n📋 Prompt copied to clipboard - paste it in Claude with your files!');
+                                                                setSpecError('');
+                                                                setSpecRunning(true);
+                                                                
+                                                                // Call enhanced serverless function with code selection
+                                                                const endpoint = '/.netlify/functions/specReview';
+                                                                const body = {
+                                                                    tenderId,
+                                                                    files: files.map(f => ({ name: f.name, url: f.url })),
+                                                                    codeStandard,
+                                                                    equipmentType
+                                                                };
+                                                                
+                                                                const res = await fetch(endpoint, { 
+                                                                    method: 'POST', 
+                                                                    headers: { 'Content-Type': 'application/json' }, 
+                                                                    body: JSON.stringify(body) 
+                                                                });
+                                                                
+                                                                if (!res.ok) {
+                                                                    const errorData = await res.json().catch(() => ({}));
+                                                                    throw new Error(`Analysis failed (${res.status}): ${errorData.error || 'Unknown error'}`);
+                                                                }
+                                                                
+                                                                const data = await res.json();
+                                                                
+                                                                // Store results
+                                                                setSpecResults(prev => ({ ...prev, [tenderId]: data.results || [] }));
+                                                                
+                                                                // Save to Firebase
+                                                                const runId = `auto_${Date.now()}`;
+                                                                const runRecord = {
+                                                                    id: runId,
+                                                                    createdAt: new Date().toISOString(),
+                                                                    items: data.results || [],
+                                                                    codeStandard,
+                                                                    equipmentType,
+                                                                    diagnostics: data.diagnostics || [],
+                                                                    files: files.map(f => ({ name: f.name, url: f.url }))
+                                                                };
+                                                                database.ref(`tenders/${tenderId}/specReviews/${runId}`).set(runRecord);
+                                                                setSpecRuns(prev => ({ ...prev, [tenderId]: [runRecord, ...(prev[tenderId]||[])] }));
+                                                                setSpecSelectedRunId(runId);
+                                                                
+                                                            } catch (err) {
+                                                                console.error('Spec review error:', err);
+                                                                setSpecError(err.message || 'Analysis failed');
+                                                            } finally {
+                                                                setSpecRunning(false);
                                                             }
                                                         }}
                                                     >
@@ -7552,108 +7670,7 @@ ${files.map(f => `• ${f.name} - ${f.url}`).join('\n')}`;
                                                 {specError && <div className="mt-3 text-red-300 text-sm">{specError}</div>}
                                             </div>
                                             
-                                            {/* Claude Results Input */}
-                                            <div className="bg-white/5 border border-white/10 rounded-lg p-3 mb-4">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <div className="text-white/80 text-sm">Paste Claude Results</div>
-                                                    <button 
-                                                        onClick={() => {
-                                                            const input = document.getElementById('claude-results-input');
-                                                            const text = input.value.trim();
-                                                            if (!text) {
-                                                                alert('Please paste Claude results first');
-                                                                return;
-                                                            }
-                                                            
-                                                            // Simple parsing - split by lines and create basic structure
-                                                            const lines = text.split('\n').filter(line => line.trim());
-                                                            const results = [];
-                                                            let currentCategory = 'General';
-                                                            
-                                                            lines.forEach((line, i) => {
-                                                                const trimmed = line.trim();
-                                                                
-                                                                // Detect category headers
-                                                                if (trimmed.toLowerCase().includes('design') || 
-                                                                    trimmed.toLowerCase().includes('material') ||
-                                                                    trimmed.toLowerCase().includes('code') ||
-                                                                    trimmed.toLowerCase().includes('fabrication') ||
-                                                                    trimmed.toLowerCase().includes('testing') ||
-                                                                    trimmed.toLowerCase().includes('documentation') ||
-                                                                    trimmed.toLowerCase().includes('quality') ||
-                                                                    trimmed.toLowerCase().includes('dimensional')) {
-                                                                    currentCategory = trimmed.replace(/[0-9.\-\*]/g, '').trim();
-                                                                    return;
-                                                                }
-                                                                
-                                                                // Convert bullet points to requirements
-                                                                if (trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('*')) {
-                                                                    const requirement = trimmed.replace(/^[\-\•\*]\s*/, '');
-                                                                    if (requirement.length > 10) {
-                                                                        results.push({
-                                                                            id: `req_${results.length + 1}`,
-                                                                            category: currentCategory,
-                                                                            requirement: requirement,
-                                                                            rationale: 'From Claude code analysis',
-                                                                            source: { fileName: 'Claude Code Analysis' },
-                                                                            compliance_ref: 'See Claude analysis for specific code sections'
-                                                                        });
-                                                                    }
-                                                                }
-                                                            });
-                                                            
-                                                            if (results.length === 0) {
-                                                                alert('No requirements found. Make sure to paste Claude\'s formatted results.');
-                                                                return;
-                                                            }
-                                                            
-                                                            const tenderId = selectedEnquiry.id;
-                                                            setSpecResults(prev => ({ ...prev, [tenderId]: results }));
-                                                            
-                                                            // Save to Firebase
-                                                            const runId = `claude_${Date.now()}`;
-                                                            const runRecord = {
-                                                                id: runId,
-                                                                createdAt: new Date().toISOString(),
-                                                                items: results,
-                                                                source: 'Claude Analysis',
-                                                                files: (specFiles[tenderId]||[]).map(f => ({ name: f.name, url: f.url }))
-                                                            };
-                                                            database.ref(`tenders/${tenderId}/specReviews/${runId}`).set(runRecord);
-                                                            setSpecRuns(prev => ({ ...prev, [tenderId]: [runRecord, ...(prev[tenderId]||[])] }));
-                                                            setSpecSelectedRunId(runId);
-                                                            
-                                                            // Clear input and show results
-                                                            input.value = '';
-                                                            console.log('Imported results:', results);
-                                                            alert(`✅ Imported ${results.length} requirements from Claude!\n\nResults should now appear in the "Results" section below.`);
-                                                        }}
-                                                        className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
-                                                    >
-                                                        Import Results
-                                                    </button>
-                                                </div>
-                                                <textarea 
-                                                    id="claude-results-input"
-                                                    placeholder="Paste Claude's code + spec analysis results here...
 
-Example format:
-1. DESIGN REQUIREMENTS
-- Operating pressure: 1.6 MPa as per AS1210 Section 4.2.1
-- Wall thickness: 12mm minimum per AS1210 Section 4.3.2
-- Hydrostatic test: 2.4 MPa per AS1210 Section 8.1.1
-
-2. MATERIAL SPECIFICATIONS  
-- Material grade: AS1548-7-460R as per AS1210 Section 3.2.1
-- Mill test certificates required per AS1548 Section 7.2
-..."
-                                                    className="w-full h-32 bg-slate-800 text-white text-sm p-2 rounded border border-white/20 resize-y"
-                                                ></textarea>
-                                                <div className="text-white/50 text-xs mt-1">
-                                                    💡 Upload ALL applicable codes (AS1210, AS4458, AS1548, etc.) + spec files to Claude, then paste the cross-referenced analysis here
-                                                </div>
-                                            </div>
-                                            
                                             <div className="bg-white/5 border border-white/10 rounded-lg p-3">
                                                 <div className="flex items-center justify-between mb-2">
                                                     <div className="text-white/80 text-sm">Results</div>
@@ -7664,7 +7681,7 @@ Example format:
                                                         const results = (specResults[selectedEnquiry.id]||[]);
                                                         
                                                         if (!results.length) {
-                                                            return <div className="text-white/60 text-sm">No results yet. Upload specs + codes and click "Code + Spec Analysis".</div>;
+                                                            return <div className="text-white/60 text-sm">No results yet. Select code standard, upload spec files, and click "Code + Spec Analysis".</div>;
                                                         }
                                                         
                                                         // Group by category
