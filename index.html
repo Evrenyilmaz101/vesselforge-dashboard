@@ -5988,7 +5988,7 @@
                                         Spec Review
                                         {activeTab === 'spec' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-400"></div>}
                                     </button>
-                                    {user && user.role === 'Sales Manager' && (
+                                    {user && (user.role === 'Sales Manager' || user.role === 'General Manager') && (
                                         <button
                                             onClick={() => {
                                                 setActiveTab('codeadmin');
@@ -7172,7 +7172,7 @@
                                     )}
                                     
                                     {/* Code Library Admin Tab */}
-                                    {activeTab === 'codeadmin' && user && user.role === 'Sales Manager' && (
+                                    {activeTab === 'codeadmin' && user && (user.role === 'Sales Manager' || user.role === 'General Manager') && (
                                         <div className="p-6 space-y-6 overflow-auto h-full bg-gradient-to-br from-slate-900/50 to-slate-800/30">
                                             <div className="bg-slate-800 rounded-xl border border-white/20 p-6">
                                                 <h3 className="text-xl font-bold text-white mb-4">📚 Code Library Administration</h3>

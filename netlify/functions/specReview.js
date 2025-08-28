@@ -24,8 +24,12 @@ exports.handler = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: 'tenderId and files[] required' }) };
     }
     
-    if (!codeStandard || !equipmentType) {
-      return { statusCode: 400, body: JSON.stringify({ error: 'codeStandard and equipmentType required' }) };
+    // Make code selection optional for now to avoid timeout issues
+    if (!codeStandard) {
+      diagnostics.push('No code standard selected - using general analysis');
+    }
+    if (!equipmentType) {
+      diagnostics.push('No equipment type selected - using general analysis');
     }
 
     // Fetch and extract text from supported files (PDF/DOCX/TXT/MD/CSV/JSON/Code)
@@ -256,118 +260,33 @@ exports.handler = async (event) => {
       const selectedCodeContext = codeContext[codeStandard];
       const selectedEquipmentContext = equipmentContext[equipmentType];
 
-      const prompt = `You are a senior mechanical engineer performing a COMPREHENSIVE specification review for a ${selectedEquipmentContext} according to ${selectedCodeContext.name}.
+      // Simplified prompt to avoid timeouts
+      const contextInfo = codeStandard && equipmentType ? 
+        `\n\nEQUIPMENT TYPE: ${equipmentType.replace('_', ' ').toUpperCase()}\nCODE STANDARD: ${selectedCodeContext.name}` : 
+        '\n\nGENERAL SPECIFICATION REVIEW';
 
-EQUIPMENT TYPE: ${equipmentType.replace('_', ' ').toUpperCase()}
-CODE STANDARD: ${selectedCodeContext.name} (${selectedCodeContext.codes})
+      const prompt = `Analyze this specification document and extract key technical requirements:
 
-DOCUMENT TO REVIEW:
-${text}
+${text}${contextInfo}
 
-FOCUS ON ${selectedCodeContext.focus.toUpperCase()} FOR THIS ${equipmentType.replace('_', ' ').toUpperCase()}.
+Return JSON array of requirements:
+[
+  {
+    "id": "req_1",
+    "category": "Design|Materials|Code|Testing|Documentation|Safety",
+    "requirement": "specific requirement with values",
+    "rationale": "why this matters",
+    "source": {"fileName": "${doc.name}"}
+  }
+]
 
-MANDATORY COMPREHENSIVE REVIEW - Extract EVERYTHING from:
-
-1. DESIGN REQUIREMENTS:
-- Operating conditions (pressure, temperature, flow rates, cycles)
-- Vessel dimensions, wall thickness, head types
-- Nozzle sizes, locations, reinforcement requirements
-- Internal components (trays, baffles, supports)
-- Corrosion allowances, stress analysis requirements
-- Fatigue analysis, seismic/wind load requirements
-- Thermal expansion considerations
-
-2. MATERIAL SPECIFICATIONS:
-- Base material grades and specifications
-- Welding consumables and procedures
-- Bolting materials and grades
-- Gasket and seal materials
-- Coating and lining materials
-- Material property requirements (yield, tensile, impact)
-- Heat treatment requirements
-- Material certifications (MTCs, PMI)
-
-3. CODE COMPLIANCE & STANDARDS:
-- ASME Section VIII Division 1/2 requirements
-- ASME B31.3 piping requirements
-- API standards (API 510, 570, 650, etc.)
-- Local jurisdiction requirements
-- Special code cases or exemptions
-- Third-party inspection requirements
-- Code stamping and certification
-
-4. FABRICATION REQUIREMENTS:
-- Welding procedure specifications (WPS)
-- Welder qualifications (WQT)
-- Joint efficiency factors
-- Fit-up tolerances and procedures
-- Heat treatment procedures (PWHT)
-- Forming and machining requirements
-- Assembly procedures and sequences
-
-5. TESTING & INSPECTION:
-- Hydrostatic test pressure and procedures
-- Pneumatic test requirements
-- Radiographic testing (RT) requirements
-- Ultrasonic testing (UT) requirements
-- Magnetic particle testing (MT)
-- Liquid penetrant testing (PT)
-- Visual inspection criteria
-- Acceptance standards and reject criteria
-- Hold points and witness points
-
-6. DOCUMENTATION REQUIREMENTS:
-- Mill test certificates (MTCs)
-- Welding documentation packages
-- NDE reports and certifications
-- Hydrostatic test certificates
-- Code compliance documentation
-- Fabrication drawings and procedures
-- Quality control records
-- As-built documentation
-
-7. QUALITY ASSURANCE:
-- QC procedures and plans
-- Inspection and test plans (ITPs)
-- Non-conformance procedures
-- Corrective action requirements
-- Third-party inspection requirements
-- Audit and surveillance requirements
-
-8. DIMENSIONAL TOLERANCES:
-- Fabrication tolerances
-- Assembly tolerances
-- Straightness and roundness requirements
-- Surface finish requirements
-- Dimensional inspection procedures
-
-For EVERY requirement found, return this exact JSON structure:
-{
-  "id": "req_XXX",
-  "category": "Design|Materials|Code|Testing|Fabrication|Documentation|Quality|Safety|Dimensional",
-  "requirement": "Complete, specific requirement statement with exact values, tolerances, procedures, and acceptance criteria",
-  "rationale": "Detailed technical explanation of why this requirement exists and its impact on safety, performance, or compliance",
-  "source": {"fileName": "${doc.name}", "section": "specific section/paragraph where found"},
-  "details": "Additional technical context, referenced standards, or related requirements",
-  "compliance_ref": "Specific ASME/API/code section if referenced"
-}
-
-CRITICAL INSTRUCTIONS:
-- Read EVERY paragraph, sentence, table entry, note, and specification detail
-- Extract 50-100+ requirements minimum for a proper spec review
-- Include exact numerical values, tolerances, pressures, temperatures
-- Capture procedural requirements step-by-step
-- Include all referenced standards and specifications
-- Extract requirements from tables, charts, and drawing notes
-- Be extremely thorough - this is a professional engineering review
-
-Return only the JSON array with NO other text. Extract EVERYTHING.`;
+Extract 20-30 key requirements. Focus on critical technical specifications. JSON only.`;
 
       const completion = await anthropic.messages.create({
         model: model || DEFAULT_MODEL,
-        max_tokens: 4000, // Increased for comprehensive review
+        max_tokens: 2000, // Reduced to avoid timeouts
         temperature: 0,
-        system: 'You are a senior mechanical engineer performing a comprehensive specification review. You must extract EVERY technical requirement from the entire document. Return only a valid JSON array with 50-100+ requirements.',
+        system: 'You are a mechanical engineer. Extract technical requirements from specifications. Return valid JSON only.',
         messages: [{ role: 'user', content: prompt }],
       });
       
