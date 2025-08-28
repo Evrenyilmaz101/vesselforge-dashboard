@@ -135,23 +135,43 @@
                     progressCallback?.(`Processing ${file.name} (${i + 1}/${files.length})`);
                     
                     try {
-                        const response = await fetch(file.url);
+                        console.log(`Fetching file: ${file.name} from URL: ${file.url}`);
+                        const response = await fetch(file.url, {
+                            mode: 'cors',
+                            headers: {
+                                'Accept': 'application/pdf,*/*'
+                            }
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        
+                        console.log(`Successfully fetched ${file.name}, converting to base64...`);
                         const arrayBuffer = await response.arrayBuffer();
+                        console.log(`ArrayBuffer size: ${arrayBuffer.byteLength} bytes`);
+                        
                         const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+                        console.log(`Base64 conversion complete, length: ${base64.length} characters`);
                         
                         documents.push({ 
                             name: file.name, 
                             base64: base64,
                             mediaType: 'application/pdf' 
                         });
+                        
+                        console.log(`Successfully processed ${file.name}`);
                     } catch (error) {
-                        console.warn(`Failed to process ${file.name}:`, error);
+                        console.error(`Failed to process ${file.name}:`, error);
+                        progressCallback?.(`⚠️ Failed to process ${file.name}: ${error.message}`);
                     }
                 }
                 
                 if (documents.length === 0) {
-                    throw new Error('No files could be processed for analysis.');
+                    throw new Error('No files could be processed for analysis. Please check the browser console for detailed error information. This might be a CORS issue or file access problem.');
                 }
+                
+                console.log(`Successfully processed ${documents.length} document(s) for Claude analysis`);
                 
                 progressCallback?.('Sending documents to Claude for analysis...');
                 
