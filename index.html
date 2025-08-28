@@ -138,6 +138,9 @@
                         const text = await extractTextFromFile(file);
                         if (text && text.trim().length > 50) {
                             documents.push({ name: file.name, text });
+                        } else if (text && text.includes('[SCANNED PDF DETECTED:')) {
+                            // Include scanned PDFs for Claude to analyze the metadata
+                            documents.push({ name: file.name, text });
                         }
                     } catch (error) {
                         console.warn(`Failed to extract text from ${file.name}:`, error);
@@ -145,7 +148,7 @@
                 }
                 
                 if (documents.length === 0) {
-                    throw new Error('No readable text found in uploaded files');
+                    throw new Error('No readable text found in uploaded files. This might be a scanned PDF that requires OCR processing. Please try a text-based PDF or check the browser console for details.');
                 }
                 
                 progressCallback?.('Analyzing documents with Claude...');
@@ -269,30 +272,56 @@ Return only a JSON array, no other text.`;
             
             // Extract text from uploaded files  
             const extractTextFromFile = async (file) => {
+                console.log(`Extracting text from: ${file.name}`);
                 const response = await fetch(file.url);
                 const arrayBuffer = await response.arrayBuffer();
                 
                 if (file.name.toLowerCase().endsWith('.pdf')) {
-                    // Use PDF.js for client-side PDF processing
-                    const pdfjsLib = window['pdfjs-dist/build/pdf'];
-                    if (!pdfjsLib) {
-                        throw new Error('PDF.js library not loaded');
+                    try {
+                        // Use PDF.js for client-side PDF processing
+                        const pdfjsLib = window.pdfjsLib || window['pdfjs-dist/build/pdf'];
+                        if (!pdfjsLib) {
+                            console.error('PDF.js library not found');
+                            throw new Error('PDF.js library not loaded');
+                        }
+                        
+                        // Set worker source
+                        if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+                            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                        }
+                        
+                        console.log('Loading PDF document...');
+                        const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+                        console.log(`PDF loaded: ${pdf.numPages} pages`);
+                        
+                        let fullText = '';
+                        
+                        for (let i = 1; i <= pdf.numPages; i++) {
+                            console.log(`Processing page ${i}/${pdf.numPages}`);
+                            const page = await pdf.getPage(i);
+                            const textContent = await page.getTextContent();
+                            const pageText = textContent.items.map(item => item.str).join(' ');
+                            fullText += pageText + '\n';
+                            console.log(`Page ${i} text length: ${pageText.length}`);
+                        }
+                        
+                        console.log(`Total extracted text length: ${fullText.length}`);
+                        
+                        if (fullText.trim().length < 100) {
+                            console.warn('Very little text extracted - might be a scanned PDF');
+                            // For scanned PDFs, we'll return a placeholder that indicates OCR is needed
+                            return `[SCANNED PDF DETECTED: ${file.name}]\n\nThis appears to be a scanned PDF with images rather than extractable text. The document contains ${pdf.numPages} pages but minimal text content was extracted.\n\nFor proper analysis, please either:\n1. Use a text-based PDF version if available\n2. OCR processing would be needed for this document type\n\nDocument: ${file.name}\nPages: ${pdf.numPages}\nExtracted text: ${fullText.trim()}`;
+                        }
+                        
+                        return fullText;
+                        
+                    } catch (pdfError) {
+                        console.error('PDF processing error:', pdfError);
+                        throw new Error(`Failed to process PDF: ${pdfError.message}`);
                     }
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-                    
-                    const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-                    let fullText = '';
-                    
-                    for (let i = 1; i <= pdf.numPages; i++) {
-                        const page = await pdf.getPage(i);
-                        const textContent = await page.getTextContent();
-                        const pageText = textContent.items.map(item => item.str).join(' ');
-                        fullText += pageText + '\n';
-                    }
-                    
-                    return fullText;
                 } else if (file.name.toLowerCase().endsWith('.txt')) {
                     const text = new TextDecoder().decode(arrayBuffer);
+                    console.log(`Text file extracted: ${text.length} characters`);
                     return text;
                 } else {
                     throw new Error(`Unsupported file type: ${file.name}`);
