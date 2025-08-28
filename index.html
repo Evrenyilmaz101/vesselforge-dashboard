@@ -136,14 +136,24 @@
                     
                     try {
                         console.log(`Fetching file: ${file.name} from URL: ${file.url}`);
-                        const response = await fetch(file.url, {
-                            mode: 'cors',
-                            headers: {
-                                'Accept': 'application/pdf,*/*'
-                            }
-                        });
+                        let response;
                         
-                        if (!response.ok) {
+                        // Try CORS first, then no-cors as fallback
+                        try {
+                            response = await fetch(file.url, {
+                                mode: 'cors',
+                                headers: {
+                                    'Accept': 'application/pdf,*/*'
+                                }
+                            });
+                        } catch (corsError) {
+                            console.warn('CORS fetch failed, trying no-cors mode:', corsError);
+                            response = await fetch(file.url, { 
+                                mode: 'no-cors'
+                            });
+                        }
+                        
+                        if (!response.ok && response.status !== 0) {
                             throw new Error(`HTTP error! status: ${response.status}`);
                         }
                         
